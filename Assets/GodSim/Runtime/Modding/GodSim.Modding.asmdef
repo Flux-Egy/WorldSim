@@ -1,0 +1,17 @@
+{
+  "name": "GodSim.Modding",
+  "rootNamespace": "GodSim.Modding",
+  "references": [
+    "GodSim.Core",
+    "GodSim.ModAPI",
+    "GodSim.Simulation",
+    "Unity.Entities",
+    "Unity.Collections"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "autoReferenced": false,
+  "noEngineReferences": false
+}

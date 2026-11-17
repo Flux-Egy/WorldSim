@@ -1,0 +1,155 @@
+# GodSim CI. See GITHUB_ACTIONS.md for setup (Unity license secrets) and the first-run bootstrap.
+# Action versions verified on 2026-11-17: game-ci/unity-builder v6.0.0 (thin wrapper over the
+# game-ci CLI), game-ci/unity-test-runner v4.3.2, unityci/editor:ubuntu-6000.3.28f1-android-3.
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Plain .NET, no Unity license: compiles GodSim.Core and runs its determinism tests (C# 9,
+  # warnings as errors, overflow checking on).
+  core-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 8.0.x
+      - name: Core unit tests
+        run: dotnet test Tools/CoreTests --logger "console;verbosity=normal" --logger "trx;LogFileName=core-tests.trx"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: core-test-results
+          path: Tools/CoreTests/TestResults/
+
+  # Secrets cannot be used in job-level `if:`, so this job exposes whether a license is configured.
+  # Forks and repos without secrets still get core-tests, and the Unity jobs are skipped instead of failing.
+  license-check:
+    runs-on: ubuntu-latest
+    outputs:
+      available: ${{ steps.check.outputs.available }}
+    steps:
+      - id: check
+        env:
+          HAS_LICENSE: ${{ secrets.UNITY_LICENSE != '' || secrets.UNITY_SERIAL != '' }}
+        run: |
+          echo "available=$HAS_LICENSE" >> "$GITHUB_OUTPUT"
+          [ "$HAS_LICENSE" = "true" ] || echo "::warning::No UNITY_LICENSE/UNITY_SERIAL secret. Unity jobs skipped. See GITHUB_ACTIONS.md."
+
+  unity-editmode-tests:
+    needs: [core-tests, license-check]
+    if: needs.license-check.outputs.available == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/cache@v6
+        with:
+          path: Library
+          key: Library-Test-${{ hashFiles('Packages/manifest.json', 'Packages/packages-lock.json', 'ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: Library-Test-
+      - uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        with:
+          testMode: editmode
+          artifactsPath: test-artifacts
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+          checkName: Unity EditMode Tests
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: unity-editmode-results
+          path: test-artifacts
+
+  build-android:
+    needs: [core-tests, license-check]
+    if: needs.license-check.outputs.available == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      # The Unity Android image is large and a hosted runner starts with limited free disk.
+      - name: Free disk space
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          sudo docker image prune --all --force
+          df -h /
+
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # versioning: Semantic derives the version from git history and tags
+
+      - uses: actions/cache@v6
+        with:
+          path: Library
+          key: Library-Android-${{ hashFiles('Packages/manifest.json', 'Packages/packages-lock.json', 'ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: Library-Android-
+
+      # Pass 1: headless project setup (URP asset, Boot scene, Input System handler, Android
+      # settings). Kept separate because the input-handler change needs an Editor restart.
+      - name: Unity bootstrap
+        uses: game-ci/unity-builder@v6
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        with:
+          targetPlatform: Android
+          buildMethod: GodSim.EditorTools.GodSimCI.Bootstrap
+          versioning: None
+          allowDirtyBuild: true
+
+      # The files Unity generated (ProjectSettings, .meta files, Boot scene, URP assets).
+      # Commit these once (GITHUB_ACTIONS.md, "First run"), so later builds start from them.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: project-bootstrap-files
+          path: |
+            ProjectSettings/
+            Packages/packages-lock.json
+            Assets/**/*.meta
+            Assets/GodSim/Scenes/
+            Assets/GodSim/Settings/
+          if-no-files-found: warn
+
+      # Pass 2: Release build. IL2CPP, ARM64, stripping High (GodSimBuild enforces this).
+      - name: Unity build (Release, IL2CPP ARM64)
+        id: build
+        uses: game-ci/unity-builder@v6
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        with:
+          targetPlatform: Android
+          buildMethod: GodSim.EditorTools.GodSimBuild.BuildReleaseCI
+          versioning: Semantic
+          allowDirtyBuild: true # pass 1 leaves generated files in the workspace
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: GodSim-android-release
+          path: Builds/Android/
+          if-no-files-found: error

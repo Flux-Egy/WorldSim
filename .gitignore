@@ -1,0 +1,58 @@
+# ---- Unity (generated, never commit) ----
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+/[Aa]ssets/[Ss]treamingAssets/aa.meta
+/[Aa]ssets/[Ss]treamingAssets/aa/*
+/[Aa]ssets/Plugins/Editor/JetBrains*
+ExportedObj/
+.consulo/
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+sysinfo.txt
+crashlytics-buildid.txt
+.utmp/
+# CI test-runner output
+/test-artifacts/
+/artifacts/
+
+# ---- IDE / OS ----
+.vs/
+.vscode/
+.idea/
+*.csproj
+!/Tools/**/*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+.DS_Store
+Thumbs.db
+
+# ---- Build outputs ----
+*.apk
+*.aab
+*.unitypackage
+*.app
+*.symbols.zip
+
+# ---- Plain .NET tool projects (Tools/) ----
+/Tools/**/bin/
+/Tools/**/obj/
+/Tools/**/TestResults/
