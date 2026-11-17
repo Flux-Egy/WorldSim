@@ -12,10 +12,10 @@ Status: Stage 1 skeleton written, **not yet opened in the Unity Editor** (see "E
 | com.unity.collections | 2.7.1 | |
 | com.unity.mathematics | 1.3.3 | |
 | com.unity.inputsystem | 1.20.1 | |
-| com.unity.adaptiveperformance (+ .google.android) | 5.1.6 | Thermal signal for §13.3 |
-| com.unity.test-framework | 1.4.6 | |
-| com.unity.render-pipelines.universal | 17.3.0 | **Unverified.** URP is an editor-bundled core package in Unity 6 and is not listed in the public registry. If the Package Manager reports a mismatch, accept the version the editor offers. |
-| com.unity.ugui | 2.0.0 | **Unverified**, same reason. TextMeshPro ships inside ugui 2.x in Unity 6. |
+| com.unity.adaptiveperformance (+ .google.android) | 6.0.0 | Thermal signal for §13.3. Unity 6.3 locks this version (seen in CI on 2026-11-17); 5.1.6 was overridden |
+| com.unity.test-framework | 1.6.0 | Editor-locked in 6.3 (seen in CI) |
+| com.unity.render-pipelines.universal | 17.3.0 | **Verified in CI.** An editor-bundled core package. 2D Renderer types live in the separate assembly `Unity.RenderPipelines.Universal.2D.Runtime` |
+| com.unity.ugui | 2.0.0 | **Verified in CI.** TextMeshPro ships inside ugui 2.x in Unity 6. |
 
 Not used: `com.unity.entities.graphics`, which renders meshes through BatchRendererGroup and does not render through the URP 2D Renderer or SpriteRenderer. Units are drawn by our own instanced presentation system (§7 below). `com.unity.2d.pixel-perfect` is also not used, because URP 17 ships its own `UnityEngine.Rendering.Universal.PixelPerfectCamera`.
 

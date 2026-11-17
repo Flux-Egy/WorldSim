@@ -14,16 +14,16 @@ namespace GodSim.EditorTools
     ///
     ///   -executeMethod GodSim.EditorTools.GodSimCI.Bootstrap
     ///
-    /// UNVERIFIED (no Editor available while writing this; confirm on the first CI run):
+    /// UNVERIFIED (confirm on the first successful CI run):
     ///   - the serialized property name "activeInputHandler" (1 = Input System Package).
     ///     The method fails loudly if the property is not found.
-    ///   - that a Renderer2DData created with CreateInstance is fully initialised. If sprites
-    ///     render magenta on device, create the URP asset once via Assets > Create > Rendering >
-    ///     URP Asset (with 2D Renderer) and commit it. This method then leaves it alone.
+    /// Verified against URP 17.3.0 source (Unity-Technologies/Graphics, 6000.3/staging):
+    ///   - the Renderer2DData creation steps (see EnsureUrpAsset).
     /// </summary>
     public static class GodSimCI
     {
         public const string SettingsFolder = "Assets/GodSim/Settings";
+        const string UrpPackagePath = "Packages/com.unity.render-pipelines.universal";
         const int InputSystemPackageOnly = 1;
 
         public static void Bootstrap()
@@ -88,9 +88,35 @@ namespace GodSim.EditorTools
                 return true;
             }
 
+            // Mirrors URP 17.3's own "Create > Rendering > URP Asset (with 2D Renderer)" path
+            // (Editor/2D/Renderer2DMenus.cs: CreateRendererData + CreateRendererAsset):
+            //   1. CreateInstance<Renderer2DData>()
+            //   2. postProcessData = PostProcessData.GetDefaultPostProcessData(). Both members are
+            //      internal, so the serialized field m_PostProcessData is set to the same asset.
+            //   3. AssetDatabase.CreateAsset, then ResourceReloader.ReloadAllNullIn(data, packagePath),
+            //      which fills the default shaders and materials (otherwise sprites render magenta).
             Directory.CreateDirectory(SettingsFolder);
             var rendererData = ScriptableObject.CreateInstance<Renderer2DData>();
             AssetDatabase.CreateAsset(rendererData, SettingsFolder + "/GodSim2DRenderer.asset");
+
+            var postProcess = AssetDatabase.LoadAssetAtPath<PostProcessData>(UrpPackagePath + "/Runtime/Data/PostProcessData.asset");
+            if (postProcess == null)
+            {
+                Debug.LogError("[GodSim CI] Default PostProcessData.asset not found in the URP package.");
+                return false;
+            }
+            var so = new SerializedObject(rendererData);
+            SerializedProperty ppProp = so.FindProperty("m_PostProcessData");
+            if (ppProp == null)
+            {
+                Debug.LogError("[GodSim CI] Renderer2DData.m_PostProcessData not found (URP version changed?).");
+                return false;
+            }
+            ppProp.objectReferenceValue = postProcess;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            ResourceReloader.ReloadAllNullIn(rendererData, UrpPackagePath);
+            EditorUtility.SetDirty(rendererData);
 
             UniversalRenderPipelineAsset urp = UniversalRenderPipelineAsset.Create(rendererData);
             AssetDatabase.CreateAsset(urp, SettingsFolder + "/GodSimURP.asset");
