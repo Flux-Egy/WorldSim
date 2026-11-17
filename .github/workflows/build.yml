@@ -1,6 +1,10 @@
 # GodSim CI. See GITHUB_ACTIONS.md for setup (Unity license secrets) and the first-run bootstrap.
 # Action versions verified on 2026-11-17: game-ci/unity-builder v6.0.0 (thin wrapper over the
-# game-ci CLI), game-ci/unity-test-runner v4.3.2, unityci/editor:ubuntu-6000.3.28f1-android-3.
+# game-ci CLI), unityci/editor:ubuntu-6000.3.28f1-android-3.
+#
+# Licensing: Personal license via UNITY_EMAIL + UNITY_PASSWORD only (the game-ci CLI's
+# "personal" method requests a seat from Unity's licensing service and returns it on exit).
+# Unity removed .alf/.ulf manual activation for Personal licenses, so there is no license file.
 name: Build
 
 on:
@@ -9,9 +13,11 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Never cancel a running build: a killed job can leak its Personal license seat, which then
+# blocks every later run on the account until it is released at id.unity.com.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -44,48 +50,23 @@ jobs:
     steps:
       - id: check
         env:
-          HAS_LICENSE: ${{ secrets.UNITY_LICENSE != '' || secrets.UNITY_SERIAL != '' }}
+          HAS_LICENSE: ${{ secrets.UNITY_EMAIL != '' && secrets.UNITY_PASSWORD != '' }}
         run: |
           echo "available=$HAS_LICENSE" >> "$GITHUB_OUTPUT"
-          [ "$HAS_LICENSE" = "true" ] || echo "::warning::No UNITY_LICENSE/UNITY_SERIAL secret. Unity jobs skipped. See GITHUB_ACTIONS.md."
+          [ "$HAS_LICENSE" = "true" ] || echo "::warning::UNITY_EMAIL / UNITY_PASSWORD secrets not set. Unity jobs skipped. See GITHUB_ACTIONS.md."
 
-  unity-editmode-tests:
-    needs: [core-tests, license-check]
-    if: needs.license-check.outputs.available == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    permissions:
-      contents: read
-      checks: write
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/cache@v6
-        with:
-          path: Library
-          key: Library-Test-${{ hashFiles('Packages/manifest.json', 'Packages/packages-lock.json', 'ProjectSettings/ProjectVersion.txt') }}
-          restore-keys: Library-Test-
-      - uses: game-ci/unity-test-runner@v4
-        env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
-        with:
-          testMode: editmode
-          artifactsPath: test-artifacts
-          githubToken: ${{ secrets.GITHUB_TOKEN }}
-          checkName: Unity EditMode Tests
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: unity-editmode-results
-          path: test-artifacts
+  # Unity EditMode tests are not run in Unity yet: game-ci/unity-test-runner v4.3.2 cannot activate
+  # a Personal license from UNITY_EMAIL/UNITY_PASSWORD alone (its activate.sh only knows serial,
+  # license file and license server). Today the EditMode tests are exactly the Core tests that
+  # core-tests already runs. When Unity-only tests exist (Stage 2), they will run via a
+  # unity-builder buildMethod that drives the Test Runner API.
 
   build-android:
     needs: [core-tests, license-check]
     if: needs.license-check.outputs.available == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    # One Unity job at a time per account: Personal accounts have very few seats.
     steps:
       # The Unity Android image is large and a hosted runner starts with limited free disk.
       - name: Free disk space
@@ -110,7 +91,6 @@ jobs:
       - name: Unity bootstrap
         uses: game-ci/unity-builder@v6
         env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
@@ -138,7 +118,6 @@ jobs:
         id: build
         uses: game-ci/unity-builder@v6
         env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
