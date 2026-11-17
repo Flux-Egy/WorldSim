@@ -28,22 +28,23 @@ namespace GodSim.EditorTools
         [MenuItem("GodSim/Build/Android Modder (development, verbose loader)")]
         public static void BuildModderMenu() => Build(isModder: true);
 
-        public static void BuildReleaseCI() => ExitWith(Build(isModder: false));
-        public static void BuildModderCI() => ExitWith(Build(isModder: true));
+        public static void BuildReleaseCI() => ReportToGameCI(Build(isModder: false));
+        public static void BuildModderCI() => ReportToGameCI(Build(isModder: true));
 
-        static bool Build(bool isModder)
+        /// <returns>The build report, or null if the build was refused before starting.</returns>
+        static BuildReport Build(bool isModder)
         {
             if (!GodSimProjectSetup.ReportManualSteps())
             {
                 Debug.LogError("[GodSim] Build aborted: fix the MANUAL items above.");
-                return false;
+                return null;
             }
 
             string[] scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray();
             if (scenes.Length == 0)
             {
                 Debug.LogError("[GodSim] No scenes in Build Settings. Run GodSim > Setup > Create Boot Scene.");
-                return false;
+                return null;
             }
 
             var android = NamedBuildTarget.Android;
@@ -73,7 +74,7 @@ namespace GodSim.EditorTools
                 var s = report.summary;
                 Debug.Log($"[GodSim] Build {(isModder ? "Modder" : "Release")}: {s.result}, " +
                           $"{s.totalSize / (1024f * 1024f):F1} MB, {s.totalErrors} errors, {s.totalTime}");
-                return s.result == BuildResult.Succeeded;
+                return report;
             }
             finally
             {
@@ -83,9 +84,15 @@ namespace GodSim.EditorTools
             }
         }
 
-        static void ExitWith(bool success)
+        static void ReportToGameCI(BuildReport report)
         {
-            if (Application.isBatchMode) EditorApplication.Exit(success ? 0 : 1);
+            if (report == null)
+            {
+                GameCIReporter.ExitWithResult(BuildResult.Failed);
+                return;
+            }
+            GameCIReporter.ReportSummary(report.summary);
+            GameCIReporter.ExitWithResult(report.summary.result);
         }
     }
 }

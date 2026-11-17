@@ -49,7 +49,7 @@ namespace GodSim.EditorTools
             }
 
             Debug.Log(ok ? "[GodSim CI] Bootstrap OK." : "[GodSim CI] Bootstrap FAILED. See errors above.");
-            if (Application.isBatchMode) EditorApplication.Exit(ok ? 0 : 1);
+            GameCIReporter.ExitWithSuccess(ok);
         }
 
         static bool EnsureActiveInputHandler()
