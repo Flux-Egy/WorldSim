@@ -48,12 +48,24 @@ jobs:
     outputs:
       available: ${{ steps.check.outputs.available }}
     steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: ci
       - id: check
         env:
           HAS_LICENSE: ${{ secrets.UNITY_EMAIL != '' && secrets.UNITY_PASSWORD != '' }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         run: |
-          echo "available=$HAS_LICENSE" >> "$GITHUB_OUTPUT"
-          [ "$HAS_LICENSE" = "true" ] || echo "::warning::UNITY_EMAIL / UNITY_PASSWORD secrets not set. Unity jobs skipped. See GITHUB_ACTIONS.md."
+          if [ "$HAS_LICENSE" != "true" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::UNITY_EMAIL / UNITY_PASSWORD secrets not set. Unity jobs skipped. See GITHUB_ACTIONS.md."
+            exit 0
+          fi
+          # Booleans only, never values. A format problem fails here, before any Unity login
+          # attempt (repeated failed logins can lock the Unity account).
+          python3 ci/check_unity_credentials.py
+          echo "available=true" >> "$GITHUB_OUTPUT"
 
   # Unity EditMode tests are not run in Unity yet: game-ci/unity-test-runner v4.3.2 cannot activate
   # a Personal license from UNITY_EMAIL/UNITY_PASSWORD alone (its activate.sh only knows serial,

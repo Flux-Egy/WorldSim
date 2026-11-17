@@ -56,6 +56,7 @@ Or in the browser: **Actions > Build > Run workflow**.
 
 | Log says | Meaning / fix |
 |---|---|
+| `Invalid Credential` / code `143.002` | Unity says the email or password is wrong. Typing on a phone with an Arabic keyboard can silently insert Arabic-Indic digits (`٢٨` instead of `28`), direction marks or zero-width characters. Run `gh workflow run credentials-check.yml -R Flux-Egy/WorldSim-God`: it checks the format **without contacting Unity** and prints only true/false facts, never the values. If the format is clean, test the same email and password by signing in at https://id.unity.com in a private tab. Avoid re-running the build repeatedly, because each failed login counts against the account. |
 | `Unity rejected the account credentials, or wants a second factor` | Wrong email or password, 2FA still on, or Unity emailed a "new device" confirmation (check the account's inbox and approve it). Hosted runners change IP every run. |
 | `Unity reports no available Personal seats` | A previous run leaked its seat (killed job or crash), or two jobs ran at once. Release the seat at id.unity.com and re-run. The workflow never cancels a running build, to avoid this. |
 | `UNITY_EMAIL / UNITY_PASSWORD secrets not set` (warning) | The secrets are missing or misspelled. |
