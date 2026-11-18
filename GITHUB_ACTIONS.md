@@ -107,4 +107,4 @@ The APK is debug-signed (see "Not yet covered").
 
 - **Release signing.** In v6, unity-builder's `androidKeystore*` inputs are passed to the new game-ci CLI. I couldn't confirm how they reach a *custom* `buildMethod`, so the workflow doesn't use them yet. Until then the APK is debug-signed, which is fine for sideloading and testing but not for the Play Store. This gets added and verified before any store release.
 - **Modder build.** It waits on Decision A (the mod loader) in `docs/IMPLEMENTATION_PLAN.md`. `WorldSimBuild.BuildModderCI` already exists. Adding it is one more builder step.
-- **`cliVersion`.** This is left at the default (`latest`). If a game-ci CLI update ever breaks a build, pin it on both `unity-builder` steps.
+- **`cliVersion`.** Pinned to `v0.1.76` (the version every successful build so far used). `latest` makes an unauthenticated GitHub API call that hit HTTP 403 in run 44271009767. Bump it deliberately and re-test.

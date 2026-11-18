@@ -106,8 +106,10 @@ jobs:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # authenticated GitHub API calls (higher rate limit)
         with:
           targetPlatform: Android
+          cliVersion: v0.1.76 # pinned: 'latest' needs an unauthenticated API lookup that hit HTTP 403 (run 44271009767)
           buildMethod: WorldSim.EditorTools.WorldSimCI.Bootstrap
           versioning: None
           allowDirtyBuild: true
@@ -131,8 +133,10 @@ jobs:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # authenticated GitHub API calls (higher rate limit)
         with:
           targetPlatform: Android
+          cliVersion: v0.1.76 # pinned: 'latest' needs an unauthenticated API lookup that hit HTTP 403 (run 44271009767)
           buildMethod: WorldSim.EditorTools.WorldSimBuild.BuildReleaseCI
           versioning: Semantic
           allowDirtyBuild: true # pass 1 leaves generated files in the workspace
