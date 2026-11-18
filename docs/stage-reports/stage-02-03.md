@@ -18,7 +18,7 @@
 | Check | Status | Evidence |
 |---|---|---|
 | Stage 2: same seed gives the same hash across runs | **Verified (ARM64 .NET)** | `SameSeed_TwoRuns_IdenticalHash`, `TileOrder_DoesNotMatter` |
-| Stage 2: hash identical across platforms | **Verified**: ARM64 .NET, x64 .NET (CI) and **device: Xiaomi 25053RT47C, Android 16, IL2CPP+Burst** (, run 44293073907) | Golden hashes: `0x5EED` gives `0xB1999710960C6FA6`, `0xC0FFEE` gives `0x013F857F297A6D5B`, `0x1` gives `0x4828B520AF3E6CB6`. The app shows the hash for the default seed 0x5EED in its top bar. |
+| Stage 2: hash identical across platforms | **Verified**: ARM64 .NET, x64 .NET (CI) and **device: Xiaomi 25053RT47C, Android 16, IL2CPP+Burst** (`[WorldSim] World generated: seed=0x5EED ... hash=0xB1999710960C6FA6`, run 44293073907) | Golden hashes: `0x5EED` gives `0xB1999710960C6FA6`, `0xC0FFEE` gives `0x013F857F297A6D5B`, `0x1` gives `0x4828B520AF3E6CB6`. The app shows the hash for the default seed 0x5EED in its top bar. |
 | Stage 3: pinch does not pan; release order never leaves it stuck | **Verified (unit tests)** | 8 `GestureRecognizerTests` |
 | Stage 3: tap on device | **Verified** | `input tap`: info panel showed `Grass (66, 135) height 132 moisture 106 temperature 210` |
 | Stage 3: pinch, pan, long-press on device | **Pending** | Needs two-finger input: owner to test |
