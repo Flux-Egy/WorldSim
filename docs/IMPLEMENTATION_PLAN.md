@@ -124,6 +124,19 @@ Civilizations never stop at a fixed era. A kingdom that keeps going advances thr
   - **era-change notifications**
   - an **observer mode** that follows the most interesting events
 
+### A3. Beliefs and rituals: kept, fully fictional
+
+The §5.2 mechanics stay: the "religion" weight in unit decisions and the "Worship / perform ritual" action. At the owner's request, their **content must have no connection to any real-world religion**:
+
+- **Generated, invented belief systems.** Each kingdom (or group of kingdoms) gets a procedurally generated **Creed** from the world seed: an invented name made from syllables (e.g. "Varuun Path", "Order of Kesh"), an abstract geometric emblem, a colour, and 2–3 tenets that are **game modifiers** (e.g. "values the forest": happier near forests and resists logging; "seeks the stars": research bonus; "honours strength": combat morale).
+- **What a creed reveres comes only from this world.** For example: the oldest tree, a mountain peak, the sea, a meteor crater, the founder of the kingdom, or a famous event in the world's own chronicle.
+- **Never used:** real religion names, scriptures, prophets, holy figures, real places, real symbols or iconography, real clergy titles, real prayers or practices, and the word "God" (see the 2026-11-18 rename).
+- **Rituals** are in-world gatherings at a creed building (neutral names such as *Monolith*, *Sanctum*, *Circle of Stones* that change by era). They raise happiness and cohesion and cost time.
+- **Dynamics:** creeds spread with culture and trade and can split into new creeds. They affect diplomacy (shared creed: better relations), happiness and unrest. They're plain simulation stats, with no comment on any real belief.
+- Data-driven, like everything else: mods can add creed name syllables, emblems and tenets.
+
+Lands in Stage 4 (the action and its utility weight) and Stage 5 (creed generation, spread, diplomacy).
+
 ### Conflicts resolved
 - **§12.2 speed set vs A2:** A2 wins (owner request). It's a superset.
 - **§13.1 budgets vs high speed:** resolved by macro simulation; budgets apply per rendered frame at every speed.
