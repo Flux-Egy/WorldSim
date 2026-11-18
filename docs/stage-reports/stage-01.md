@@ -1,6 +1,6 @@
 # Stage 1 Report: Project skeleton
 
-**Exit criterion:** "Project builds on Android ARM64". **Not yet verified.** It needs the Unity Editor, which can't run on this machine.
+**Exit criterion:** "Project builds on Android ARM64". **PASSED on 2026-11-17** in CI run [44200906494](https://github.com/Flux-Egy/WorldSim-God/actions/runs/44200906494) (commit `a80952b`).
 
 ## What was built
 - `ProjectSettings/ProjectVersion.txt` pins 6000.3.28f1. `Packages/manifest.json` lists Entities, Burst, Collections, Mathematics, Input System, URP, ugui, Adaptive Performance (+ Android provider) and Test Framework.
@@ -17,13 +17,17 @@
 | Package versions exist | Verified | Queried packages.unity.com on 2026-11-17. URP 17.3.0 and ugui 2.0.0 are **not** verifiable there (core packages). |
 | Test vectors correct | Verified | Independent Python implementations reproduce the reference outputs (PCG32 demo `0xA15C02B7…`, SplitMix64(0) `0xE220A8397B1DCDAF…`, FNV-1a("a") `0xAF63DC4C8601EC8C`). |
 | GodSim.Core compiles + tests pass (outside Unity) | **Verified 2026-11-17** | `dotnet test Tools/CoreTests`, .NET SDK 8.0.134 on ARM64: **6/6 passed**. Compiled as C# 9 with warnings-as-errors and overflow checking on. |
-| Unity-dependent C# compiles (Simulation, Presentation, Editor) | **Not run** | Needs Unity. CI job `build-android` covers it. |
-| EditMode tests pass | **Not run** | Needs Unity. |
-| Android ARM64 build | **Not run** | Needs Unity + Android modules. |
+| All 7 GodSim assemblies compile in Unity 6000.3.28f1 | **Verified** | CI run 44200906494. The Entities source generators and ILPP ran on Simulation/Presentation/Modding. |
+| CI bootstrap (headless setup) | **Verified** | `activeInputHandler 0 -> 1`, URP 2D asset created (mirrors URP 17.3's Renderer2DMenus), Boot scene, Android settings, `[GodSim CI] Bootstrap OK.` |
+| Android ARM64 build | **Verified** | `Build Release: Succeeded`, 0 errors, 0 warnings, build time 13m31s. APK 35.0 MB, ABI `arm64-v8a` only, `libil2cpp.so` present, 0 managed DLLs (IL2CPP), minSdk 25, targetSdk 36, v2-signed with the Android Debug certificate. |
+| Unity licensing from a phone-only setup | **Verified** | game-ci CLI `personal` method: `ASSIGN_SEAT` at start, `Successfully returned the entitlement license` at end of every Unity step. |
+| EditMode tests inside Unity | **Not run** | unity-test-runner v4.3.2 cannot activate Personal from credentials. The same tests pass in plain .NET (x64 CI and ARM64 local). |
+| App runs on a device | **Not yet tested** | First device install pending. |
 
 ## Known deviations
+- The first APK (run 44200906494) has Unity's default identity `com.DefaultCompany.workspace` / "workspace". Fixed in the next commit: `com.fluxegy.worldsimgod` / "WorldSim God".
 - The Modder profile uses IL2CPP ARM64 (not Mono) until Decision A is made, because Mono on Android is, to my knowledge, ARMv7-only.
-- Active Input Handling and URP asset creation are manual steps. I'm not confident there is a stable public scripting API for them, so the build fails with a clear message when they are wrong instead of setting them silently.
+- Active Input Handling and URP asset creation are set headlessly by `GodSimCI.Bootstrap` (verified in CI). The build still refuses to run if either is wrong.
 
 ## Open questions before Stage 2
 - **A. Mod loader** (plan item 1): HybridCLR + first-party loader (recommended), or the literal §18.1 approach (Mono ARMv7 Modder build, data-only mods for players)?

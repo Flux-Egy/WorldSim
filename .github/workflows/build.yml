@@ -120,9 +120,7 @@ jobs:
           path: |
             ProjectSettings/
             Packages/packages-lock.json
-            Assets/**/*.meta
-            Assets/GodSim/Scenes/
-            Assets/GodSim/Settings/
+            Assets/
           if-no-files-found: warn
 
       # Pass 2: Release build. IL2CPP, ARM64, stripping High (GodSimBuild enforces this).
@@ -142,5 +140,5 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: GodSim-android-release
-          path: Builds/Android/
+          path: Builds/Android/*.apk
           if-no-files-found: error

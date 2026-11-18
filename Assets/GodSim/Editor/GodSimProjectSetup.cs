@@ -19,6 +19,10 @@ namespace GodSim.EditorTools
         public const string ScenesFolder = "Assets/GodSim/Scenes";
         public const string BootScenePath = ScenesFolder + "/Boot.unity";
 
+        public const string CompanyName = "Flux-Egy";
+        public const string ProductName = "WorldSim God";
+        public const string ApplicationId = "com.fluxegy.worldsimgod";
+
         [MenuItem("GodSim/Setup/Apply Android Project Settings")]
         public static void ApplyAndroidSettings()
         {
@@ -38,6 +42,12 @@ namespace GodSim.EditorTools
             PlayerSettings.SetIl2CppCompilerConfiguration(android, Il2CppCompilerConfiguration.Release);
             PlayerSettings.Android.optimizedFramePacing = true;
 
+            // App identity. The application id is permanent once a build is distributed:
+            // Android treats a different id as a different app, so updates would not install.
+            PlayerSettings.companyName = CompanyName;
+            PlayerSettings.productName = ProductName;
+            PlayerSettings.SetApplicationIdentifier(android, ApplicationId);
+
             PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.Android, false);
             PlayerSettings.SetGraphicsAPIs(BuildTarget.Android,
                 new[] { GraphicsDeviceType.Vulkan, GraphicsDeviceType.OpenGLES3 });
@@ -54,7 +64,7 @@ namespace GodSim.EditorTools
             }
 
             AssetDatabase.SaveAssets();
-            Debug.Log("[GodSim] Android settings applied: IL2CPP, ARM64, stripping High, Vulkan+GLES3, SRP Batcher.");
+            Debug.Log($"[GodSim] Android settings applied: {ApplicationId} \"{ProductName}\", IL2CPP, ARM64, stripping High, Vulkan+GLES3, SRP Batcher.");
         }
 
         [MenuItem("GodSim/Setup/Create Boot Scene")]
