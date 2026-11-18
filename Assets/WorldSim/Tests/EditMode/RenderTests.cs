@@ -79,6 +79,36 @@ namespace WorldSim.Tests
             Assert.AreEqual(Paint(tiles, n, ppt), px, "partial repaint must match a full repaint pixel for pixel");
         }
 
+        [Test]
+        public void Waves_OnlyOverOpenWater_AndFramesDiffer()
+        {
+            const int n = 64;
+            var p = WorldGenParams.Create(new WorldSeed(5), n, n);
+            var tiles = new TileData[n * n];
+            WorldGenerator.Generate(p, tiles);
+            int wpp = TerrainPainter.WavePixelsPerTile(n, n);
+            var t = new ArrayTiles { A = tiles };
+            var f0 = new uint[n * wpp * n * wpp]; var f1 = new uint[f0.Length];
+            var p0 = new ArrayPixels { A = f0 }; var p1 = new ArrayPixels { A = f1 };
+            for (int row = 0; row < n; row++) { TerrainPainter.PaintWaveRow(ref t, ref p0, n, n, wpp, 0, row); TerrainPainter.PaintWaveRow(ref t, ref p1, n, n, wpp, 1, row); }
+            int crests = 0;
+            for (int i = 0; i < f0.Length; i++)
+            {
+                if (f0[i] == 0) continue;
+                crests++;
+                int gx = i % (n * wpp), gy = i / (n * wpp), tx = gx / wpp, ty = gy / wpp;
+                for (int dy = -1; dy <= 1; dy++)
+                    for (int dx = -1; dx <= 1; dx++)
+                    {
+                        int x = tx + dx, y = ty + dy;
+                        if (x < 0 || y < 0 || x >= n || y >= n) continue;
+                        Assert.IsTrue(tiles[y * n + x].IsWater, "a wave pixel next to land");
+                    }
+            }
+            Assert.Greater(crests, 0, "some waves exist");
+            Assert.AreNotEqual(f0, f1, "frames animate");
+        }
+
         static uint[] Paint(TileData[] tiles, int n, int ppt)
         {
             var px = new uint[n * ppt * n * ppt];

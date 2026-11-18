@@ -257,6 +257,73 @@ namespace WorldSim.Render
             return px;
         }
 
+        /// <summary>Wave overlay resolution: 1024 px across for any map (4, 2 or 1 px per tile).</summary>
+        public static int WavePixelsPerTile(int widthTiles, int heightTiles)
+        {
+            int m = widthTiles > heightTiles ? widthTiles : heightTiles;
+            return m <= 256 ? 4 : m <= 512 ? 2 : 1;
+        }
+
+        public const int WaveFrames = 4;
+
+        static bool IsOpenWater<TT>(ref TT tiles, int x, int y, int w, int h) where TT : struct, ITileSource
+        {
+            for (int dy = -1; dy <= 1; dy++)
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    int nx = x + dx, ny = y + dy;
+                    if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                    if (!IsWater(tiles.Get(ny * w + nx).Biome)) return false;
+                }
+            return true;
+        }
+
+        /// <summary>
+        /// One tile row of wave frame <paramref name="frame"/>: transparent everywhere except open
+        /// water (no land among the 8 neighbours), where scrolled crest pixels from the wave tile
+        /// appear. The water mask is applied here, so no SpriteMask is needed at runtime.
+        /// </summary>
+        public static void PaintWaveRow<TT, TP>(ref TT tiles, ref TP pixels, int w, int h, int wpp, int frame, int tileRow)
+            where TT : struct, ITileSource where TP : struct, IPixelTarget
+        {
+            int texW = w * wpp;
+            int n = WaveTileSize;
+            int shiftX = frame * n / WaveFrames, shiftY = frame * n / (WaveFrames * 2);
+            for (int tx = 0; tx < w; tx++)
+            {
+                bool open = IsOpenWater(ref tiles, tx, tileRow, w, h);
+                for (int py = 0; py < wpp; py++)
+                    for (int px = 0; px < wpp; px++)
+                    {
+                        int gx = tx * wpp + px, gy = tileRow * wpp + py;
+                        uint c = 0;
+                        if (open)
+                        {
+                            // Sample the 32x32 wave tile in 8-px-per-tile space so crests keep their size.
+                            int sx = ((gx * 8 / wpp) + shiftX) % n, sy = ((gy * 8 / wpp) + shiftY) % n;
+                            c = WaveTexel(sx, sy);
+                        }
+                        pixels.Set(gy * texW + gx, c);
+                    }
+            }
+        }
+
+        /// <summary>Texel (x, y) of wave tile variant 0 (same pattern as <see cref="BuildWaveTile"/>).</summary>
+        static uint WaveTexel(int x, int y)
+        {
+            uint crest = Rgba.Pack(210, 236, 250, 200), soft = Rgba.Pack(170, 214, 244, 140);
+            for (int i = 0; i < 9; i++)
+            {
+                uint hs = PixelHash(i * 13, i * 7 + 5);
+                int x0 = (int)(hs % WaveTileSize), y0 = (int)((hs >> 8) % WaveTileSize), len = 3 + (int)((hs >> 16) % 4);
+                int k = (x - x0 + WaveTileSize) % WaveTileSize;
+                if (k >= len) continue;
+                int yy = (y0 + (k == 0 || k == len - 1 ? 0 : 1)) % WaveTileSize;
+                if (yy == y) return k == 0 || k == len - 1 ? soft : crest;
+            }
+            return 0;
+        }
+
         // ---------------------------------------------------------------- decoration pass
         /// <summary>
         /// Draws all decorations, from the top row of the map down, so sprites lower on screen

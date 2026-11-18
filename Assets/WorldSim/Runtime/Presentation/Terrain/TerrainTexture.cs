@@ -113,6 +113,16 @@ namespace WorldSim.Presentation.Terrain
             tex.Apply(false, false);
         }
 
+        /// <summary>Paints wave frame <paramref name="frame"/> for tile rows [rowMin, rowMax] (clamped) and uploads.</summary>
+        public static void PaintWaves(Texture2D tex, NativeArray<TileData> tiles, int width, int height, int wpp, int frame, int rowMin, int rowMax)
+        {
+            int r0 = rowMin < 0 ? 0 : rowMin, r1 = rowMax > height - 1 ? height - 1 : rowMax;
+            if (r1 < r0) return;
+            new WaveJob { Tiles = new NativeTiles { A = tiles }, Pixels = new NativePixels { A = tex.GetPixelData<uint>(0) }, W = width, H = height, Wpp = wpp, Frame = frame, RowOffset = r0 }
+                .Schedule(r1 - r0 + 1, 8).Complete();
+            tex.Apply(false, false);
+        }
+
         /// <summary>Releases the sprite atlas (call when the world view is destroyed).</summary>
         public static void DisposeAtlas()
         {
@@ -167,6 +177,16 @@ namespace WorldSim.Presentation.Terrain
             public int W, H, Ppt, YMin, YMax;
 
             public void Execute() => TerrainPainter.RepaintRows(ref Tiles, ref Pixels, ref Atlas, W, H, Ppt, YMin, YMax);
+        }
+
+        [BurstCompile]
+        struct WaveJob : IJobParallelFor
+        {
+            public NativeTiles Tiles;
+            public NativePixels Pixels;
+            public int W, H, Wpp, Frame, RowOffset;
+
+            public void Execute(int i) => TerrainPainter.PaintWaveRow(ref Tiles, ref Pixels, W, H, Wpp, Frame, RowOffset + i);
         }
 
         [BurstCompile]
