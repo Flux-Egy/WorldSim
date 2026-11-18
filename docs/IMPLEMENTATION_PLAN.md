@@ -83,6 +83,59 @@ Rule: Burst cannot compile code that is loaded at runtime, so **mod code never r
 13. **Terrain rendering (§7.3) in Stage 2.** There's no art yet, so the terrain is a Burst-painted texture (4×4 procedural pixels per tile) on one SpriteRenderer, with a Global Light2D (URP 17.3 clears the 2D light texture to black without one). The biome-blend shader and atlas arrive with real tile art.
 14. **Pixel Perfect Camera vs free pinch zoom (§3.1, §8.2).** The Pixel Perfect Camera sets `orthographicSize` itself, so it's disabled while free zoom is in use. Integer-step pixel-perfect zoom returns with the graphics settings (§7.2, item 3).
 
+## Owner additions (2026-11-18)
+
+### A1. Open-ended technological progress
+
+Civilizations never stop at a fixed era. A kingdom that keeps going advances through history to today's level of technology and then **beyond it into the future**, with no hard ceiling. This extends §5.4 (`techLevel`), §11 and §2.2.
+
+**Eras.** The eras are data, not code. They are the default content of a `TechTree` asset, which mods can extend:
+
+| # | Era | Example unlocks |
+|---|---|---|
+| 0 | Stone | clubs, spears, huts, foraging |
+| 1 | Bronze | bronze weapons, farming, villages |
+| 2 | Iron | iron swords, bows, roads, walls |
+| 3 | Medieval | crossbows, plate armour, castles, cavalry |
+| 4 | Gunpowder | muskets, cannons, sailing ships |
+| 5 | Industrial | rifles, railways, factories, steamships |
+| 6 | Modern | machine guns, tanks, aircraft, electricity |
+| 7 | Information (today) | missiles, jets, computers, satellites, drones |
+| 8 | Near future | robotics, AI, fusion, early space colonies |
+| 9 | Far future | energy weapons, mechs, orbital stations |
+| 10+ | Beyond | procedurally generated tiers (stronger tech, scaled stats, generated names) so progress never ends |
+
+**How progress works** (deterministic, from the world seed):
+- Each kingdom accumulates **research points** from population, schools, libraries and universities, trade and stability. It spends them on technologies whose prerequisites are met. Choices are weighted by the kingdom's situation: war favours weapons, famine favours farming, and so on.
+- **Knowledge spreads** through contact: trade, borders, war and conquest. Neighbours of an advanced kingdom catch up faster.
+- **No ceiling, but no guarantee.** Wars, disasters and collapse can still destroy a kingdom (the core fantasy, §2.2). When a kingdom falls, some knowledge survives with successor states, so the world as a whole keeps moving forward.
+- Runs on the civilization **slow tick** (§5.4), over aggregates, so its cost doesn't grow with unit count.
+
+**Weapons and units evolve with the era.** Weapons are data (`WeaponDefinition`: damage, range, rate, area, projectile type, required tech), as are armour, vehicles and buildings. Units re-equip as their kingdom unlocks better gear, and military unit types change by era: infantry, archers, cavalry, musketeers, riflemen, tanks, aircraft, drones, mechs. Each kingdom mixes several weapon families, so armies differ. Buildings and settlements visibly modernize: huts, houses, towns, cities, skyscrapers. Mods register new weapons, units and technologies through the ModAPI (`WeaponRegistry`, `TechRegistry`; extends §9.3).
+
+### A2. Flexible time control and watching history unfold
+
+- **Speeds:** pause, 0.25×, 0.5×, 1×, 2×, 5×, 10×, 25×, 50×. This replaces §12.2's pause/1×/2×/3×. There's also "skip to next era/event".
+- **High speeds stay inside the frame budget (§13.1)** by switching to **macro simulation**. Above a threshold, or when the device throttles thermally (§13.3), off-screen agents are simulated in aggregate (population, production, research and battles resolved statistically per region), while on-screen units keep full detail. The same seed still gives the same history at any speed: the macro step is deterministic and runs on fixed sim ticks.
+- **Watching evolution:**
+  - a **chronicle / timeline** of era changes, inventions, wars, empires and collapses
+  - **graphs over time** (population, tech level and territory per kingdom)
+  - a **tech tree view** per kingdom
+  - **era-change notifications**
+  - an **observer mode** that follows the most interesting events
+
+### Conflicts resolved
+- **§12.2 speed set vs A2:** A2 wins (owner request). It's a superset.
+- **§13.1 budgets vs high speed:** resolved by macro simulation; budgets apply per rendered frame at every speed.
+- **§11 "macroeconomics out of scope":** unchanged. Research points are a resource-like aggregate, not a macroeconomic model.
+
+### Where it lands in the stages
+- **Stage 4 (agents):** unit equipment slots and data-driven weapons/combat stats; basic speed control (pause, 1×, 2×, 5×).
+- **Stage 5 (civilization + economy):** research, the tech tree, eras, knowledge diffusion, buildings that change by era, the chronicle.
+- **Stage 6 (disasters/powers):** era-aware interactions (e.g. modern kingdoms rebuild faster).
+- **Stage 9 (UI):** full speed range, timeline and graphs, tech tree view, observer mode.
+- **Stage 10 (optimization):** macro simulation for high speeds, verified against the frame budgets.
+
 ## Environment
 
 This machine is Linux on an Android (aarch64) device. **The Unity Editor cannot run here**, and there's no .NET SDK (and only ~3 GB of free disk). So every stage's exit gate that needs Unity, a device or the Profiler (build, hash on device, profiler captures, frame times) has to be run by you on a desktop with Unity 6.3, or on a CI runner. Each stage report will separate what I verified here from what still needs to run in Unity.
