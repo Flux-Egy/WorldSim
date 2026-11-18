@@ -104,6 +104,9 @@ jobs:
       # settings). Kept separate because the input-handler change needs an Editor restart.
       - name: Unity bootstrap
         uses: game-ci/unity-builder@v6
+        # Normal: ~6 min. Run 44275823834 hung inside Unity's own startup (after
+        # "Unloading 19 Unused Serialized files", before executeMethod) for 78 min.
+        timeout-minutes: 25
         env:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
@@ -131,6 +134,7 @@ jobs:
       - name: Unity build (Release, IL2CPP ARM64)
         id: build
         uses: game-ci/unity-builder@v6
+        timeout-minutes: 60 # normal: ~15 min
         env:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
