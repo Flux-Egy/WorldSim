@@ -4,7 +4,7 @@ namespace WorldSim.Render
     public enum Icon
     {
         Globe, Resize, Info, Mountain, People, Animal, Storm, Spark, Castle, Gear,
-        Pause, Play, Fast, Brush, Eraser, Tree, Water, Clock,
+        Pause, Play, Fast, Brush, Eraser, Tree, Water, Clock, Raise, Lower, Flatten,
         Count,
     }
 
@@ -94,6 +94,19 @@ namespace WorldSim.Render
                 case Icon.Water:
                     for (int y = 3; y <= 13; y++) { int w = y < 9 ? (y - 3) / 2 + 1 : 4 - (y - 9) / 2; if (w < 1) w = 1; R(8 - w, 16 - y, 2 * w, 1, blue); }
                     S(6, 6, P(180, 220, 250)); S(6, 7, P(180, 220, 250));
+                    break;
+                case Icon.Raise:
+                case Icon.Lower:
+                {
+                    bool up = icon == Icon.Raise;
+                    uint c = up ? P(120, 220, 120) : P(240, 150, 90);
+                    R(7, up ? 2 : 6, 2, 8, c);
+                    for (int i = 0; i < 5; i++) R(8 - i - 1, up ? 10 - i : 5 + i, 2 * i + 2, 1, c);
+                    R(2, 1, 12, 1, P(150, 130, 100));
+                    break;
+                }
+                case Icon.Flatten:
+                    R(2, 4, 12, 2, P(150, 130, 100)); R(3, 8, 10, 3, P(200, 200, 200)); R(7, 11, 2, 3, brown);
                     break;
                 case Icon.Clock:
                     Circle(8, 8, 6, white); R(8, 8, 1, 5, P(40, 40, 40)); R(8, 8, 4, 1, P(40, 40, 40));

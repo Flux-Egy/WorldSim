@@ -49,6 +49,32 @@ namespace WorldSim.Presentation.Terrain
             tex.Apply(false, false); // stays readable: terrain painting (B2) repaints regions
         }
 
+        /// <summary>
+        /// Repaints only what changed after terrain edits to tile rows [yMin, yMax] (Beta B2), with
+        /// the same pure code a full paint uses (RenderTests proves partial == full). Uploads once.
+        /// </summary>
+        public static void RepaintRows(Texture2D tex, NativeArray<TileData> tiles, int width, int height, int yMin, int yMax)
+        {
+            if (!s_atlas.IsCreated)
+                s_atlas = new NativeArray<uint>(SpriteLibrary.Build(), Allocator.Persistent);
+            new RepaintJob
+            {
+                Tiles = new NativeTiles { A = tiles }, Pixels = new NativePixels { A = tex.GetPixelData<uint>(0) },
+                Atlas = new NativeAtlas { A = s_atlas }, W = width, H = height, Ppt = PixelsPerTileFor(width, height),
+                YMin = yMin, YMax = yMax,
+            }.Schedule().Complete();
+            tex.Apply(false, false);
+        }
+
+        /// <summary>Repaints overview rows [yMin-1, yMax+1] (the coastal band reads neighbours).</summary>
+        public static void RepaintOverviewRows(Texture2D tex, NativeArray<TileData> tiles, int width, int height, int opp, int yMin, int yMax)
+        {
+            int r0 = yMin - 1 < 0 ? 0 : yMin - 1, r1 = yMax + 1 > height - 1 ? height - 1 : yMax + 1;
+            var job = new OverviewJob { Tiles = new NativeTiles { A = tiles }, Pixels = new NativePixels { A = tex.GetPixelData<uint>(0) }, W = width, H = height, Opp = opp, RowOffset = r0 };
+            job.Schedule(r1 - r0 + 1, 8).Complete();
+            tex.Apply(false, false);
+        }
+
         /// <summary>Paints the clean far-zoom texture (<paramref name="opp"/> pixels per tile).</summary>
         public static void PaintOverview(Texture2D tex, NativeArray<TileData> tiles, int width, int height, int opp)
         {
@@ -62,11 +88,17 @@ namespace WorldSim.Presentation.Terrain
         /// transparent elsewhere. Used as the SpriteMask for the wave layers.
         /// </summary>
         public static void PaintOpenWaterMask(Texture2D tex, NativeArray<TileData> tiles, int width, int height)
+            => PaintOpenWaterMask(tex, tiles, width, height, 0, 0, width - 1, height - 1);
+
+        /// <summary>Region variant (inclusive tile bounds, grown by one for the neighbour test).</summary>
+        public static void PaintOpenWaterMask(Texture2D tex, NativeArray<TileData> tiles, int width, int height, int x0, int y0, int x1, int y1)
         {
             NativeArray<uint> px = tex.GetPixelData<uint>(0);
             uint on = Rgba.Pack(255, 255, 255, 255);
-            for (int y = 0; y < height; y++)
-                for (int x = 0; x < width; x++)
+            x0 = x0 - 1 < 0 ? 0 : x0 - 1; y0 = y0 - 1 < 0 ? 0 : y0 - 1;
+            x1 = x1 + 1 > width - 1 ? width - 1 : x1 + 1; y1 = y1 + 1 > height - 1 ? height - 1 : y1 + 1;
+            for (int y = y0; y <= y1; y++)
+                for (int x = x0; x <= x1; x++)
                 {
                     bool open = tiles[y * width + x].IsWater;
                     for (int dy = -1; dy <= 1 && open; dy++)
@@ -121,9 +153,20 @@ namespace WorldSim.Presentation.Terrain
         {
             public NativeTiles Tiles;
             public NativePixels Pixels;
-            public int W, H, Opp;
+            public int W, H, Opp, RowOffset;
 
-            public void Execute(int tileRow) => TerrainPainter.PaintOverviewRow(ref Tiles, ref Pixels, W, H, Opp, tileRow);
+            public void Execute(int i) => TerrainPainter.PaintOverviewRow(ref Tiles, ref Pixels, W, H, Opp, RowOffset + i);
+        }
+
+        [BurstCompile]
+        struct RepaintJob : IJob
+        {
+            public NativeTiles Tiles;
+            public NativePixels Pixels;
+            public NativeAtlas Atlas;
+            public int W, H, Ppt, YMin, YMax;
+
+            public void Execute() => TerrainPainter.RepaintRows(ref Tiles, ref Pixels, ref Atlas, W, H, Ppt, YMin, YMax);
         }
 
         [BurstCompile]

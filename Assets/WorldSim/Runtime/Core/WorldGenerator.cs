@@ -1,6 +1,23 @@
 namespace WorldSim.Core
 {
     /// <summary>
+    /// Player-chosen generation settings (Beta B2). Part of a world's identity: they enter the
+    /// world hash whenever they differ from <see cref="Default"/>. Persisted: only append fields.
+    /// </summary>
+    public struct WorldGenSettings
+    {
+        public sbyte LandBias;     // percent: -30 (islands) .. +30 (one big continent)
+        public byte Mountains;     // percent of normal ridge height: 0 .. 200
+        public sbyte Temperature;  // percent shift: -40 (ice age) .. +40 (hot)
+        public sbyte Moisture;     // percent shift: -40 (dry) .. +40 (wet)
+        public byte Blank;         // 0 = generated, 1 = empty ocean, 2 = flat land
+
+        public static WorldGenSettings Default => new WorldGenSettings { Mountains = 100 };
+
+        public bool IsDefault => LandBias == 0 && Mountains == 100 && Temperature == 0 && Moisture == 0 && Blank == 0;
+    }
+
+    /// <summary>
     /// Everything world generation needs, as plain values (blittable, safe to copy into Burst
     /// jobs). Built once per world from the single <see cref="WorldSeed"/> (§4.3).
     /// </summary>
@@ -16,11 +33,16 @@ namespace WorldSim.Core
         public ulong ResourceSeed;
         public ulong AnomalySeed;
         public ulong DecorationSeed;
+        public WorldGenSettings Settings;
 
-        public static WorldGenParams Create(WorldSeed seed, int width, int height)
+        public static WorldGenParams Create(WorldSeed seed, int width, int height) =>
+            Create(seed, width, height, WorldGenSettings.Default);
+
+        public static WorldGenParams Create(WorldSeed seed, int width, int height, WorldGenSettings settings)
         {
             return new WorldGenParams
             {
+                Settings = settings,
                 Width = width,
                 Height = height,
                 HeightSeed = seed.Derive(SeedStream.Height),
@@ -92,19 +114,23 @@ namespace WorldSim.Core
             long falloff = BorderFalloff(x, y, p.Width, p.Height);           // [0, One]
             // fBm stretched x1.7 (its octave sum rarely nears ±1), small land bias, ridges only
             // lift land that is already above sea level, border pulled down to ocean.
-            long h = (long)n * 170 / 100 + One * 4 / 100 - falloff * 120 / 100;
-            if (h > -One * 10 / 100) h += ridgeLift;
+            long h = (long)n * 170 / 100 + One * 4 / 100 - falloff * 120 / 100 + (long)p.Settings.LandBias * One / 100;
+            if (h > -One * 10 / 100) h += ridgeLift * p.Settings.Mountains / 100;
+            if (p.Settings.Blank == 1) h = -One * 45 / 100;                       // empty ocean
+            else if (p.Settings.Blank == 2) h = falloff > One / 2 ? -One * 30 / 100 : One * 12 / 100; // flat land, ocean rim
             byte height = ToByte(h);
 
             // ---- Moisture and temperature fields ----
             // fBm clusters near 0: stretch x1.6 so very dry (desert) and very wet (jungle, swamp) occur.
-            byte moisture = ToByte((long)FixedNoise.Fbm(p.MoistureSeed, wx, wy, Clamp(minDim / 4, 12, MaxClimatePeriod), 4) * 160 / 100);
+            byte moisture = ToByte((long)FixedNoise.Fbm(p.MoistureSeed, wx, wy, Clamp(minDim / 4, 12, MaxClimatePeriod), 4) * 160 / 100
+                                   + (long)p.Settings.Moisture * One / 100);
 
             // Temperature: warm equator (middle row), cold poles, colder with altitude.
             long latitude = One - Abs((long)y * 2 * One / Max(1, p.Height - 1) - One); // [0, One]
             long tNoise = FixedNoise.Fbm(p.TemperatureSeed, wx, wy, Clamp(minDim / 3, 12, MaxClimatePeriod), 3);
             long altitudeChill = height > SeaLevel ? (long)(height - SeaLevel) * One / (255 - SeaLevel) : 0;
-            long t = (latitude * 2 - One) * 80 / 100 + tNoise * 35 / 100 - altitudeChill * 45 / 100;
+            long t = (latitude * 2 - One) * 80 / 100 + tNoise * 35 / 100 - altitudeChill * 45 / 100
+                     + (long)p.Settings.Temperature * One / 100;
             byte temperature = ToByte(t);
 
             // ---- Pass 3b (edge refinement): smooth small-scale threshold jitter (period ~3 tiles).
@@ -113,7 +139,7 @@ namespace WorldSim.Core
 
             // ---- Pass 2: biome (climate table + fictional anomaly regions) ----
             Biome biome = Classify(height, moisture, temperature, jitter);
-            biome = ApplyAnomaly(p, wx, wy, minDim, biome);
+            if (p.Settings.Blank == 0) biome = ApplyAnomaly(p, wx, wy, minDim, biome);
 
             // ---- Pass 4: decorations and resources ----
             Decoration deco = ScatterDecoration(p, x, y, px, py, biome, temperature);
@@ -184,7 +210,7 @@ namespace WorldSim.Core
         /// a smooth "grove" field (period ~7 tiles) modulates it, so forests have clearings and
         /// grassland has small groves instead of uniform noise.
         /// </summary>
-        static Decoration ScatterDecoration(in WorldGenParams p, int x, int y, long px, long py, Biome b, byte temperature)
+        public static Decoration ScatterDecoration(in WorldGenParams p, int x, int y, long px, long py, Biome b, byte temperature)
         {
             ulong h = FixedNoise.LatticeHash(p.DecorationSeed, x, y);
             int roll = (int)(h % 1000);                      // 0..999
@@ -273,7 +299,7 @@ namespace WorldSim.Core
         }
 
         /// <summary>Resources follow the decoration (trees: wood, rocks: stone) and the biome (ore).</summary>
-        static byte Resources(in WorldGenParams p, int x, int y, Biome biome, Decoration deco)
+        public static byte Resources(in WorldGenParams p, int x, int y, Biome biome, Decoration deco)
         {
             uint roll = (uint)(FixedNoise.LatticeHash(p.ResourceSeed, x, y) % 10000); // 0.01% resolution
             ResourceFlags f = ResourceFlags.None;
@@ -341,12 +367,21 @@ namespace WorldSim.Core
     /// </summary>
     public static class WorldHash
     {
-        public static StableHash64 Begin(ulong seed, int width, int height)
+        public static StableHash64 Begin(ulong seed, int width, int height) =>
+            Begin(seed, width, height, WorldGenSettings.Default);
+
+        /// <summary>Settings are hashed only when non-default, so default worlds keep their golden hashes.</summary>
+        public static StableHash64 Begin(ulong seed, int width, int height, WorldGenSettings s)
         {
             var h = StableHash64.Create();
             h.Add(seed);
             h.Add(width);
             h.Add(height);
+            if (!s.IsDefault)
+            {
+                h.Add(unchecked((byte)s.LandBias)); h.Add(s.Mountains);
+                h.Add(unchecked((byte)s.Temperature)); h.Add(unchecked((byte)s.Moisture)); h.Add(s.Blank);
+            }
             return h;
         }
 

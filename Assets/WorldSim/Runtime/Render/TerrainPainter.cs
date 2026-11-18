@@ -265,10 +265,27 @@ namespace WorldSim.Render
         public static void PaintDecorations<TT, TP, TA>(ref TT tiles, ref TP pixels, ref TA atlas, int w, int h, int ppt)
             where TT : struct, ITileSource where TP : struct, IPixelTarget where TA : struct, IAtlasSource
         {
+            PaintDecorationRows(ref tiles, ref pixels, ref atlas, w, h, ppt, 0, h - 1, 0, h * ppt - 1);
+        }
+
+        /// <summary>
+        /// Draws the decorations of tile rows [<paramref name="rowMin"/>, <paramref name="rowMax"/>]
+        /// (top to bottom), writing only pixel rows [<paramref name="clipMin"/>, <paramref name="clipMax"/>].
+        /// Used for partial repaints after terrain edits: the clip keeps sprites that reach into the
+        /// repainted band from being drawn twice (shadows would darken twice) outside it.
+        /// </summary>
+        public static void PaintDecorationRows<TT, TP, TA>(ref TT tiles, ref TP pixels, ref TA atlas, int w, int h, int ppt,
+            int rowMin, int rowMax, int clipMin, int clipMax)
+            where TT : struct, ITileSource where TP : struct, IPixelTarget where TA : struct, IAtlasSource
+        {
             int texW = w * ppt, texH = h * ppt;
+            if (rowMin < 0) rowMin = 0;
+            if (rowMax > h - 1) rowMax = h - 1;
+            if (clipMin < 0) clipMin = 0;
+            if (clipMax > texH - 1) clipMax = texH - 1;
             int step = 8 / ppt;                                 // sprite pixels per texture pixel
             if (step < 1) step = 1;
-            for (int ty = h - 1; ty >= 0; ty--)
+            for (int ty = rowMax; ty >= rowMin; ty--)
                 for (int tx = 0; tx < w; tx++)
                 {
                     TileData t = tiles.Get(ty * w + tx);
@@ -290,11 +307,36 @@ namespace WorldSim.Render
                             if (c == 0) continue;
                             int gx = anchorX + (sx - 8 + jitterX) / step;
                             int gy = anchorY + (sy + jitterY) / step;
-                            if (gx < 0 || gy < 0 || gx >= texW || gy >= texH) continue;
+                            if (gx < 0 || gy < clipMin || gx >= texW || gy > clipMax) continue;
                             int i = gy * texW + gx;
                             pixels.Set(i, Rgba.A(c) < 255 ? Rgba.Darken(pixels.Get(i), 74) : Rgba.Shift(c, shade));
                         }
                 }
+        }
+
+        /// <summary>Tile rows whose ground must be repainted after tiles in [yMin, yMax] changed
+        /// (displaced sampling, foam and relief read neighbours up to 2 tiles away).</summary>
+        public static void GroundRowsFor(int yMin, int yMax, int h, out int rowMin, out int rowMax)
+        {
+            rowMin = yMin - 2 < 0 ? 0 : yMin - 2;
+            rowMax = yMax + 2 > h - 1 ? h - 1 : yMax + 2;
+        }
+
+        /// <summary>Tallest sprite reach above its own tile, in tiles (16 sprite px + 2 px jitter at 8 px per tile).</summary>
+        public const int SpriteReachTiles = 3;
+
+        /// <summary>
+        /// Repaints everything affected by changes to tiles in rows [yMin, yMax]: ground of the
+        /// neighbouring rows, then every decoration that can reach into those pixel rows, clipped
+        /// to them. Produces exactly the pixels a full repaint would (see RenderTests).
+        /// </summary>
+        public static void RepaintRows<TT, TP, TA>(ref TT tiles, ref TP pixels, ref TA atlas, int w, int h, int ppt, int yMin, int yMax)
+            where TT : struct, ITileSource where TP : struct, IPixelTarget where TA : struct, IAtlasSource
+        {
+            GroundRowsFor(yMin, yMax, h, out int rowMin, out int rowMax);
+            for (int row = rowMin; row <= rowMax; row++) PaintGroundRow(ref tiles, ref pixels, w, h, ppt, row);
+            PaintDecorationRows(ref tiles, ref pixels, ref atlas, w, h, ppt,
+                rowMin - SpriteReachTiles, rowMax, rowMin * ppt, (rowMax + 1) * ppt - 1);
         }
     }
 }

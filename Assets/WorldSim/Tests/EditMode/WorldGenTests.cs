@@ -154,3 +154,60 @@ namespace WorldSim.Tests
         }
     }
 }
+
+namespace WorldSim.Tests
+{
+    using NUnit.Framework;
+    using WorldSim.Core;
+
+    /// <summary>Beta B2 generation settings and blank worlds.</summary>
+    public class WorldGenSettingsTests
+    {
+        const int N = 128;
+
+        static TileData[] Gen(WorldGenSettings s, ulong seed = 0x5EED)
+        {
+            var p = WorldGenParams.Create(new WorldSeed(seed), N, N, s);
+            var t = new TileData[N * N];
+            WorldGenerator.Generate(p, t);
+            return t;
+        }
+
+        static double WaterShare(TileData[] t) { int w = 0; foreach (var x in t) if (x.IsWater) w++; return (double)w / t.Length; }
+
+        [Test]
+        public void EmptyOcean_IsAllWater_FlatLand_IsMostlyLand()
+        {
+            Assert.AreEqual(1.0, WaterShare(Gen(new WorldGenSettings { Mountains = 100, Blank = 1 })));
+            Assert.Less(WaterShare(Gen(new WorldGenSettings { Mountains = 100, Blank = 2 })), 0.35);
+        }
+
+        [Test]
+        public void LandBias_MovesTheCoastline()
+        {
+            double islands = WaterShare(Gen(new WorldGenSettings { Mountains = 100, LandBias = -25 }));
+            double normal = WaterShare(Gen(WorldGenSettings.Default));
+            double continent = WaterShare(Gen(new WorldGenSettings { Mountains = 100, LandBias = 25 }));
+            Assert.Greater(islands, normal);
+            Assert.Greater(normal, continent);
+        }
+
+        [Test]
+        public void IceAge_HasMoreSnow_ThanHotWorld()
+        {
+            int Snow(TileData[] t) { int n = 0; foreach (var x in t) if (x.Biome == Biome.Snow || x.Biome == Biome.Tundra) n++; return n; }
+            Assert.Greater(Snow(Gen(new WorldGenSettings { Mountains = 100, Temperature = -35 })),
+                           Snow(Gen(new WorldGenSettings { Mountains = 100, Temperature = 35 })));
+        }
+
+        [Test]
+        public void Settings_AreHashed_OnlyWhenNotDefault()
+        {
+            var a = WorldHash.Begin(1, N, N).Value;
+            var b = WorldHash.Begin(1, N, N, WorldGenSettings.Default).Value;
+            var c = WorldHash.Begin(1, N, N, new WorldGenSettings { Mountains = 150 }).Value;
+            Assert.AreEqual(a, b);
+            Assert.AreNotEqual(a, c);
+        }
+    }
+}

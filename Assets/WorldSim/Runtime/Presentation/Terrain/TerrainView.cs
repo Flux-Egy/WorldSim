@@ -26,6 +26,10 @@ namespace WorldSim.Presentation.Terrain
         Texture2D _detailTex, _overviewTex, _maskTex;
         bool _far;
         int _w, _h;
+        TileRect _pending = TileRect.Empty;
+        float _lastFlush;
+        WorldMap _map;
+        const float RepaintInterval = 0.066f; // ~15 repaints per second while painting
 
         public TerrainView()
         {
@@ -60,6 +64,8 @@ namespace WorldSim.Presentation.Terrain
         public void Build(WorldMap map)
         {
             _w = map.Width; _h = map.Height;
+            _map = map;
+            _pending = TileRect.Empty;
 
             int ppt = TerrainTexture.PixelsPerTileFor(_w, _h);
             _detailTex = Recreate(_detailTex, _w * ppt, _h * ppt, "WorldTerrain");
@@ -90,10 +96,31 @@ namespace WorldSim.Presentation.Terrain
             ApplyLod();
         }
 
+        /// <summary>Queues a repaint of tiles changed by terrain edits (flushed at most ~15x/s).</summary>
+        public void MarkDirty(WorldMap map, TileRect rect)
+        {
+            _map = map;
+            if (!rect.IsEmpty) _pending.Include(rect.XMin, rect.YMin, rect.XMax, rect.YMax);
+        }
+
+        void FlushIfDue(float time)
+        {
+            if (_pending.IsEmpty || time - _lastFlush < RepaintInterval || !_map.Tiles.IsCreated) return;
+            _lastFlush = time;
+            TileRect r = _pending;
+            _pending = TileRect.Empty;
+            TerrainTexture.RepaintRows(_detailTex, _map.Tiles, _w, _h, r.YMin, r.YMax);
+            int opp = TerrainPainter.OverviewPixelsPerTile(_w, _h);
+            if (opp > 0 && _overviewTex != null)
+                TerrainTexture.RepaintOverviewRows(_overviewTex, _map.Tiles, _w, _h, opp, r.YMin, r.YMax);
+            TerrainTexture.PaintOpenWaterMask(_maskTex, _map.Tiles, _w, _h, r.XMin, r.YMin, r.XMax, r.YMax);
+        }
+
         /// <summary>Call once per frame after the camera moved.</summary>
         public void Tick(Camera cam, float time)
         {
             if (_detailTex == null) return;
+            FlushIfDue(time);
             float pxPerTile = Screen.height / Mathf.Max(0.01f, 2f * cam.orthographicSize);
 
             bool far = _overview.sprite != null && (_far ? pxPerTile < FarExit : pxPerTile < FarEnter);

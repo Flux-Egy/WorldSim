@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using WorldSim.Core;
 using WorldSim.Render;
 
 namespace WorldSim.Presentation.UI
@@ -38,8 +39,24 @@ namespace WorldSim.Presentation.UI
         Text _sizeLabel;
         Rect _appliedSafeArea;
 
+        /// <summary>A terrain brush the player picked (Beta B2).</summary>
+        public struct ToolChoice
+        {
+            public TerrainTool Tool;
+            public Biome Biome;
+            public string Label;
+        }
+
+        /// <summary>Raised with the chosen brush, or null when brushes are switched off.</summary>
+        public event Action<ToolChoice?> ToolChanged;
+        public event Action BrushSizeClicked;
+        Text _brushSizeLabel;
+        Image _selectedToolImage;
+
         public event Action NewWorldClicked;
         public event Action SizeClicked;
+        public event Action LandClicked, ClimateClicked, MountainsClicked, BlankClicked;
+        Text _landLabel, _climateLabel, _mountainsLabel, _blankLabel;
         public event Action NoticeAccepted;
 
         public bool IsNoticeOpen => _noticeOverlay.gameObject.activeSelf;
@@ -49,7 +66,7 @@ namespace WorldSim.Presentation.UI
         static readonly TabDef[] Tabs =
         {
             new TabDef { Name = "World", Icon = Icon.Globe, Milestone = null },
-            new TabDef { Name = "Terrain", Icon = Icon.Mountain, Milestone = "Terrain brushes arrive in Beta milestone B2." },
+            new TabDef { Name = "Terrain", Icon = Icon.Mountain, Milestone = null },
             new TabDef { Name = "Life", Icon = Icon.People, Milestone = "Creatures and peoples arrive in Beta milestone B3." },
             new TabDef { Name = "Nations", Icon = Icon.Castle, Milestone = "Kingdoms, eras and history arrive in Beta milestone B4." },
             new TabDef { Name = "Powers", Icon = Icon.Storm, Milestone = "Powers and disasters arrive in Beta milestone B5." },
@@ -155,6 +172,15 @@ namespace WorldSim.Presentation.UI
 
         public void SetTitle(string text) => _title.text = text;
         public void SetSizeLabel(string text) { if (_sizeLabel != null) _sizeLabel.text = text; }
+
+        /// <summary>Labels of the World tab's generation-setting buttons.</summary>
+        public void SetWorldOptionLabels(string land, string climate, string mountains, string blank)
+        {
+            if (_landLabel != null) _landLabel.text = land;
+            if (_climateLabel != null) _climateLabel.text = climate;
+            if (_mountainsLabel != null) _mountainsLabel.text = mountains;
+            if (_blankLabel != null) _blankLabel.text = blank;
+        }
         public void ShowNotice() => _noticeOverlay.gameObject.SetActive(true);
         public void ShowInfo(string text) { _info.text = text; _infoPanel.gameObject.SetActive(true); }
         public void HideInfo() => _infoPanel.gameObject.SetActive(false);
@@ -184,14 +210,174 @@ namespace WorldSim.Presentation.UI
                 if (child != _placeholder.transform) UnityEngine.Object.Destroy(child.gameObject);
             }
             _sizeLabel = null;
+            _landLabel = _climateLabel = _mountainsLabel = _blankLabel = null;
+            _brushSizeLabel = null;
+            _selectedToolImage = null;
+            ToolChanged?.Invoke(null); // switching tabs always returns to inspect mode
             _placeholder.text = Tabs[index].Milestone ?? "";
             if (index == 0)
             {
-                AddToolButton(0, Icon.Globe, "New world", () => NewWorldClicked?.Invoke());
-                _sizeLabel = AddToolButton(1, Icon.Resize, "Size", () => SizeClicked?.Invoke());
-                AddToolButton(2, Icon.Info, "Notice", ShowNotice);
+                RectTransform row = BuildScrollRow(0f);
+                AddRowButton(row, GetIconSprite(Icon.Globe), "New world", () => NewWorldClicked?.Invoke());
+                _sizeLabel = AddRowButton(row, GetIconSprite(Icon.Resize), "Size", () => SizeClicked?.Invoke());
+                _landLabel = AddRowButton(row, GetSwatchSprite(Biome.Grass), "Land", () => LandClicked?.Invoke());
+                _climateLabel = AddRowButton(row, GetSwatchSprite(Biome.Snow), "Climate", () => ClimateClicked?.Invoke());
+                _mountainsLabel = AddRowButton(row, GetIconSprite(Icon.Mountain), "Mountains", () => MountainsClicked?.Invoke());
+                _blankLabel = AddRowButton(row, GetSwatchSprite(Biome.DeepWater), "Generated", () => BlankClicked?.Invoke());
+                AddRowButton(row, GetIconSprite(Icon.Info), "Notice", ShowNotice);
                 SizeLabelRequested?.Invoke();
             }
+            else if (index == 1)
+            {
+                BuildTerrainPalette();
+            }
+        }
+
+        /// <summary>Raised when the Terrain tab is rebuilt, so the owner can refill the brush size label.</summary>
+        public event Action BrushSizeLabelRequested;
+
+        public void SetBrushSizeLabel(string text) { if (_brushSizeLabel != null) _brushSizeLabel.text = text; }
+
+        static readonly (TerrainTool tool, Biome biome, Icon icon, string label)[] TerrainTools =
+        {
+            (TerrainTool.Raise, Biome.Grass, Icon.Raise, "Raise"),
+            (TerrainTool.Lower, Biome.Grass, Icon.Lower, "Lower"),
+            (TerrainTool.Flatten, Biome.Grass, Icon.Flatten, "Flatten"),
+            (TerrainTool.PlantTrees, Biome.Grass, Icon.Tree, "Trees"),
+            (TerrainTool.ClearDecorations, Biome.Grass, Icon.Eraser, "Clear"),
+        };
+
+        static readonly (Biome biome, string label)[] PaintableBiomes =
+        {
+            (Biome.DeepWater, "Ocean"), (Biome.ShallowWater, "Shallows"), (Biome.Sand, "Sand"), (Biome.Grass, "Grass"),
+            (Biome.Forest, "Forest"), (Biome.BirchForest, "Birch"), (Biome.Jungle, "Jungle"), (Biome.Savanna, "Savanna"),
+            (Biome.Desert, "Desert"), (Biome.Swamp, "Swamp"), (Biome.Taiga, "Taiga"), (Biome.Tundra, "Tundra"),
+            (Biome.Snow, "Snow"), (Biome.Mountain, "Mountain"), (Biome.Lava, "Lava"), (Biome.EmberWastes, "Embers"),
+            (Biome.CrystalFields, "Crystal"), (Biome.MushroomGrove, "Mushroom"), (Biome.Glimmerwood, "Glimmer"),
+        };
+
+        void BuildTerrainPalette()
+        {
+            // Brush size (fixed at the left) + horizontally scrolling tools and biome swatches.
+            _brushSizeLabel = AddToolButton(0, Icon.Brush, "Size", () => BrushSizeClicked?.Invoke());
+            BrushSizeLabelRequested?.Invoke();
+
+            RectTransform row = BuildScrollRow(196f);
+
+            foreach (var t in TerrainTools)
+            {
+                var choice = new ToolChoice { Tool = t.tool, Biome = t.biome, Label = t.label };
+                AddPaletteButton(row, GetIconSprite(t.icon), t.label, choice);
+            }
+            foreach (var b in PaintableBiomes)
+            {
+                var choice = new ToolChoice { Tool = TerrainTool.PaintBiome, Biome = b.biome, Label = b.label };
+                AddPaletteButton(row, GetSwatchSprite(b.biome), b.label, choice);
+            }
+        }
+
+        /// <summary>A horizontally scrolling row of buttons filling the content area (left inset in px).</summary>
+        RectTransform BuildScrollRow(float leftInset)
+        {
+            var viewport = NewRect("RowViewport", _content);
+            viewport.anchorMin = Vector2.zero; viewport.anchorMax = Vector2.one;
+            viewport.offsetMin = new Vector2(leftInset, 0); viewport.offsetMax = Vector2.zero;
+            viewport.gameObject.AddComponent<RectMask2D>();
+            AddImage(viewport, new Color(0, 0, 0, 0.001f)); // catches drags between buttons
+            var scroll = viewport.gameObject.AddComponent<ScrollRect>();
+            scroll.horizontal = true; scroll.vertical = false;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.scrollSensitivity = 30f;
+
+            var row = NewRect("Row", viewport);
+            row.anchorMin = new Vector2(0, 0); row.anchorMax = new Vector2(0, 1);
+            row.pivot = new Vector2(0, 0.5f);
+            var layout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+            layout.spacing = 14; layout.childAlignment = TextAnchor.MiddleLeft;
+            layout.childControlWidth = false; layout.childControlHeight = false;
+            layout.childForceExpandWidth = false; layout.childForceExpandHeight = false;
+            var fitter = row.gameObject.AddComponent<ContentSizeFitter>();
+            fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            scroll.content = row;
+            scroll.viewport = viewport;
+            return row;
+        }
+
+        /// <summary>Plain action button in a scroll row; returns its label for live updates.</summary>
+        Text AddRowButton(RectTransform row, Sprite icon, string label, Action onClick)
+        {
+            var rt = NewRect(label + "Button", row);
+            rt.sizeDelta = new Vector2(160, 200);
+            var img = AddImage(rt, ButtonColor);
+            var outline = rt.gameObject.AddComponent<Outline>();
+            outline.effectColor = BorderColor;
+            outline.effectDistance = new Vector2(3, -3);
+            var btn = rt.gameObject.AddComponent<Button>();
+            btn.targetGraphic = img;
+            btn.onClick.AddListener(() => onClick());
+            var iconRt = NewRect("Icon", rt);
+            iconRt.anchorMin = iconRt.anchorMax = new Vector2(0.5f, 0.5f);
+            iconRt.sizeDelta = new Vector2(88, 88);
+            iconRt.anchoredPosition = new Vector2(0, 26);
+            var iconImg = iconRt.gameObject.AddComponent<Image>();
+            iconImg.sprite = icon; iconImg.raycastTarget = false; iconImg.preserveAspect = true;
+            var text = AddText(rt, 24, TextAnchor.LowerCenter);
+            Fill(text.rectTransform, 2, 8, -2, 0);
+            text.text = label;
+            return text;
+        }
+
+        void AddPaletteButton(RectTransform row, Sprite icon, string label, ToolChoice choice)
+        {
+            var rt = NewRect(label + "Tool", row);
+            rt.sizeDelta = new Vector2(150, 200);
+            var img = AddImage(rt, ButtonColor);
+            var outline = rt.gameObject.AddComponent<Outline>();
+            outline.effectColor = BorderColor;
+            outline.effectDistance = new Vector2(3, -3);
+            var btn = rt.gameObject.AddComponent<Button>();
+            btn.targetGraphic = img;
+            btn.onClick.AddListener(() =>
+            {
+                bool deselect = _selectedToolImage == img;
+                if (_selectedToolImage != null) _selectedToolImage.color = ButtonColor;
+                _selectedToolImage = deselect ? null : img;
+                if (!deselect) img.color = TabActive;
+                ToolChanged?.Invoke(deselect ? (ToolChoice?)null : choice);
+            });
+            var iconRt = NewRect("Icon", rt);
+            iconRt.anchorMin = iconRt.anchorMax = new Vector2(0.5f, 0.5f);
+            iconRt.sizeDelta = new Vector2(88, 88);
+            iconRt.anchoredPosition = new Vector2(0, 26);
+            var iconImg = iconRt.gameObject.AddComponent<Image>();
+            iconImg.sprite = icon; iconImg.raycastTarget = false; iconImg.preserveAspect = true;
+            var text = AddText(rt, 24, TextAnchor.LowerCenter);
+            Fill(text.rectTransform, 2, 8, -2, 0);
+            text.text = label;
+        }
+
+        readonly Dictionary<Biome, Sprite> _swatches = new Dictionary<Biome, Sprite>();
+
+        /// <summary>16x16 swatch: the biome colour with a light speckle and a dark frame.</summary>
+        Sprite GetSwatchSprite(Biome b)
+        {
+            if (_swatches.TryGetValue(b, out var s)) return s;
+            int n = IconLibrary.Size;
+            var px = new uint[n * n];
+            uint c = TerrainPainter.BaseColor(b), frame = Rgba.Pack(24, 22, 30);
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    bool edge = x == 1 || y == 1 || x == n - 2 || y == n - 2;
+                    bool outside = x == 0 || y == 0 || x == n - 1 || y == n - 1;
+                    px[y * n + x] = outside ? 0u : edge ? frame : ((x * 7 + y * 3) % 11 == 0 ? Rgba.Shift(c, 22) : c);
+                }
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
+            tex.SetPixelData(px, 0);
+            tex.Apply(false, true);
+            s = Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f), n);
+            _swatches[b] = s;
+            return s;
         }
 
         /// <summary>Raised when the World tab is rebuilt, so the owner can refill the size label.</summary>

@@ -45,6 +45,12 @@ namespace WorldSim.Presentation.Input
 
         public State Current { get; private set; } = State.Idle;
 
+        /// <summary>True while exactly one finger is down and no pinch is involved (paint strokes).</summary>
+        public bool IsSingleFingerDown => Current == State.Pressed || Current == State.Panning;
+        /// <summary>Current position of that finger (valid while <see cref="IsSingleFingerDown"/>).</summary>
+        public float PrimaryX => _lastX;
+        public float PrimaryY => _lastY;
+
         int _primaryId, _secondaryId;
         float _startX, _startY, _startTime, _lastX, _lastY;
         float _lastPinchDistance, _lastCenterX, _lastCenterY;

@@ -44,6 +44,41 @@ namespace WorldSim.Tests
                 Assert.LessOrEqual(size * TerrainPainter.PixelsPerTileFor(size, size), 2048);
         }
 
+        struct Grid : ITileGrid
+        {
+            public TileData[] A;
+            public TileData Get(int i) => A[i];
+            public void Set(int i, TileData t) => A[i] = t;
+        }
+
+        [Test]
+        public void PartialRepaint_AfterEdits_EqualsFullRepaint()
+        {
+            const int n = 64;
+            var p = WorldGenParams.Create(new WorldSeed(21), n, n);
+            var tiles = new TileData[n * n];
+            WorldGenerator.Generate(p, tiles);
+            int ppt = TerrainPainter.PixelsPerTileFor(n, n);
+            uint[] px = Paint(tiles, n, ppt);
+            var atlas = new ArrayAtlas { A = SpriteLibrary.Build() };
+            var grid = new Grid { A = tiles };
+            var edits = new[]
+            {
+                new TerrainEdit { Tool = TerrainTool.PaintBiome, Biome = Biome.DeepWater, X = 30, Y = 30, Radius = 4 },
+                new TerrainEdit { Tool = TerrainTool.PlantTrees, X = 12, Y = 50, Radius = 3 },
+                new TerrainEdit { Tool = TerrainTool.Raise, X = 50, Y = 10, Radius = 5 },
+                new TerrainEdit { Tool = TerrainTool.PaintBiome, Biome = Biome.Lava, X = 2, Y = 62, Radius = 2 },
+            };
+            foreach (var e in edits)
+            {
+                TileRect r = WorldEditor.Apply(ref grid, p, e);
+                if (r.IsEmpty) continue;
+                var t = new ArrayTiles { A = tiles }; var pix = new ArrayPixels { A = px };
+                TerrainPainter.RepaintRows(ref t, ref pix, ref atlas, n, n, ppt, r.YMin, r.YMax);
+            }
+            Assert.AreEqual(Paint(tiles, n, ppt), px, "partial repaint must match a full repaint pixel for pixel");
+        }
+
         static uint[] Paint(TileData[] tiles, int n, int ppt)
         {
             var px = new uint[n * ppt * n * ppt];

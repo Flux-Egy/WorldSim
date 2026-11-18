@@ -33,6 +33,13 @@ namespace WorldSim.Presentation
         const string NoticePrefKey = "worldsim.fictionNoticeAccepted.v1";
         int _sizeIndex;
 
+        // ---- Generation settings (Beta B2); applied by the next "New world" ----
+        static readonly (string name, sbyte v)[] LandOptions = { ("Islands", -22), ("Balanced", 0), ("Continents", 22) };
+        static readonly (string name, sbyte v)[] ClimateOptions = { ("Ice age", -30), ("Cold", -15), ("Temperate", 0), ("Warm", 15), ("Hot", 30) };
+        static readonly (string name, byte v)[] MountainOptions = { ("Few peaks", 40), ("Mountains", 100), ("Many peaks", 170) };
+        static readonly (string name, byte v)[] BlankOptions = { ("Generated", 0), ("Empty ocean", 1), ("Flat land", 2) };
+        int _land = 1, _climate = 2, _mountains = 1, _blank;
+
         Camera _cam;
         CameraRig _rig;
         WorldHud _hud;
@@ -48,6 +55,17 @@ namespace WorldSim.Presentation
         TerrainView _terrainView;
         SpriteRenderer _selection;
 
+        // ---- Terrain brushes (Beta B2) ----
+        static readonly int[] BrushRadii = { 0, 1, 3, 6, 10 };
+        const string BrushPrefKey = "worldsim.brushIndex";
+        WorldHud.ToolChoice? _tool;
+        int _brushIndex = 2;
+        EntityQuery _editQuery;
+        uint _shownEditVersion;
+        int _lastDabX = int.MinValue, _lastDabY = int.MinValue;
+        float _lastDabTime;
+        const float DabInterval = 0.06f; // continuous tools (raise/lower) repeat while held
+
         bool _ready;
 
         void Start()
@@ -58,7 +76,19 @@ namespace WorldSim.Presentation
             _hud.NewWorldClicked += NewWorld;
             _hud.SizeClicked += CycleSize;
             _hud.SizeLabelRequested += UpdateSizeLabel;
+            _hud.LandClicked += () => Cycle(ref _land, LandOptions.Length, "worldsim.land");
+            _hud.ClimateClicked += () => Cycle(ref _climate, ClimateOptions.Length, "worldsim.climate");
+            _hud.MountainsClicked += () => Cycle(ref _mountains, MountainOptions.Length, "worldsim.mountains");
+            _hud.BlankClicked += () => Cycle(ref _blank, BlankOptions.Length, "worldsim.blank");
+            _land = Mathf.Clamp(PlayerPrefs.GetInt("worldsim.land", 1), 0, LandOptions.Length - 1);
+            _climate = Mathf.Clamp(PlayerPrefs.GetInt("worldsim.climate", 2), 0, ClimateOptions.Length - 1);
+            _mountains = Mathf.Clamp(PlayerPrefs.GetInt("worldsim.mountains", 1), 0, MountainOptions.Length - 1);
+            _blank = Mathf.Clamp(PlayerPrefs.GetInt("worldsim.blank", 0), 0, BlankOptions.Length - 1);
             _hud.NoticeAccepted += () => { PlayerPrefs.SetInt(NoticePrefKey, 1); PlayerPrefs.Save(); };
+            _hud.ToolChanged += OnToolChanged;
+            _hud.BrushSizeClicked += CycleBrush;
+            _hud.BrushSizeLabelRequested += UpdateBrushLabel;
+            _brushIndex = Mathf.Clamp(PlayerPrefs.GetInt(BrushPrefKey, 2), 0, BrushRadii.Length - 1);
             _hud.SetTitle("WorldSim\nGenerating world...");
             _sizeIndex = Mathf.Clamp(PlayerPrefs.GetInt(SizePrefKey, 0), 0, Sizes.Length - 1);
             UpdateSizeLabel();
@@ -82,6 +112,7 @@ namespace WorldSim.Presentation
 
                 _em = World.DefaultGameObjectInjectionWorld.EntityManager;
                 _mapQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<WorldMap>());
+                _editQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<TerrainEditQueue>());
 
                 RequestWorld(LoadSeed(), CurrentSize);
                 _ready = true;
@@ -111,13 +142,23 @@ namespace WorldSim.Presentation
 
             if (_gestures.PinchScale != 1f)
                 _rig.ZoomAt(_gestures.PinchScale, new Vector2(_gestures.PinchCenterX, _gestures.PinchCenterY));
-            if (_gestures.PanDx != 0f || _gestures.PanDy != 0f)
-                _rig.PanScreen(_gestures.PanDx, _gestures.PanDy);
 
-            var at = new Vector2(_gestures.GestureX, _gestures.GestureY);
-            if (_gestures.Tap) Select(at, longPress: false);
-            if (_gestures.LongPress) Select(at, longPress: true);
-            if (_gestures.DoubleTap) _rig.GlideTo(_rig.ScreenToWorld(at));
+            if (_tool.HasValue)
+            {
+                // Brush mode: one finger paints; two fingers still pan and zoom.
+                if (_gestures.Current == GestureRecognizer.State.Pinching && (_gestures.PanDx != 0f || _gestures.PanDy != 0f))
+                    _rig.PanScreen(_gestures.PanDx, _gestures.PanDy);
+                UpdateBrush();
+            }
+            else
+            {
+                if (_gestures.PanDx != 0f || _gestures.PanDy != 0f)
+                    _rig.PanScreen(_gestures.PanDx, _gestures.PanDy);
+                var at = new Vector2(_gestures.GestureX, _gestures.GestureY);
+                if (_gestures.Tap) Select(at, longPress: false);
+                if (_gestures.LongPress) Select(at, longPress: true);
+                if (_gestures.DoubleTap) _rig.GlideTo(_rig.ScreenToWorld(at));
+            }
 
             _rig.Tick(Time.unscaledDeltaTime);
             _terrainView.Tick(_cam, Time.unscaledTime);
@@ -144,9 +185,21 @@ namespace WorldSim.Presentation
         {
             if (_mapQuery.IsEmpty) return;
             WorldMap map = _mapQuery.GetSingleton<WorldMap>();
-            if (map.Version == _shownVersion || !map.IsCreated) return;
+            if (!map.IsCreated) return;
+            if (map.Version == _shownVersion)
+            {
+                if (map.EditVersion != _shownEditVersion)
+                {
+                    _shownEditVersion = map.EditVersion;
+                    _map = map;
+                    _terrainView.MarkDirty(map, map.DirtyRect);
+                    _hud.SetTitle($"WorldSim   seed 0x{map.Seed:X}   {map.Width}x{map.Height}\nedited world");
+                }
+                return;
+            }
             _map = map;
             _shownVersion = map.Version;
+            _shownEditVersion = map.EditVersion;
 
             _terrainView.Build(map);
             _rig.SetWorld(map.Width, map.Height);
@@ -168,6 +221,7 @@ namespace WorldSim.Presentation
             TileData t = map.Get(x, y);
 
             _selection.transform.position = new Vector3(x, y, 0f);
+            _selection.transform.localScale = Vector3.one;
             _selection.enabled = true;
             string res = ResourceText((ResourceFlags)t.ResourceFlags);
             string deco = t.DecorationId != 0 ? $"   {(Decoration)t.DecorationId}" : "";
@@ -187,6 +241,59 @@ namespace WorldSim.Presentation
             if ((f & ResourceFlags.Gold) != 0) parts.Add("gold");
             if ((f & ResourceFlags.Gems) != 0) parts.Add("gems");
             return string.Join(", ", parts);
+        }
+
+        void OnToolChanged(WorldHud.ToolChoice? tool)
+        {
+            _tool = tool;
+            _hud.HideInfo();
+            if (_selection != null) _selection.enabled = false;
+            _lastDabX = _lastDabY = int.MinValue;
+        }
+
+        void CycleBrush()
+        {
+            _brushIndex = (_brushIndex + 1) % BrushRadii.Length;
+            PlayerPrefs.SetInt(BrushPrefKey, _brushIndex);
+            PlayerPrefs.Save();
+            UpdateBrushLabel();
+        }
+
+        void UpdateBrushLabel() => _hud.SetBrushSizeLabel($"Size {BrushRadii[_brushIndex] * 2 + 1}");
+
+        /// <summary>
+        /// While one finger is down in brush mode: queue a dab on the tile under it. Paint-type
+        /// tools dab when the finger reaches a new tile; raise/lower keep dabbing while held.
+        /// The brush outline follows the finger.
+        /// </summary>
+        void UpdateBrush()
+        {
+            int r = BrushRadii[_brushIndex];
+            if (!_gestures.IsSingleFingerDown)
+            {
+                _selection.enabled = false;
+                _lastDabX = _lastDabY = int.MinValue;
+                return;
+            }
+            Vector3 w = _rig.ScreenToWorld(new Vector2(_gestures.PrimaryX, _gestures.PrimaryY));
+            int x = Mathf.FloorToInt(w.x), y = Mathf.FloorToInt(w.y);
+            _selection.enabled = true;
+            _selection.transform.position = new Vector3(x - r, y - r, 0f);
+            _selection.transform.localScale = new Vector3(2 * r + 1, 2 * r + 1, 1f);
+            if (!_map.InBounds(x, y)) return;
+
+            WorldHud.ToolChoice tool = _tool.Value;
+            bool continuous = tool.Tool == TerrainTool.Raise || tool.Tool == TerrainTool.Lower || tool.Tool == TerrainTool.Flatten;
+            bool moved = x != _lastDabX || y != _lastDabY;
+            float now = Time.unscaledTime;
+            if (!moved && !(continuous && now - _lastDabTime >= DabInterval)) return;
+            _lastDabX = x; _lastDabY = y; _lastDabTime = now;
+
+            Entity q = _editQuery.GetSingletonEntity();
+            _em.GetBuffer<TerrainEditCommand>(q).Add(new TerrainEditCommand
+            {
+                Edit = new TerrainEdit { Tool = tool.Tool, Biome = tool.Biome, X = x, Y = y, Radius = r },
+            });
         }
 
         void NewWorld()
@@ -209,12 +316,33 @@ namespace WorldSim.Presentation
             UpdateSizeLabel();
         }
 
-        void UpdateSizeLabel() => _hud.SetSizeLabel($"{SizeNames[_sizeIndex]} {Sizes[_sizeIndex]}");
+        void UpdateSizeLabel()
+        {
+            _hud.SetSizeLabel($"{SizeNames[_sizeIndex]} {Sizes[_sizeIndex]}");
+            _hud.SetWorldOptionLabels(LandOptions[_land].name, ClimateOptions[_climate].name,
+                MountainOptions[_mountains].name, BlankOptions[_blank].name);
+        }
+
+        void Cycle(ref int index, int count, string prefKey)
+        {
+            index = (index + 1) % count;
+            PlayerPrefs.SetInt(prefKey, index);
+            PlayerPrefs.Save();
+            UpdateSizeLabel();
+        }
+
+        WorldGenSettings CurrentSettings => new WorldGenSettings
+        {
+            LandBias = LandOptions[_land].v,
+            Temperature = ClimateOptions[_climate].v,
+            Mountains = MountainOptions[_mountains].v,
+            Blank = BlankOptions[_blank].v,
+        };
 
         void RequestWorld(ulong seed, int size)
         {
             Entity e = _em.CreateEntity(typeof(WorldGenRequest));
-            _em.SetComponentData(e, new WorldGenRequest { Seed = seed, Width = size, Height = size });
+            _em.SetComponentData(e, new WorldGenRequest { Seed = seed, Width = size, Height = size, Settings = CurrentSettings });
         }
 
         static ulong LoadSeed()

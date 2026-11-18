@@ -15,6 +15,7 @@ namespace WorldSim.Simulation
         public ulong Seed;
         public int Width;
         public int Height;
+        public WorldGenSettings Settings;   // zero value is fixed up to Default below
     }
 
     /// <summary>
@@ -28,10 +29,15 @@ namespace WorldSim.Simulation
         public int Width;
         public int Height;
         public ulong Seed;
+        public WorldGenSettings Settings;
         /// <summary>FNV-1a world hash (§4.3), identical on every platform for the same seed.</summary>
         public ulong Hash;
         /// <summary>Incremented on every (re)generation; 0 means no world yet.</summary>
         public uint Version;
+        /// <summary>Incremented whenever terrain edits change tiles (Beta B2).</summary>
+        public uint EditVersion;
+        /// <summary>Tiles changed by the edits of the latest <see cref="EditVersion"/>.</summary>
+        public TileRect DirtyRect;
 
         public bool IsCreated => Tiles.IsCreated;
 
@@ -80,7 +86,10 @@ namespace WorldSim.Simulation
             ref WorldMap map = ref SystemAPI.GetSingletonRW<WorldMap>().ValueRW;
             if (map.Tiles.IsCreated) map.Tiles.Dispose();
 
-            var p = WorldGenParams.Create(new WorldSeed(req.Seed), req.Width, req.Height);
+            WorldGenSettings settings = req.Settings;
+            if (settings.Mountains == 0 && settings.LandBias == 0 && settings.Temperature == 0 && settings.Moisture == 0 && settings.Blank == 0)
+                settings = WorldGenSettings.Default; // an all-zero request means "defaults"
+            var p = WorldGenParams.Create(new WorldSeed(req.Seed), req.Width, req.Height, settings);
             var tiles = new NativeArray<TileData>(req.Width * req.Height, Allocator.Persistent,
                 NativeArrayOptions.UninitializedMemory);
             var hash = new NativeReference<ulong>(Allocator.TempJob);
@@ -89,7 +98,7 @@ namespace WorldSim.Simulation
                 .Schedule(tiles.Length, 256, state.Dependency);
             JobHandle hashed = new HashTilesJob
             {
-                Seed = req.Seed, Width = req.Width, Height = req.Height, Tiles = tiles, Result = hash,
+                Seed = req.Seed, Width = req.Width, Height = req.Height, Settings = settings, Tiles = tiles, Result = hash,
             }.Schedule(gen);
             hashed.Complete(); // one-shot load: the world must exist before anything reads it
 
@@ -97,6 +106,7 @@ namespace WorldSim.Simulation
             map.Width = req.Width;
             map.Height = req.Height;
             map.Seed = req.Seed;
+            map.Settings = settings;
             map.Hash = hash.Value;
             map.Version++;
             hash.Dispose();
@@ -123,12 +133,13 @@ namespace WorldSim.Simulation
             public ulong Seed;
             public int Width;
             public int Height;
+            public WorldGenSettings Settings;
             [ReadOnly] public NativeArray<TileData> Tiles;
             public NativeReference<ulong> Result;
 
             public void Execute()
             {
-                StableHash64 h = WorldHash.Begin(Seed, Width, Height);
+                StableHash64 h = WorldHash.Begin(Seed, Width, Height, Settings);
                 for (int i = 0; i < Tiles.Length; i++) WorldHash.AddTile(ref h, Tiles[i]);
                 Result.Value = h.Value;
             }
