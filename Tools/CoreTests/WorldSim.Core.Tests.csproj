@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Compiles WorldSim.Core and its EditMode tests outside Unity (plain .NET), so the deterministic
+    core can be verified on any machine, including ARM64 Linux and CI, without a Unity license.
+    The sources are linked from Assets/: there is exactly one copy of the code.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>               <!-- Unity 6 compiles C# 9 -->
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow> <!-- proves every wrap is explicitly unchecked -->
+    <IsPackable>false</IsPackable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Assets/WorldSim/Runtime/Core/**/*.cs" LinkBase="Core" />
+    <Compile Include="../../Assets/WorldSim/Tests/EditMode/CoreDeterminismTests.cs" LinkBase="Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+  </ItemGroup>
+</Project>

@@ -4,7 +4,7 @@ The Unity Editor can't run on the ARM development machine, so GitHub Actions is 
 
 | Job | Needs Unity credentials | What it does |
 |---|---|---|
-| `core-tests` | No | Compiles `GodSim.Core` with plain .NET 8 and runs the determinism tests |
+| `core-tests` | No | Compiles `WorldSim.Core` with plain .NET 8 and runs the determinism tests |
 | `license-check` | No | Checks whether `UNITY_EMAIL` and `UNITY_PASSWORD` exist. If not, the Unity job is **skipped** rather than failed |
 | `build-android` | Yes | Pass 1 sets up the project headlessly. Pass 2 builds the Release APK (IL2CPP, ARM64, stripping High) |
 
@@ -29,12 +29,12 @@ The CLI picks this method automatically when `UNITY_EMAIL` and `UNITY_PASSWORD` 
 **Option A: from Termux.** This is the easiest: values are typed at a hidden prompt, so they don't end up in your shell history.
 
 ```bash
-gh secret set UNITY_EMAIL    -R Flux-Egy/WorldSim-God   # type the email, press Enter
-gh secret set UNITY_PASSWORD -R Flux-Egy/WorldSim-God   # type the password, press Enter
-gh secret list -R Flux-Egy/WorldSim-God                 # should list both (values are never shown)
+gh secret set UNITY_EMAIL    -R Flux-Egy/WorldSim   # type the email, press Enter
+gh secret set UNITY_PASSWORD -R Flux-Egy/WorldSim   # type the password, press Enter
+gh secret list -R Flux-Egy/WorldSim                 # should list both (values are never shown)
 ```
 
-**Option B: from the phone browser.** Open https://github.com/Flux-Egy/WorldSim-God/settings/secrets/actions, then tap **New repository secret** twice:
+**Option B: from the phone browser.** Open https://github.com/Flux-Egy/WorldSim/settings/secrets/actions, then tap **New repository secret** twice:
 
 | Name | Secret |
 |---|---|
@@ -46,8 +46,8 @@ gh secret list -R Flux-Egy/WorldSim-God                 # should list both (valu
 ### 1c. Start the build
 
 ```bash
-gh workflow run build.yml -R Flux-Egy/WorldSim-God --ref main
-gh run watch -R Flux-Egy/WorldSim-God        # pick the run; Ctrl+C stops watching, not the run
+gh workflow run build.yml -R Flux-Egy/WorldSim --ref main
+gh run watch -R Flux-Egy/WorldSim        # pick the run; Ctrl+C stops watching, not the run
 ```
 
 Or in the browser: **Actions > Build > Run workflow**.
@@ -56,7 +56,7 @@ Or in the browser: **Actions > Build > Run workflow**.
 
 | Log says | Meaning / fix |
 |---|---|
-| `Invalid Credential` / code `143.002` | Unity says the email or password is wrong. Typing on a phone with an Arabic keyboard can silently insert Arabic-Indic digits (`٢٨` instead of `28`), direction marks or zero-width characters. Run `gh workflow run credentials-check.yml -R Flux-Egy/WorldSim-God`: it checks the format **without contacting Unity** and prints only true/false facts, never the values. If the format is clean, test the same email and password by signing in at https://id.unity.com in a private tab. Avoid re-running the build repeatedly, because each failed login counts against the account. |
+| `Invalid Credential` / code `143.002` | Unity says the email or password is wrong. Typing on a phone with an Arabic keyboard can silently insert Arabic-Indic digits (`٢٨` instead of `28`), direction marks or zero-width characters. Run `gh workflow run credentials-check.yml -R Flux-Egy/WorldSim`: it checks the format **without contacting Unity** and prints only true/false facts, never the values. If the format is clean, test the same email and password by signing in at https://id.unity.com in a private tab. Avoid re-running the build repeatedly, because each failed login counts against the account. |
 | `Unity rejected the account credentials, or wants a second factor` | Wrong email or password, 2FA still on, or Unity emailed a "new device" confirmation (check the account's inbox and approve it). Hosted runners change IP every run. |
 | `Unity reports no available Personal seats` | A previous run leaked its seat (killed job or crash), or two jobs ran at once. Release the seat at id.unity.com and re-run. The workflow never cancels a running build, to avoid this. |
 | `UNITY_EMAIL / UNITY_PASSWORD secrets not set` (warning) | The secrets are missing or misspelled. |
@@ -73,7 +73,7 @@ Secrets are masked in logs and are never passed to workflows triggered from fork
 
 The repository doesn't yet contain the files Unity generates, such as `ProjectSettings/*.asset`, `.meta` files, the Boot scene and the URP asset, because they can't be written by hand reliably. Until they're committed:
 
-1. Pass 1 (`GodSim.EditorTools.GodSimCI.Bootstrap`) generates them in the runner's workspace on every run.
+1. Pass 1 (`WorldSim.EditorTools.WorldSimCI.Bootstrap`) generates them in the runner's workspace on every run.
 2. The run uploads them as the **`project-bootstrap-files`** artifact.
 3. Download that artifact once, copy its contents over the repo root and commit:
    ```
@@ -83,16 +83,16 @@ The repository doesn't yet contain the files Unity generates, such as `ProjectSe
    ```
    After this, the `.meta` GUIDs stay stable between builds. Pass 1 keeps running, but it only fixes settings that drift.
 
-**Check on the first run:** read the "Unity bootstrap" step log for `[GodSim CI] Bootstrap OK.` Two pieces of `GodSimCI.cs` couldn't be tested without an Editor:
+**Check on the first run:** read the "Unity bootstrap" step log for `[WorldSim CI] Bootstrap OK.` Two pieces of `WorldSimCI.cs` couldn't be tested without an Editor:
 - the serialized setting name `activeInputHandler`. The step fails with a clear message if it's wrong.
 - creating the 2D renderer from a script. If sprites render **magenta** on the device, create the URP asset once on a desktop (**Assets > Create > Rendering > URP Asset (with 2D Renderer)**) and commit it; pass 1 then leaves it alone.
 
 ## 3. Getting the APK
 
-Open **Actions > Build > (run) > Artifacts > `GodSim-android-release`**, or run:
+Open **Actions > Build > (run) > Artifacts > `WorldSim-android-release`**, or run:
 ```
-gh run download <run-id> -n GodSim-android-release
-adb install -r GodSim-release.apk
+gh run download <run-id> -n WorldSim-android-release
+adb install -r WorldSim-release.apk
 ```
 The APK is debug-signed (see "Not yet covered").
 
@@ -106,5 +106,5 @@ The APK is debug-signed (see "Not yet covered").
 - **Unity EditMode tests in CI.** `game-ci/unity-test-runner` v4.3.2 can't activate a Personal license from email and password alone; its activation script only accepts a serial, a license file or a license server. The current EditMode tests are the same Core tests `core-tests` already runs. Unity-only tests (Stage 2) will run through a unity-builder `buildMethod` instead.
 
 - **Release signing.** In v6, unity-builder's `androidKeystore*` inputs are passed to the new game-ci CLI. I couldn't confirm how they reach a *custom* `buildMethod`, so the workflow doesn't use them yet. Until then the APK is debug-signed, which is fine for sideloading and testing but not for the Play Store. This gets added and verified before any store release.
-- **Modder build.** It waits on Decision A (the mod loader) in `docs/IMPLEMENTATION_PLAN.md`. `GodSimBuild.BuildModderCI` already exists. Adding it is one more builder step.
+- **Modder build.** It waits on Decision A (the mod loader) in `docs/IMPLEMENTATION_PLAN.md`. `WorldSimBuild.BuildModderCI` already exists. Adding it is one more builder step.
 - **`cliVersion`.** This is left at the default (`latest`). If a game-ci CLI update ever breaks a build, pin it on both `unity-builder` steps.

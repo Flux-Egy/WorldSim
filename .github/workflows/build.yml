@@ -1,4 +1,4 @@
-# GodSim CI. See GITHUB_ACTIONS.md for setup (Unity license secrets) and the first-run bootstrap.
+# WorldSim CI. See GITHUB_ACTIONS.md for setup (Unity license secrets) and the first-run bootstrap.
 # Action versions verified on 2026-11-17: game-ci/unity-builder v6.0.0 (thin wrapper over the
 # game-ci CLI), unityci/editor:ubuntu-6000.3.28f1-android-3.
 #
@@ -23,7 +23,7 @@ permissions:
   contents: read
 
 jobs:
-  # Plain .NET, no Unity license: compiles GodSim.Core and runs its determinism tests (C# 9,
+  # Plain .NET, no Unity license: compiles WorldSim.Core and runs its determinism tests (C# 9,
   # warnings as errors, overflow checking on).
   core-tests:
     runs-on: ubuntu-latest
@@ -108,7 +108,7 @@ jobs:
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         with:
           targetPlatform: Android
-          buildMethod: GodSim.EditorTools.GodSimCI.Bootstrap
+          buildMethod: WorldSim.EditorTools.WorldSimCI.Bootstrap
           versioning: None
           allowDirtyBuild: true
 
@@ -123,7 +123,7 @@ jobs:
             Assets/
           if-no-files-found: warn
 
-      # Pass 2: Release build. IL2CPP, ARM64, stripping High (GodSimBuild enforces this).
+      # Pass 2: Release build. IL2CPP, ARM64, stripping High (WorldSimBuild enforces this).
       - name: Unity build (Release, IL2CPP ARM64)
         id: build
         uses: game-ci/unity-builder@v6
@@ -133,12 +133,12 @@ jobs:
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         with:
           targetPlatform: Android
-          buildMethod: GodSim.EditorTools.GodSimBuild.BuildReleaseCI
+          buildMethod: WorldSim.EditorTools.WorldSimBuild.BuildReleaseCI
           versioning: Semantic
           allowDirtyBuild: true # pass 1 leaves generated files in the workspace
 
       - uses: actions/upload-artifact@v7
         with:
-          name: GodSim-android-release
+          name: WorldSim-android-release
           path: Builds/Android/*.apk
           if-no-files-found: error

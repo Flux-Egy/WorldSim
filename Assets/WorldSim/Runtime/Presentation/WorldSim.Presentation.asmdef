@@ -1,0 +1,25 @@
+{
+  "name": "WorldSim.Presentation",
+  "rootNamespace": "WorldSim.Presentation",
+  "references": [
+    "WorldSim.Core",
+    "WorldSim.Simulation",
+    "WorldSim.ModAPI",
+    "WorldSim.Modding",
+    "Unity.Entities",
+    "Unity.Collections",
+    "Unity.Mathematics",
+    "Unity.InputSystem",
+    "Unity.RenderPipelines.Core.Runtime",
+    "Unity.RenderPipelines.Universal.Runtime",
+    "Unity.RenderPipelines.Universal.2D.Runtime",
+    "Unity.TextMeshPro",
+    "UnityEngine.UI"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "autoReferenced": true,
+  "noEngineReferences": false
+}

@@ -1,0 +1,11 @@
+{
+  "name": "WorldSim.ModAPI",
+  "rootNamespace": "WorldSim.ModAPI",
+  "references": [],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "autoReferenced": false,
+  "noEngineReferences": false
+}

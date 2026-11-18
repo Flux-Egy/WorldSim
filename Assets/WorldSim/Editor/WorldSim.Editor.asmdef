@@ -1,0 +1,20 @@
+{
+  "name": "WorldSim.Editor",
+  "rootNamespace": "WorldSim.EditorTools",
+  "references": [
+    "WorldSim.Presentation",
+    "Unity.InputSystem",
+    "Unity.RenderPipelines.Core.Runtime",
+    "Unity.RenderPipelines.Universal.Runtime",
+    "Unity.RenderPipelines.Universal.2D.Runtime",
+    "UnityEngine.UI"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "autoReferenced": false,
+  "noEngineReferences": false
+}

@@ -1,0 +1,17 @@
+{
+  "name": "WorldSim.Modding",
+  "rootNamespace": "WorldSim.Modding",
+  "references": [
+    "WorldSim.Core",
+    "WorldSim.ModAPI",
+    "WorldSim.Simulation",
+    "Unity.Entities",
+    "Unity.Collections"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "autoReferenced": false,
+  "noEngineReferences": false
+}

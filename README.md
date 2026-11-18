@@ -1,6 +1,6 @@
-# GodSim
+# WorldSim
 
-A mobile-first pixel-art god simulator built on Unity 6.3 LTS with DOTS. This is original work inspired by the genre and contains no WorldBox code or assets.
+A mobile-first pixel-art world-simulation sandbox built on Unity 6.3 LTS with DOTS. This is original work inspired by the genre and contains no WorldBox code or assets.
 
 - Plan, section map and flagged requirements: [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md)
 - Stage reports: [docs/stage-reports/](docs/stage-reports/)
@@ -8,7 +8,7 @@ A mobile-first pixel-art god simulator built on Unity 6.3 LTS with DOTS. This is
 
 ## Core tests without Unity
 
-`GodSim.Core` (PRNGs, seeds, hashing) is plain C#, and its tests run on any machine with the .NET 8 SDK:
+`WorldSim.Core` (PRNGs, seeds, hashing) is plain C#, and its tests run on any machine with the .NET 8 SDK:
 
 ```
 dotnet test Tools/CoreTests
@@ -21,15 +21,15 @@ dotnet test Tools/CoreTests
 3. When the Input System asks to enable the new backend, choose **Yes**. Then check that **Project Settings > Player > Active Input Handling** is set to **Input System Package (New)**, not *Both*.
 4. Create the URP asset: **Assets > Create > Rendering > URP Asset (with 2D Renderer)**. Assign it in **Project Settings > Graphics** and in **Quality** for every level.
 5. Switch the platform to Android: **File > Build Profiles**.
-6. Run **GodSim > Setup > Apply Android Project Settings**, then **GodSim > Setup > Create Boot Scene**.
+6. Run **WorldSim > Setup > Apply Android Project Settings**, then **WorldSim > Setup > Create Boot Scene**.
 7. Run the tests: **Window > General > Test Runner > EditMode > Run All**.
-8. Build: **GodSim > Build > Android Release (IL2CPP ARM64)**.
+8. Build: **WorldSim > Build > Android Release (IL2CPP ARM64)**.
 
 To build from the command line:
 
 ```
 Unity -batchmode -quit -projectPath . -buildTarget Android \
-      -executeMethod GodSim.EditorTools.GodSimBuild.BuildReleaseCI -logFile build.log
+      -executeMethod WorldSim.EditorTools.WorldSimBuild.BuildReleaseCI -logFile build.log
 ```
 
 The command exits with code 0 if the build succeeds and 1 if it fails.
