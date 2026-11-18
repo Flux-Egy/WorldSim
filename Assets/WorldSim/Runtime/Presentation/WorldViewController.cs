@@ -49,19 +49,12 @@ namespace WorldSim.Presentation
         SpriteRenderer _terrain;
         SpriteRenderer _selection;
 
+        bool _ready;
+
         void Start()
         {
-            _cam = Camera.main;
-            // Pixel Perfect Camera drives orthographicSize itself, which fights free pinch zoom.
-            // Integer-step pixel-perfect zoom returns with the graphics settings (§7.2).
-            var ppc = _cam.GetComponent<PixelPerfectCamera>();
-            if (ppc != null) ppc.enabled = false;
-            _rig = new CameraRig(_cam);
-
-            CreateGlobalLight();
-            _terrain = new GameObject("Terrain").AddComponent<SpriteRenderer>();
-            _selection = CreateSelectionMarker();
-
+            // HUD first: if a later step fails, the player sees the error instead of a blank screen
+            // (device run 2026-11-18 failed in CreateGlobalLight before the HUD existed).
             _hud = new WorldHud(transform);
             _hud.NewWorldClicked += NewWorld;
             _hud.SizeClicked += CycleSize;
@@ -71,13 +64,33 @@ namespace WorldSim.Presentation
             UpdateSizeLabel();
             if (PlayerPrefs.GetInt(NoticePrefKey, 0) != 1) _hud.ShowNotice(); // plan A3: first launch
 
-            EnhancedTouchSupport.Enable();
-            _gestures.PixelScale = Screen.dpi > 0 ? Screen.dpi / 160f : 2f;
+            try
+            {
+                _cam = Camera.main;
+                // Pixel Perfect Camera drives orthographicSize itself, which fights free pinch zoom.
+                // Integer-step pixel-perfect zoom returns with the graphics settings (§7.2).
+                var ppc = _cam.GetComponent<PixelPerfectCamera>();
+                if (ppc != null) ppc.enabled = false;
+                _rig = new CameraRig(_cam);
 
-            _em = World.DefaultGameObjectInjectionWorld.EntityManager;
-            _mapQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<WorldMap>());
+                CreateGlobalLight();
+                _terrain = new GameObject("Terrain").AddComponent<SpriteRenderer>();
+                _selection = CreateSelectionMarker();
 
-            RequestWorld(LoadSeed(), CurrentSize);
+                EnhancedTouchSupport.Enable();
+                _gestures.PixelScale = Screen.dpi > 0 ? Screen.dpi / 160f : 2f;
+
+                _em = World.DefaultGameObjectInjectionWorld.EntityManager;
+                _mapQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<WorldMap>());
+
+                RequestWorld(LoadSeed(), CurrentSize);
+                _ready = true;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogException(e);
+                _hud.SetTitle("WorldSim: startup error\n" + e.GetType().Name + ": " + e.Message);
+            }
         }
 
         void OnDestroy()
@@ -88,6 +101,7 @@ namespace WorldSim.Presentation
 
         void Update()
         {
+            if (!_ready) return;
             _hud.Tick();
             RefreshWorldIfChanged();
             if (_map.Version == 0) return;
@@ -224,7 +238,7 @@ namespace WorldSim.Presentation
         /// <summary>
         /// URP's 2D renderer clears the light texture to black when no Global light exists
         /// (RendererLighting.cs, URP 17.3), which would render lit sprites black. Created inactive
-        /// so Awake/OnEnable register it as Global from the start; Awake targets all sorting layers.
+        /// so Awake/OnEnable register it as Global from the start.
         /// </summary>
         void CreateGlobalLight()
         {
@@ -232,15 +246,17 @@ namespace WorldSim.Presentation
             go.SetActive(false);
             go.transform.SetParent(transform, false);
             var light = go.AddComponent<Light2D>();
-            light.lightType = Light2D.LightType.Global;
-            light.intensity = 1f;
-            light.color = Color.white;
-            // Explicit, not via Awake: Awake only fills the list when it is null, and a component
-            // added at runtime may get an empty (non-null) serialized array instead.
+            // Order matters (URP 17.3): the lightType setter calls
+            // Light2DManager.ErrorIfDuplicateGlobalLight, which iterates targetSortingLayers. On an
+            // inactive, just-added light that array is still null (Awake fills it later), so the
+            // layers must be set first, otherwise NullReferenceException (seen on device).
             SortingLayer[] layers = SortingLayer.layers;
             var ids = new int[layers.Length];
             for (int i = 0; i < layers.Length; i++) ids[i] = layers[i].id;
             light.targetSortingLayers = ids;
+            light.lightType = Light2D.LightType.Global;
+            light.intensity = 1f;
+            light.color = Color.white;
             go.SetActive(true);
         }
 
