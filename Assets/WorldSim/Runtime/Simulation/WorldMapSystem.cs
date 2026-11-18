@@ -83,6 +83,14 @@ namespace WorldSim.Simulation
                 return;
             }
 
+            // A new world starts empty: remove every creature and reset life counters (Beta B3).
+            state.EntityManager.DestroyEntity(state.GetEntityQuery(ComponentType.ReadOnly<Life.Creature>()));
+            if (SystemAPI.TryGetSingletonRW<Life.LifeState>(out var life))
+            {
+                uint next = life.ValueRO.NextStableId;
+                life.ValueRW = new Life.LifeState { NextStableId = next };
+            }
+
             ref WorldMap map = ref SystemAPI.GetSingletonRW<WorldMap>().ValueRW;
             if (map.Tiles.IsCreated) map.Tiles.Dispose();
 

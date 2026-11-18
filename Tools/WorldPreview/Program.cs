@@ -20,6 +20,7 @@ static class Program
     {
         if (args.Length == 2 && args[0] == "icons") return IconSheet(args[1]);
         if (args.Length == 2 && args[0] == "sprites") return SpriteSheet(args[1]);
+        if (args.Length == 2 && args[0] == "creatures") return CreatureSheet(args[1]);
         if (args.Length < 3) { Console.Error.WriteLine("usage: WorldPreview <seedHex> <size> <out.png> [cropX cropY cropTiles]"); return 2; }
         ulong seed = Convert.ToUInt64(args[0].Replace("0x", ""), 16);
         int size = int.Parse(args[1]);
@@ -76,6 +77,30 @@ static class Program
             for (int y = 0; y < s; y++) for (int x = 0; x < s; x++) if (ic[y * s + x] != 0) px[(y + 1) * w + k * (s + 2) + 1 + x] = ic[y * s + x];
         }
         WritePng(path, px, w, 0, 0, w, s + 2, 1, 6);
+        return 0;
+    }
+
+    /// <summary>Every species (columns) x animation frame (rows) on grass, 8x scale.</summary>
+    static int CreatureSheet(string path)
+    {
+        int c = WorldSim.Render.CreatureSprites.Cell, n = WorldSim.Core.Life.SpeciesTable.All.Length;
+        int w = n * (c + 2), h = 2 * (c + 2);
+        var px = new uint[w * h];
+        for (int i = 0; i < px.Length; i++) px[i] = Rgba.Pack(104, 174, 64);
+        uint[] atlas = WorldSim.Render.CreatureSprites.Build();
+        for (int s = 0; s < n; s++)
+            for (int f = 0; f < 2; f++)
+            {
+                int start = (s * 2 + f) * c * c, ox = s * (c + 2) + 1, oy = (1 - f) * (c + 2) + 1;
+                for (int y = 0; y < c; y++) for (int x = 0; x < c; x++)
+                {
+                    uint col = atlas[start + y * c + x];
+                    if (col == 0) continue;
+                    int i = (oy + y) * w + ox + x;
+                    px[i] = Rgba.A(col) < 255 ? Rgba.Darken(px[i], 74) : col;
+                }
+            }
+        WritePng(path, px, w, 0, 0, w, h, 1, 8);
         return 0;
     }
 

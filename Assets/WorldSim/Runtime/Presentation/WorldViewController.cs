@@ -4,7 +4,10 @@ using UnityEngine;
 using UnityEngine.InputSystem.EnhancedTouch;
 using UnityEngine.Rendering.Universal;
 using WorldSim.Core;
+using WorldSim.Core.Life;
 using WorldSim.Presentation.Input;
+using WorldSim.Presentation.Life;
+using WorldSim.Simulation.Life;
 using WorldSim.Presentation.Terrain;
 using WorldSim.Presentation.UI;
 using WorldSim.Simulation;
@@ -55,6 +58,18 @@ namespace WorldSim.Presentation
         TerrainView _terrainView;
         SpriteRenderer _selection;
 
+        // ---- Life (Beta B3) ----
+        CreatureView _creatureView;
+        SpeciesId? _spawn;
+        int _lastSpawnX = int.MinValue, _lastSpawnY = int.MinValue;
+        float _lastSpawnTime;
+        Entity _selectedCreature = Entity.Null;
+        float _nextUiRefresh;
+        bool _paused;
+        int _speedIndex;
+        static readonly float[] Speeds = { 1f, 2f, 5f };
+        EntityQuery _lifeQuery, _clockQuery;
+
         // ---- Terrain brushes (Beta B2) ----
         static readonly int[] BrushRadii = { 0, 1, 3, 6, 10 };
         const string BrushPrefKey = "worldsim.brushIndex";
@@ -86,6 +101,10 @@ namespace WorldSim.Presentation
             _blank = Mathf.Clamp(PlayerPrefs.GetInt("worldsim.blank", 0), 0, BlankOptions.Length - 1);
             _hud.NoticeAccepted += () => { PlayerPrefs.SetInt(NoticePrefKey, 1); PlayerPrefs.Save(); };
             _hud.ToolChanged += OnToolChanged;
+            _hud.SpawnChanged += sp => { _spawn = sp; _lastSpawnX = int.MinValue; if (sp.HasValue) { _hud.HideInfo(); _selectedCreature = Entity.Null; } };
+            _hud.PauseClicked += TogglePause;
+            _hud.SpeedClicked += CycleSpeed;
+            _hud.TimeLabelsRequested += UpdateTimeLabels;
             _hud.BrushSizeClicked += CycleBrush;
             _hud.BrushSizeLabelRequested += UpdateBrushLabel;
             _brushIndex = Mathf.Clamp(PlayerPrefs.GetInt(BrushPrefKey, 2), 0, BrushRadii.Length - 1);
@@ -113,6 +132,9 @@ namespace WorldSim.Presentation
                 _em = World.DefaultGameObjectInjectionWorld.EntityManager;
                 _mapQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<WorldMap>());
                 _editQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<TerrainEditQueue>());
+                _lifeQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<LifeState>());
+                _clockQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<WorldSim.Simulation.SimulationClock>());
+                _creatureView = new CreatureView();
 
                 RequestWorld(LoadSeed(), CurrentSize);
                 _ready = true;
@@ -143,7 +165,13 @@ namespace WorldSim.Presentation
             if (_gestures.PinchScale != 1f)
                 _rig.ZoomAt(_gestures.PinchScale, new Vector2(_gestures.PinchCenterX, _gestures.PinchCenterY));
 
-            if (_tool.HasValue)
+            if (_spawn.HasValue)
+            {
+                if (_gestures.Current == GestureRecognizer.State.Pinching && (_gestures.PanDx != 0f || _gestures.PanDy != 0f))
+                    _rig.PanScreen(_gestures.PanDx, _gestures.PanDy);
+                UpdateSpawn();
+            }
+            else if (_tool.HasValue)
             {
                 // Brush mode: one finger paints; two fingers still pan and zoom.
                 if (_gestures.Current == GestureRecognizer.State.Pinching && (_gestures.PanDx != 0f || _gestures.PanDy != 0f))
@@ -162,6 +190,8 @@ namespace WorldSim.Presentation
 
             _rig.Tick(Time.unscaledDeltaTime);
             _terrainView.Tick(_cam, Time.unscaledTime);
+            _creatureView.Tick(_em, _cam, Time.unscaledTime, Time.unscaledDeltaTime);
+            if (Time.unscaledTime >= _nextUiRefresh) { _nextUiRefresh = Time.unscaledTime + 0.25f; RefreshLifeUi(); } // §12.4: <=4 Hz
         }
 
         void CollectTouches()
@@ -212,6 +242,14 @@ namespace WorldSim.Presentation
         void Select(Vector2 screen, bool longPress)
         {
             Vector3 w = _rig.ScreenToWorld(screen);
+            if (CreatureView.FindNearest(_em, new Vector2(w.x, w.y + 0.3f), 1.2f, out Entity creature))
+            {
+                _selectedCreature = creature;
+                _selection.enabled = false;
+                RefreshLifeUi();
+                return;
+            }
+            _selectedCreature = Entity.Null;
             int x = Mathf.FloorToInt(w.x), y = Mathf.FloorToInt(w.y);
             if (!_map.InBounds(x, y)) { _selection.enabled = false; _hud.HideInfo(); return; }
 
@@ -241,6 +279,68 @@ namespace WorldSim.Presentation
             if ((f & ResourceFlags.Gold) != 0) parts.Add("gold");
             if ((f & ResourceFlags.Gems) != 0) parts.Add("gems");
             return string.Join(", ", parts);
+        }
+
+        void UpdateSpawn()
+        {
+            if (!_gestures.IsSingleFingerDown) { _lastSpawnX = int.MinValue; return; }
+            Vector3 w = _rig.ScreenToWorld(new Vector2(_gestures.PrimaryX, _gestures.PrimaryY));
+            int x = Mathf.FloorToInt(w.x), y = Mathf.FloorToInt(w.y);
+            if (!_map.InBounds(x, y)) return;
+            float now = Time.unscaledTime;
+            bool moved = Mathf.Abs(x - _lastSpawnX) + Mathf.Abs(y - _lastSpawnY) >= 2;
+            if (!moved && now - _lastSpawnTime < 0.35f) return;
+            _lastSpawnX = x; _lastSpawnY = y; _lastSpawnTime = now;
+            Entity q = _lifeQuery.GetSingletonEntity();
+            _em.GetBuffer<SpawnCreatureCommand>(q).Add(new SpawnCreatureCommand { Species = _spawn.Value, Tile = new Unity.Mathematics.int2(x, y) });
+        }
+
+        void TogglePause()
+        {
+            _paused = !_paused;
+            var group = World.DefaultGameObjectInjectionWorld.GetExistingSystemManaged<WorldSim.Simulation.SimulationTickGroup>();
+            if (group != null) group.Enabled = !_paused;
+            UpdateTimeLabels();
+        }
+
+        void CycleSpeed()
+        {
+            _speedIndex = (_speedIndex + 1) % Speeds.Length;
+            var group = World.DefaultGameObjectInjectionWorld.GetExistingSystemManaged<WorldSim.Simulation.SimulationTickGroup>();
+            if (group != null) group.SetTickSeconds(WorldSim.Simulation.SimulationTickGroup.DefaultTickSeconds / Speeds[_speedIndex]);
+            UpdateTimeLabels();
+        }
+
+        void UpdateTimeLabels() => _hud.SetTimeLabels(_paused ? "Play" : "Pause", $"Speed x{Speeds[_speedIndex]:0}");
+
+        /// <summary>Population in the title and the selected creature's panel, refreshed at most 4x/s.</summary>
+        void RefreshLifeUi()
+        {
+            if (_lifeQuery.IsEmpty || _map.Version == 0) return;
+            LifeState life = _lifeQuery.GetSingleton<LifeState>();
+            _hud.SetTitle($"seed 0x{_map.Seed:X}   {_map.Width}x{_map.Height}   hash {_map.Hash:X16}\n" +
+                          $"population {life.Population}   peoples {life.Peoples}   births {life.Births}   deaths {life.Deaths}");
+
+            if (_selectedCreature == Entity.Null) return;
+            if (!_em.Exists(_selectedCreature) || !_em.HasComponent<Creature>(_selectedCreature))
+            {
+                _hud.ShowInfo("This creature has died.");
+                _selectedCreature = Entity.Null;
+                return;
+            }
+            Creature c = _em.GetComponentData<Creature>(_selectedCreature);
+            Vitals v = _em.GetComponentData<Vitals>(_selectedCreature);
+            Brain b = _em.GetComponentData<Brain>(_selectedCreature);
+            TraitSet traits = _em.GetComponentData<CreatureTraits>(_selectedCreature).Set;
+            uint tick = (uint)_clockQuery.GetSingleton<WorldSim.Simulation.SimulationClock>().Tick;
+            string name = _em.HasComponent<CreatureName>(_selectedCreature)
+                ? _em.GetComponentData<CreatureName>(_selectedCreature).Value.ToString() + ", " : "";
+            int years = (int)((tick - c.BornTick) / 600);
+            var list = new List<string>();
+            for (int i = 0; i < (int)Trait.Count; i++) if (traits.Has((Trait)i)) list.Add(((Trait)i).ToString());
+            _hud.ShowInfo($"{name}{c.Species} ({(c.Sex == 0 ? "female" : "male")}), {years} years   {b.Action}\n" +
+                          $"health {v.Hp}/{v.MaxHp}   hunger {v.Hunger * 100 / 255}%   thirst {v.Thirst * 100 / 255}%   tired {v.Fatigue * 100 / 255}%\n" +
+                          $"traits: {(list.Count == 0 ? "none" : string.Join(", ", list))}");
         }
 
         void OnToolChanged(WorldHud.ToolChoice? tool)

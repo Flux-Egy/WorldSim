@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using WorldSim.Core;
+using WorldSim.Core.Life;
 using WorldSim.Render;
 
 namespace WorldSim.Presentation.UI
@@ -53,6 +54,13 @@ namespace WorldSim.Presentation.UI
         Text _brushSizeLabel;
         Image _selectedToolImage;
 
+        /// <summary>Species to place with the finger (Beta B3), or null to stop spawning.</summary>
+        public event Action<SpeciesId?> SpawnChanged;
+        public event Action PauseClicked, SpeedClicked;
+        public event Action TimeLabelsRequested;
+        Text _pauseLabel, _speedLabel;
+        Image _selectedSpawnImage;
+
         public event Action NewWorldClicked;
         public event Action SizeClicked;
         public event Action LandClicked, ClimateClicked, MountainsClicked, BlankClicked;
@@ -67,7 +75,7 @@ namespace WorldSim.Presentation.UI
         {
             new TabDef { Name = "World", Icon = Icon.Globe, Milestone = null },
             new TabDef { Name = "Terrain", Icon = Icon.Mountain, Milestone = null },
-            new TabDef { Name = "Life", Icon = Icon.People, Milestone = "Creatures and peoples arrive in Beta milestone B3." },
+            new TabDef { Name = "Life", Icon = Icon.People, Milestone = null },
             new TabDef { Name = "Nations", Icon = Icon.Castle, Milestone = "Kingdoms, eras and history arrive in Beta milestone B4." },
             new TabDef { Name = "Powers", Icon = Icon.Storm, Milestone = "Powers and disasters arrive in Beta milestone B5." },
             new TabDef { Name = "Settings", Icon = Icon.Gear, Milestone = "Settings arrive in Beta milestone B8." },
@@ -214,6 +222,9 @@ namespace WorldSim.Presentation.UI
             _brushSizeLabel = null;
             _selectedToolImage = null;
             ToolChanged?.Invoke(null); // switching tabs always returns to inspect mode
+            SpawnChanged?.Invoke(null);
+            _pauseLabel = _speedLabel = null;
+            _selectedSpawnImage = null;
             _placeholder.text = Tabs[index].Milestone ?? "";
             if (index == 0)
             {
@@ -230,6 +241,19 @@ namespace WorldSim.Presentation.UI
             else if (index == 1)
             {
                 BuildTerrainPalette();
+            }
+            else if (index == 2)
+            {
+                RectTransform row = BuildScrollRow(0f);
+                _pauseLabel = AddRowButton(row, GetIconSprite(Icon.Pause), "Pause", () => PauseClicked?.Invoke());
+                _speedLabel = AddRowButton(row, GetIconSprite(Icon.Fast), "Speed", () => SpeedClicked?.Invoke());
+                foreach (SpeciesId id in SpeciesTable.All)
+                {
+                    SpeciesId species = id;
+                    AddSelectableButton(row, GetCreatureSprite(id), id.ToString(),
+                        on => SpawnChanged?.Invoke(on ? species : (SpeciesId?)null));
+                }
+                TimeLabelsRequested?.Invoke();
             }
         }
 
@@ -325,6 +349,47 @@ namespace WorldSim.Presentation.UI
             Fill(text.rectTransform, 2, 8, -2, 0);
             text.text = label;
             return text;
+        }
+
+        public void SetTimeLabels(string pause, string speed)
+        {
+            if (_pauseLabel != null) _pauseLabel.text = pause;
+            if (_speedLabel != null) _speedLabel.text = speed;
+        }
+
+        /// <summary>Toggle button: one selected per row; tapping the selected one switches it off.</summary>
+        void AddSelectableButton(RectTransform row, Sprite icon, string label, Action<bool> onToggle)
+        {
+            Text t = AddRowButton(row, icon, label, () => { });
+            var img = t.transform.parent.GetComponent<Image>();
+            var btn = t.transform.parent.GetComponent<Button>();
+            btn.onClick.RemoveAllListeners();
+            btn.onClick.AddListener(() =>
+            {
+                bool deselect = _selectedSpawnImage == img;
+                if (_selectedSpawnImage != null) _selectedSpawnImage.color = ButtonColor;
+                _selectedSpawnImage = deselect ? null : img;
+                if (!deselect) img.color = TabActive;
+                onToggle(!deselect);
+            });
+        }
+
+        readonly Dictionary<SpeciesId, Sprite> _creatureIcons = new Dictionary<SpeciesId, Sprite>();
+        uint[] _creatureAtlas;
+
+        Sprite GetCreatureSprite(SpeciesId id)
+        {
+            if (_creatureIcons.TryGetValue(id, out var s)) return s;
+            _creatureAtlas ??= CreatureSprites.Build();
+            int c = CreatureSprites.Cell, start = CreatureSprites.CellIndex(id, 0) * CreatureSprites.CellPixels;
+            var px = new uint[c * c];
+            for (int i = 0; i < px.Length; i++) { uint v = _creatureAtlas[start + i]; px[i] = Rgba.A(v) < 255 ? 0u : v; } // no shadow in icons
+            var tex = new Texture2D(c, c, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
+            tex.SetPixelData(px, 0);
+            tex.Apply(false, true);
+            s = Sprite.Create(tex, new Rect(0, 0, c, c), new Vector2(0.5f, 0.5f), c);
+            _creatureIcons[id] = s;
+            return s;
         }
 
         void AddPaletteButton(RectTransform row, Sprite icon, string label, ToolChoice choice)
