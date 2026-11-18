@@ -22,6 +22,14 @@ namespace WorldSim.EditorTools
     {
         const string OutputDir = "Builds/Android";
 
+        // Fixed TEST signing key, committed on purpose: every CI build used to get a fresh random
+        // debug key, so Android refused to install a new build over the previous one
+        // (INSTALL_FAILED_UPDATE_INCOMPATIBLE, seen on device 2026-11-18). This key is public and
+        // must never sign a store release; store builds will use a key from GitHub secrets.
+        const string TestKeystore = "ci/worldsim-test.keystore";
+        const string TestKeyAlias = "worldsim-test";
+        const string TestKeyPassword = "worldsim-test";
+
         [MenuItem("WorldSim/Build/Android Release (IL2CPP ARM64)")]
         public static void BuildReleaseMenu() => Build(isModder: false);
 
@@ -59,6 +67,8 @@ namespace WorldSim.EditorTools
                 PlayerSettings.SetManagedStrippingLevel(android,
                     isModder ? ManagedStrippingLevel.Minimal : ManagedStrippingLevel.High);
 
+                ConfigureTestSigning();
+
                 var options = new BuildPlayerOptions
                 {
                     scenes = scenes,
@@ -82,6 +92,23 @@ namespace WorldSim.EditorTools
                 PlayerSettings.Android.targetArchitectures = prevArch;
                 PlayerSettings.SetManagedStrippingLevel(android, prevStripping);
             }
+        }
+
+        static void ConfigureTestSigning()
+        {
+            string path = System.IO.Path.GetFullPath(TestKeystore);
+            if (!System.IO.File.Exists(path))
+            {
+                Debug.LogWarning("[WorldSim] " + TestKeystore + " not found; Unity will sign with a random debug key.");
+                PlayerSettings.Android.useCustomKeystore = false;
+                return;
+            }
+            PlayerSettings.Android.useCustomKeystore = true;
+            PlayerSettings.Android.keystoreName = path;
+            PlayerSettings.Android.keystorePass = TestKeyPassword;
+            PlayerSettings.Android.keyaliasName = TestKeyAlias;
+            PlayerSettings.Android.keyaliasPass = TestKeyPassword;
+            Debug.Log("[WorldSim] Signing with the committed TEST key (" + TestKeystore + ").");
         }
 
         static void ReportToGameCI(BuildReport report)
