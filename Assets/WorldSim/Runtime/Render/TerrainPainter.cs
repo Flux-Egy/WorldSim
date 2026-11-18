@@ -154,6 +154,109 @@ namespace WorldSim.Render
             return col;
         }
 
+        // ---------------------------------------------------------------- overview (far zoom)
+        /// <summary>
+        /// Pixels per tile of the clean far-zoom texture, or 0 when the detail texture is already
+        /// coarse enough to serve as the overview (large maps).
+        /// </summary>
+        public static int OverviewPixelsPerTile(int widthTiles, int heightTiles)
+        {
+            int detail = PixelsPerTileFor(widthTiles, heightTiles);
+            return detail >= 8 ? 2 : detail >= 4 ? 1 : 0;
+        }
+
+        /// <summary>Canopy colour of a tree type, used to tint forests in the far view.</summary>
+        public static uint TreeTint(Decoration d)
+        {
+            switch (d)
+            {
+                case Decoration.PineTree: return Rgba.Pack(40, 98, 66);
+                case Decoration.SnowPine: return Rgba.Pack(150, 176, 168);
+                case Decoration.BirchTree: return Rgba.Pack(126, 180, 80);
+                case Decoration.PalmTree: return Rgba.Pack(66, 150, 60);
+                case Decoration.JungleTree: return Rgba.Pack(28, 100, 38);
+                case Decoration.DeadTree: return Rgba.Pack(110, 92, 74);
+                case Decoration.GlowTree: return Rgba.Pack(60, 160, 180);
+                case Decoration.SwampTree: return Rgba.Pack(72, 92, 50);
+                case Decoration.AcaciaTree: return Rgba.Pack(110, 146, 56);
+                default: return Rgba.Pack(56, 124, 46);
+            }
+        }
+
+        /// <summary>
+        /// One tile row of the far-zoom texture: calm colours, relief light, forests as darker
+        /// canopy, a light coastal band, no per-pixel noise or sprites, so the whole world reads
+        /// cleanly when zoomed out instead of shimmering.
+        /// </summary>
+        public static void PaintOverviewRow<TT, TP>(ref TT tiles, ref TP pixels, int w, int h, int opp, int tileRow)
+            where TT : struct, ITileSource where TP : struct, IPixelTarget
+        {
+            int texW = w * opp;
+            for (int tx = 0; tx < w; tx++)
+            {
+                int idx = tileRow * w + tx;
+                TileData t = tiles.Get(idx);
+                Biome b = (Biome)t.BiomeId;
+                uint c;
+                if (IsWater(b))
+                {
+                    int depthT = (t.Height - 40) * 256 / (WorldGenerator.SeaLevel - 40);
+                    if (depthT < 0) depthT = 0;
+                    if (depthT > 256) depthT = 256;
+                    c = Rgba.Mix(Rgba.Pack(22, 62, 140), Rgba.Pack(70, 148, 222), depthT * depthT / 256);
+                    if (TouchesLand(ref tiles, tx, tileRow, w, h)) c = Rgba.Pack(120, 186, 230);
+                }
+                else
+                {
+                    c = BaseColor(b);
+                    Decoration d = (Decoration)t.DecorationId;
+                    if (TileData.IsTree(d)) c = Rgba.Mix(c, TreeTint(d), 170);
+                    int upLeft = (tx > 0 && tileRow < h - 1) ? tiles.Get(idx + w - 1).Height : t.Height;
+                    int relief = t.Height - upLeft;
+                    if (relief > 8) relief = 8;
+                    if (relief < -8) relief = -8;
+                    c = Rgba.Shift(c, (t.Height - 150) / 7 + relief * 2);
+                }
+                for (int py = 0; py < opp; py++)
+                    for (int px = 0; px < opp; px++)
+                        pixels.Set((tileRow * opp + py) * texW + tx * opp + px, c);
+            }
+        }
+
+        static bool TouchesLand<TT>(ref TT tiles, int x, int y, int w, int h) where TT : struct, ITileSource
+        {
+            if (x > 0 && !IsWater(tiles.Get(y * w + x - 1).Biome)) return true;
+            if (x < w - 1 && !IsWater(tiles.Get(y * w + x + 1).Biome)) return true;
+            if (y > 0 && !IsWater(tiles.Get((y - 1) * w + x).Biome)) return true;
+            if (y < h - 1 && !IsWater(tiles.Get((y + 1) * w + x).Biome)) return true;
+            return false;
+        }
+
+        // ---------------------------------------------------------------- water waves (near zoom)
+        public const int WaveTileSize = 32; // texels; 4x4 tiles at 8 px per tile
+
+        /// <summary>
+        /// A repeating, mostly transparent wave tile: short light crests. Two copies scroll over the
+        /// water (masked to water tiles) at different speeds when the camera is close.
+        /// </summary>
+        public static uint[] BuildWaveTile(int variant)
+        {
+            var px = new uint[WaveTileSize * WaveTileSize];
+            uint crest = Rgba.Pack(210, 236, 250, 200), soft = Rgba.Pack(170, 214, 244, 140);
+            for (int i = 0; i < 9; i++)
+            {
+                uint hs = PixelHash(i * 13 + variant * 101, i * 7 + 5);
+                int x0 = (int)(hs % WaveTileSize), y0 = (int)((hs >> 8) % WaveTileSize), len = 3 + (int)((hs >> 16) % 4);
+                for (int k = 0; k < len; k++)
+                {
+                    int x = (x0 + k) % WaveTileSize;
+                    int y = (y0 + (k == 0 || k == len - 1 ? 0 : 1)) % WaveTileSize; // little arc
+                    px[y * WaveTileSize + x] = k == 0 || k == len - 1 ? soft : crest;
+                }
+            }
+            return px;
+        }
+
         // ---------------------------------------------------------------- decoration pass
         /// <summary>
         /// Draws all decorations, from the top row of the map down, so sprites lower on screen

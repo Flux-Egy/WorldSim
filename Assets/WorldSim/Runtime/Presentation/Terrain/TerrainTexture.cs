@@ -49,6 +49,38 @@ namespace WorldSim.Presentation.Terrain
             tex.Apply(false, false); // stays readable: terrain painting (B2) repaints regions
         }
 
+        /// <summary>Paints the clean far-zoom texture (<paramref name="opp"/> pixels per tile).</summary>
+        public static void PaintOverview(Texture2D tex, NativeArray<TileData> tiles, int width, int height, int opp)
+        {
+            var job = new OverviewJob { Tiles = new NativeTiles { A = tiles }, Pixels = new NativePixels { A = tex.GetPixelData<uint>(0) }, W = width, H = height, Opp = opp };
+            job.Schedule(height, 8).Complete();
+            tex.Apply(false, false);
+        }
+
+        /// <summary>
+        /// One texel per tile: opaque for open water (water with no land among its 8 neighbours),
+        /// transparent elsewhere. Used as the SpriteMask for the wave layers.
+        /// </summary>
+        public static void PaintOpenWaterMask(Texture2D tex, NativeArray<TileData> tiles, int width, int height)
+        {
+            NativeArray<uint> px = tex.GetPixelData<uint>(0);
+            uint on = Rgba.Pack(255, 255, 255, 255);
+            for (int y = 0; y < height; y++)
+                for (int x = 0; x < width; x++)
+                {
+                    bool open = tiles[y * width + x].IsWater;
+                    for (int dy = -1; dy <= 1 && open; dy++)
+                        for (int dx = -1; dx <= 1; dx++)
+                        {
+                            int nx = x + dx, ny = y + dy;
+                            if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+                            if (!tiles[ny * width + nx].IsWater) { open = false; break; }
+                        }
+                    px[y * width + x] = open ? on : 0u;
+                }
+            tex.Apply(false, false);
+        }
+
         /// <summary>Releases the sprite atlas (call when the world view is destroyed).</summary>
         public static void DisposeAtlas()
         {
@@ -82,6 +114,16 @@ namespace WorldSim.Presentation.Terrain
             public int W, H, Ppt;
 
             public void Execute(int tileRow) => TerrainPainter.PaintGroundRow(ref Tiles, ref Pixels, W, H, Ppt, tileRow);
+        }
+
+        [BurstCompile]
+        struct OverviewJob : IJobParallelFor
+        {
+            public NativeTiles Tiles;
+            public NativePixels Pixels;
+            public int W, H, Opp;
+
+            public void Execute(int tileRow) => TerrainPainter.PaintOverviewRow(ref Tiles, ref Pixels, W, H, Opp, tileRow);
         }
 
         [BurstCompile]

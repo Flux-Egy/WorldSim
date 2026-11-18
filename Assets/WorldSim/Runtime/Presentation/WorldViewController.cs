@@ -45,8 +45,7 @@ namespace WorldSim.Presentation
         uint _shownVersion;
         WorldMap _map;
 
-        Texture2D _terrainTex;
-        SpriteRenderer _terrain;
+        TerrainView _terrainView;
         SpriteRenderer _selection;
 
         bool _ready;
@@ -75,7 +74,7 @@ namespace WorldSim.Presentation
                 _rig = new CameraRig(_cam);
 
                 CreateGlobalLight();
-                _terrain = new GameObject("Terrain").AddComponent<SpriteRenderer>();
+                _terrainView = new TerrainView();
                 _selection = CreateSelectionMarker();
 
                 EnhancedTouchSupport.Enable();
@@ -97,8 +96,7 @@ namespace WorldSim.Presentation
         void OnDestroy()
         {
             if (EnhancedTouchSupport.enabled) EnhancedTouchSupport.Disable();
-            if (_terrainTex != null) Destroy(_terrainTex);
-            TerrainTexture.DisposeAtlas();
+            _terrainView?.Dispose();
         }
 
         void Update()
@@ -122,6 +120,7 @@ namespace WorldSim.Presentation
             if (_gestures.DoubleTap) _rig.GlideTo(_rig.ScreenToWorld(at));
 
             _rig.Tick(Time.unscaledDeltaTime);
+            _terrainView.Tick(_cam, Time.unscaledTime);
         }
 
         void CollectTouches()
@@ -149,15 +148,7 @@ namespace WorldSim.Presentation
             _map = map;
             _shownVersion = map.Version;
 
-            int ppt = TerrainTexture.PixelsPerTileFor(map.Width, map.Height);
-            if (_terrainTex == null || _terrainTex.width != map.Width * ppt || _terrainTex.height != map.Height * ppt)
-            {
-                if (_terrainTex != null) Destroy(_terrainTex);
-                _terrainTex = TerrainTexture.Create(map.Width, map.Height);
-            }
-            TerrainTexture.Paint(_terrainTex, map.Tiles, map.Width, map.Height);
-            _terrain.sprite = Sprite.Create(_terrainTex, new Rect(0, 0, _terrainTex.width, _terrainTex.height),
-                Vector2.zero, ppt, 0, SpriteMeshType.FullRect);
+            _terrainView.Build(map);
             _rig.SetWorld(map.Width, map.Height);
             _selection.enabled = false;
             _hud.HideInfo();

@@ -48,6 +48,14 @@ static class Program
         Console.WriteLine($"  decorated tiles: {100.0 * (tiles.Length - decos[0]) / tiles.Length:F1}%");
 
         WritePng(args[2], px, texW, 0, 0, texW, texW, Math.Max(1, texW / 1024));
+        int opp = TerrainPainter.OverviewPixelsPerTile(size, size);
+        if (opp > 0)
+        {
+            int ow = size * opp;
+            var ov = new uint[ow * ow]; var ovp = new ArrayPixels { A = ov };
+            for (int row = 0; row < size; row++) TerrainPainter.PaintOverviewRow(ref t, ref ovp, size, size, opp, row);
+            WritePng(Path.ChangeExtension(args[2], ".overview.png"), ov, ow, 0, 0, ow, ow, 1);
+        }
         if (args.Length >= 6)
         {
             int cx = int.Parse(args[3]) * ppt, cy = int.Parse(args[4]) * ppt, cs = int.Parse(args[5]) * ppt;
