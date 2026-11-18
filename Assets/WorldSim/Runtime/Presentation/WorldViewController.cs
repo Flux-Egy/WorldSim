@@ -9,6 +9,7 @@ using WorldSim.Presentation.Terrain;
 using WorldSim.Presentation.UI;
 using WorldSim.Simulation;
 using ETouch = UnityEngine.InputSystem.EnhancedTouch.Touch;
+using TileData = WorldSim.Core.TileData; // URP also defines UnityEngine.Rendering.Universal.TileData
 using ETouchPhase = UnityEngine.InputSystem.TouchPhase;
 
 namespace WorldSim.Presentation
