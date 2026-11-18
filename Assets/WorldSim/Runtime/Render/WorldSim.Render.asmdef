@@ -1,0 +1,13 @@
+{
+  "name": "WorldSim.Render",
+  "rootNamespace": "WorldSim.Render",
+  "references": [
+    "WorldSim.Core"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "autoReferenced": false,
+  "noEngineReferences": true
+}

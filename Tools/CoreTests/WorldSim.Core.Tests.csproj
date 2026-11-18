@@ -16,6 +16,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../Assets/WorldSim/Runtime/Core/**/*.cs" LinkBase="Core" />
+    <Compile Include="../../Assets/WorldSim/Runtime/Render/**/*.cs" LinkBase="Render" />
     <Compile Include="../../Assets/WorldSim/Runtime/Presentation/Input/GestureRecognizer.cs" LinkBase="Presentation" />
     <Compile Include="../../Assets/WorldSim/Tests/EditMode/**/*.cs" LinkBase="Tests" />
   </ItemGroup>

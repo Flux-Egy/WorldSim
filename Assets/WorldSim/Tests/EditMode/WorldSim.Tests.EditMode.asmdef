@@ -3,6 +3,7 @@
   "rootNamespace": "WorldSim.Tests",
   "references": [
     "WorldSim.Core",
+    "WorldSim.Render",
     "WorldSim.Presentation",
     "UnityEngine.TestRunner",
     "UnityEditor.TestRunner"

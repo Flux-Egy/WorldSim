@@ -18,6 +18,8 @@ namespace WorldSim.Core
         AiNoise = 8,
         Disasters = 9,
         Economy = 10,
+        Anomaly = 11,      // fictional-biome regions
+        Decoration = 12,   // trees, plants, rocks
     }
 
     /// <summary>The single seed a world is generated from (§4.3).</summary>

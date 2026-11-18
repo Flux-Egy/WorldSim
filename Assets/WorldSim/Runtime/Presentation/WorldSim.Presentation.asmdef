@@ -3,6 +3,7 @@
   "rootNamespace": "WorldSim.Presentation",
   "references": [
     "WorldSim.Core",
+    "WorldSim.Render",
     "WorldSim.Simulation",
     "WorldSim.ModAPI",
     "WorldSim.Modding",

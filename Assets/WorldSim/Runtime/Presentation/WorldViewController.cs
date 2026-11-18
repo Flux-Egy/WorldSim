@@ -97,6 +97,7 @@ namespace WorldSim.Presentation
         {
             if (EnhancedTouchSupport.enabled) EnhancedTouchSupport.Disable();
             if (_terrainTex != null) Destroy(_terrainTex);
+            TerrainTexture.DisposeAtlas();
         }
 
         void Update()
@@ -177,7 +178,8 @@ namespace WorldSim.Presentation
             _selection.transform.position = new Vector3(x, y, 0f);
             _selection.enabled = true;
             string res = ResourceText((ResourceFlags)t.ResourceFlags);
-            string text = $"{(Biome)t.BiomeId}  ({x}, {y})\n" +
+            string deco = t.DecorationId != 0 ? $"   {(Decoration)t.DecorationId}" : "";
+            string text = $"{(Biome)t.BiomeId}{deco}  ({x}, {y})\n" +
                           $"height {t.Height}   moisture {t.Moisture}   temperature {t.Temperature}\n" +
                           $"resources: {res}";
             if (longPress) text += "\n(long-press actions arrive with the powers stage)";

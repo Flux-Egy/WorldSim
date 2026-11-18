@@ -13,6 +13,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../Assets/WorldSim/Runtime/Core/**/*.cs" LinkBase="Core" />
+    <Compile Include="../../Assets/WorldSim/Runtime/Render/**/*.cs" LinkBase="Render" />
     <Compile Include="Program.cs" />
   </ItemGroup>
 </Project>

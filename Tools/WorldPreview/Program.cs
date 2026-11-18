@@ -1,94 +1,80 @@
-// Renders a generated world to a PNG using the exact Core sources the game compiles.
+// Renders a generated world to PNG with the exact Core + Render sources the game compiles.
 //
-//   dotnet run -c Release --project Tools/WorldPreview -- <seedHex> <size> <out.png> [scale]
+//   dotnet run -c Release --project Tools/WorldPreview -- <seedHex> <size> <out.png> [cropX cropY cropTiles]
 //
-// Prints the world hash so it can be compared with the in-game value (§4.3).
+// Writes the full map (texture at the game's pixels-per-tile) and, if a crop is given, a second
+// image "<out>.crop.png" of that tile window at full resolution. Prints the world hash.
 using System;
 using System.IO;
 using System.IO.Compression;
 using WorldSim.Core;
+using WorldSim.Render;
+
+struct ArrayTiles : ITileSource { public TileData[] A; public TileData Get(int i) => A[i]; }
+struct ArrayPixels : IPixelTarget { public uint[] A; public uint Get(int i) => A[i]; public void Set(int i, uint c) => A[i] = c; }
+struct ArrayAtlas : IAtlasSource { public uint[] A; public uint Get(int i) => A[i]; }
 
 static class Program
 {
     static int Main(string[] args)
     {
-        if (args.Length < 3)
-        {
-            Console.Error.WriteLine("usage: WorldPreview <seedHex> <size> <out.png> [scale]");
-            return 2;
-        }
+        if (args.Length < 3) { Console.Error.WriteLine("usage: WorldPreview <seedHex> <size> <out.png> [cropX cropY cropTiles]"); return 2; }
         ulong seed = Convert.ToUInt64(args[0].Replace("0x", ""), 16);
         int size = int.Parse(args[1]);
-        int scale = args.Length > 3 ? int.Parse(args[3]) : 1;
-
         var p = WorldGenParams.Create(new WorldSeed(seed), size, size);
         var tiles = new TileData[size * size];
         var sw = System.Diagnostics.Stopwatch.StartNew();
         WorldGenerator.Generate(p, tiles);
-        sw.Stop();
+        long genMs = sw.ElapsedMilliseconds;
         ulong hash = WorldHash.Compute(seed, size, size, tiles);
 
-        var counts = new int[256];
-        foreach (var t in tiles) counts[t.BiomeId]++;
-        Console.WriteLine($"seed=0x{seed:X16} size={size} hash=0x{hash:X16} gen={sw.ElapsedMilliseconds}ms");
-        foreach (Biome b in Enum.GetValues(typeof(Biome)))
-            if ((int)b < 128) Console.WriteLine($"  {b,-13} {100.0 * counts[(int)b] / tiles.Length,5:F1}%");
+        int ppt = TerrainPainter.PixelsPerTileFor(size, size);
+        int texW = size * ppt;
+        var px = new uint[texW * texW];
+        var t = new ArrayTiles { A = tiles }; var pix = new ArrayPixels { A = px }; var atlas = new ArrayAtlas { A = SpriteLibrary.Build() };
+        sw.Restart();
+        for (int row = 0; row < size; row++) TerrainPainter.PaintGroundRow(ref t, ref pix, size, size, ppt, row);
+        TerrainPainter.PaintDecorations(ref t, ref pix, ref atlas, size, size, ppt);
+        long paintMs = sw.ElapsedMilliseconds;
 
-        int w = size * scale;
-        var rgb = new byte[w * w * 3];
-        for (int y = 0; y < size; y++)
-            for (int x = 0; x < size; x++)
-            {
-                var t = tiles[y * size + x];
-                (byte r, byte g, byte b) = Color(t);
-                for (int sy = 0; sy < scale; sy++)
-                    for (int sx = 0; sx < scale; sx++)
-                    {
-                        // PNG rows go top-down; world y=0 is the bottom (Unity convention).
-                        int py = (size - 1 - y) * scale + sy, px = x * scale + sx;
-                        int i = (py * w + px) * 3;
-                        rgb[i] = r; rgb[i + 1] = g; rgb[i + 2] = b;
-                    }
-            }
-        WritePng(args[2], w, w, rgb);
+        var counts = new int[256]; var decos = new int[256];
+        foreach (var x in tiles) { counts[x.BiomeId]++; decos[x.DecorationId]++; }
+        Console.WriteLine($"seed=0x{seed:X16} size={size} hash=0x{hash:X16} gen={genMs}ms paint={paintMs}ms ppt={ppt}");
+        Console.Write("  biomes:");
+        foreach (Biome b in Enum.GetValues(typeof(Biome))) if ((int)b < 128 && counts[(int)b] > 0) Console.Write($" {b}={100.0 * counts[(int)b] / tiles.Length:F1}%");
+        Console.WriteLine();
+        Console.WriteLine($"  decorated tiles: {100.0 * (tiles.Length - decos[0]) / tiles.Length:F1}%");
+
+        WritePng(args[2], px, texW, 0, 0, texW, texW, Math.Max(1, texW / 1024));
+        if (args.Length >= 6)
+        {
+            int cx = int.Parse(args[3]) * ppt, cy = int.Parse(args[4]) * ppt, cs = int.Parse(args[5]) * ppt;
+            WritePng(Path.ChangeExtension(args[2], ".crop.png"), px, texW, cx, cy, cs, cs, 1, args.Length > 6 ? int.Parse(args[6]) : 1);
+        }
         return 0;
     }
 
-    // Same palette the game uses (kept in sync with Presentation's TerrainPalette by hand).
-    static (byte, byte, byte) Color(TileData t)
+    /// <summary>Writes a window of the bottom-up RGBA texture as a top-down RGB PNG, optionally downscaled.</summary>
+    static void WritePng(string path, uint[] px, int texW, int x0, int y0, int w, int h, int down, int up = 1)
     {
-        (int r, int g, int b) c = (Biome)t.BiomeId switch
-        {
-            Biome.DeepWater => (28, 62, 122),
-            Biome.ShallowWater => (52, 112, 178),
-            Biome.Sand => (222, 204, 140),
-            Biome.Grass => (104, 168, 72),
-            Biome.Forest => (44, 112, 52),
-            Biome.Mountain => (128, 120, 112),
-            Biome.Snow => (236, 240, 246),
-            _ => (255, 0, 255),
-        };
-        int shade = (t.Height - 128) / 6; // subtle relief
-        if (t.Has(ResourceFlags.Gold)) c = (232, 196, 48);
-        else if (t.Has(ResourceFlags.Gems)) c = (176, 72, 200);
-        else if (t.BiomeId == (byte)Biome.Grass && t.Has(ResourceFlags.Wood)) c = (60, 128, 56);
-        return (Clamp(c.r + shade), Clamp(c.g + shade), Clamp(c.b + shade));
-    }
-
-    static byte Clamp(int v) => (byte)(v < 0 ? 0 : v > 255 ? 255 : v);
-
-    static void WritePng(string path, int w, int h, byte[] rgb)
-    {
+        int ow = w / down * up, oh = h / down * up;
+        var rgb = new byte[ow * oh * 3];
+        for (int oy = 0; oy < oh; oy++)
+            for (int ox = 0; ox < ow; ox++)
+            {
+                int gx = x0 + ox / up * down, gy = y0 + (oh - 1 - oy) / up * down;
+                uint c = px[gy * texW + gx];
+                int i = (oy * ow + ox) * 3;
+                rgb[i] = (byte)Rgba.R(c); rgb[i + 1] = (byte)Rgba.G(c); rgb[i + 2] = (byte)Rgba.B(c);
+            }
         using var fs = File.Create(path);
         fs.Write(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 });
-        var ihdr = new byte[13];
-        BE(ihdr, 0, (uint)w); BE(ihdr, 4, (uint)h);
-        ihdr[8] = 8; ihdr[9] = 2; // 8-bit RGB
+        var ihdr = new byte[13]; BE(ihdr, 0, (uint)ow); BE(ihdr, 4, (uint)oh); ihdr[8] = 8; ihdr[9] = 2;
         Chunk(fs, "IHDR", ihdr);
         using var raw = new MemoryStream();
-        for (int y = 0; y < h; y++) { raw.WriteByte(0); raw.Write(rgb, y * w * 3, w * 3); }
+        for (int y = 0; y < oh; y++) { raw.WriteByte(0); raw.Write(rgb, y * ow * 3, ow * 3); }
         using var z = new MemoryStream();
-        using (var zs = new ZLibStream(z, CompressionLevel.Optimal, true)) raw.WriteTo(zs);
+        using (var zs = new ZLibStream(z, CompressionLevel.Fastest, true)) raw.WriteTo(zs);
         Chunk(fs, "IDAT", z.ToArray());
         Chunk(fs, "IEND", Array.Empty<byte>());
     }
@@ -108,11 +94,7 @@ static class Program
     static uint Crc(byte[] d)
     {
         uint c = 0xFFFFFFFF;
-        foreach (byte x in d)
-        {
-            c ^= x;
-            for (int k = 0; k < 8; k++) c = (c & 1) != 0 ? 0xEDB88320 ^ (c >> 1) : c >> 1;
-        }
+        foreach (byte x in d) { c ^= x; for (int k = 0; k < 8; k++) c = (c & 1) != 0 ? 0xEDB88320 ^ (c >> 1) : c >> 1; }
         return ~c;
     }
 }
