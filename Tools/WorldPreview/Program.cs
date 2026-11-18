@@ -18,6 +18,8 @@ static class Program
 {
     static int Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "icons") return IconSheet(args[1]);
+        if (args.Length == 2 && args[0] == "sprites") return SpriteSheet(args[1]);
         if (args.Length < 3) { Console.Error.WriteLine("usage: WorldPreview <seedHex> <size> <out.png> [cropX cropY cropTiles]"); return 2; }
         ulong seed = Convert.ToUInt64(args[0].Replace("0x", ""), 16);
         int size = int.Parse(args[1]);
@@ -51,6 +53,46 @@ static class Program
             int cx = int.Parse(args[3]) * ppt, cy = int.Parse(args[4]) * ppt, cs = int.Parse(args[5]) * ppt;
             WritePng(Path.ChangeExtension(args[2], ".crop.png"), px, texW, cx, cy, cs, cs, 1, args.Length > 6 ? int.Parse(args[6]) : 1);
         }
+        return 0;
+    }
+
+    /// <summary>All toolbar icons in a row, 6x scale, on a mid-grey background.</summary>
+    static int IconSheet(string path)
+    {
+        int n = (int)Icon.Count, s = IconLibrary.Size, w = n * (s + 2);
+        var px = new uint[w * (s + 2)];
+        for (int i = 0; i < px.Length; i++) px[i] = Rgba.Pack(70, 78, 70);
+        for (int k = 0; k < n; k++)
+        {
+            uint[] ic = IconLibrary.Build((Icon)k);
+            for (int y = 0; y < s; y++) for (int x = 0; x < s; x++) if (ic[y * s + x] != 0) px[(y + 1) * w + k * (s + 2) + 1 + x] = ic[y * s + x];
+        }
+        WritePng(path, px, w, 0, 0, w, s + 2, 1, 6);
+        return 0;
+    }
+
+    /// <summary>Every decoration sprite (rows) and variant (columns) on grass, 6x scale.</summary>
+    static int SpriteSheet(string path)
+    {
+        int c = SpriteLibrary.Cell, rows = (int)Decoration.Count - 1, cols = SpriteLibrary.Variants;
+        int w = cols * (c + 2), h = rows * (c + 2);
+        var px = new uint[w * h];
+        for (int i = 0; i < px.Length; i++) px[i] = Rgba.Pack(104, 174, 64);
+        uint[] atlas = SpriteLibrary.Build();
+        for (int d = 1; d <= rows; d++)
+            for (int v = 0; v < cols; v++)
+            {
+                int start = SpriteLibrary.CellIndex((Decoration)d, v) * SpriteLibrary.CellPixels;
+                int ox = v * (c + 2) + 1, oy = (rows - d) * (c + 2) + 1;
+                for (int y = 0; y < c; y++) for (int x = 0; x < c; x++)
+                {
+                    uint col = atlas[start + y * c + x];
+                    if (col == 0) continue;
+                    int i = (oy + y) * w + ox + x;
+                    px[i] = Rgba.A(col) < 255 ? Rgba.Darken(px[i], 74) : col;
+                }
+            }
+        WritePng(path, px, w, 0, 0, w, h, 1, 6);
         return 0;
     }
 

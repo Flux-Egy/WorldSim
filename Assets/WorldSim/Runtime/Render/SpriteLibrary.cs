@@ -103,7 +103,7 @@ namespace WorldSim.Render
                         for (int x = 8 - w; x <= 8 + w - 1; x++)
                         {
                             uint col = x < 8 ? lt : x > 8 ? dk : g;
-                            if (d == Decoration.SnowPine && (tier == 0 || x < 7) && (x + y) % 2 == 0) col = P(236, 242, 250);
+                            if (d == Decoration.SnowPine && (tier == 0 || x == 8 - w)) col = x > 8 ? P(200, 214, 230) : P(236, 242, 250); // snow on branch tops and the lit edge
                             c.Set(x, y, col);
                         }
                     }
@@ -267,7 +267,7 @@ namespace WorldSim.Render
                     uint g = P(110, 146, 56);
                     c.GroundShadow(8, 4);
                     c.Rect(8, 1, 1, 6, trunk); c.Set(7, 6, trunk); c.Set(9, 7, trunk);
-                    c.Blob(8, 9, 6, 1 + (v == 2 ? 1 : 0), g, Rgba.Shift(g, 30), Rgba.Shift(g, -24), Rgba.Shift(g, -40));
+                    c.Blob(8, 9, 6, 2 + (v == 2 ? 1 : 0), g, Rgba.Shift(g, 30), Rgba.Shift(g, -24), Rgba.Shift(g, -40));
                     break;
                 }
             }

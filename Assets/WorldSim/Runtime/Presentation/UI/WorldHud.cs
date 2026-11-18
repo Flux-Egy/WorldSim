@@ -1,16 +1,18 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using WorldSim.Render;
 
 namespace WorldSim.Presentation.UI
 {
     /// <summary>
-    /// Stage 2/3 HUD built in code (no prefabs yet): a top bar with seed and world hash, a
-    /// button row (notice, map size, new world), a bottom panel for the selected tile, and the
-    /// first-launch fiction notice (plan A3). Follows §12.1: Canvas Scaler "Scale With Screen
-    /// Size" (1080x1920 reference), anchors pinned to edges, and safe-area handling.
-    /// Text uses uGUI's built-in "LegacyRuntime.ttf" (the font uGUI's Text itself falls back to);
-    /// TextMeshPro needs its Essential Resources imported, which this headless project has not done.
+    /// HUD built in code (no prefabs yet): a slim top bar (world name, seed, hash), the selected
+    /// tile panel, and a bottom toolbar with tabs and pixel-art icon buttons (icons from
+    /// <see cref="IconLibrary"/>). Tabs for features that arrive in later Beta milestones say so
+    /// instead of showing dead buttons. Also hosts the first-launch fiction notice (plan A3).
+    /// Follows §12.1: Canvas Scaler "Scale With Screen Size" (1080x1920 reference), anchors pinned
+    /// to edges, and safe-area handling. Text uses uGUI's built-in "LegacyRuntime.ttf".
     /// </summary>
     public sealed class WorldHud
     {
@@ -21,14 +23,19 @@ namespace WorldSim.Presentation.UI
             "religion, belief, people or place. Any resemblance is coincidental.\n\n" +
             "This is only a game.";
 
-        readonly RectTransform _safeRoot;
-        readonly RectTransform _topBar;
-        readonly RectTransform _infoPanel;
-        readonly RectTransform _noticeOverlay;
-        readonly Text _title;
-        readonly Text _info;
-        readonly Text _sizeLabel;
+        static readonly Color PanelColor = new Color(0.08f, 0.10f, 0.15f, 0.94f);
+        static readonly Color TabColor = new Color(0.13f, 0.16f, 0.22f, 1f);
+        static readonly Color TabActive = new Color(0.16f, 0.40f, 0.38f, 1f);
+        static readonly Color ButtonColor = new Color(0.15f, 0.19f, 0.26f, 1f);
+        static readonly Color BorderColor = new Color(0.30f, 0.62f, 0.58f, 0.9f);
+        const float ToolbarHeight = 360f;
+
+        readonly RectTransform _safeRoot, _topBar, _infoPanel, _toolbar, _noticeOverlay, _content;
+        readonly Text _title, _info, _placeholder;
         readonly Font _font;
+        readonly List<Image> _tabImages = new List<Image>();
+        readonly Dictionary<Icon, Sprite> _icons = new Dictionary<Icon, Sprite>();
+        Text _sizeLabel;
         Rect _appliedSafeArea;
 
         public event Action NewWorldClicked;
@@ -37,66 +44,103 @@ namespace WorldSim.Presentation.UI
 
         public bool IsNoticeOpen => _noticeOverlay.gameObject.activeSelf;
 
+        struct TabDef { public string Name; public Icon Icon; public string Milestone; }
+
+        static readonly TabDef[] Tabs =
+        {
+            new TabDef { Name = "World", Icon = Icon.Globe, Milestone = null },
+            new TabDef { Name = "Terrain", Icon = Icon.Mountain, Milestone = "Terrain brushes arrive in Beta milestone B2." },
+            new TabDef { Name = "Life", Icon = Icon.People, Milestone = "Creatures and peoples arrive in Beta milestone B3." },
+            new TabDef { Name = "Nations", Icon = Icon.Castle, Milestone = "Kingdoms, eras and history arrive in Beta milestone B4." },
+            new TabDef { Name = "Powers", Icon = Icon.Storm, Milestone = "Powers and disasters arrive in Beta milestone B5." },
+            new TabDef { Name = "Settings", Icon = Icon.Gear, Milestone = "Settings arrive in Beta milestone B8." },
+        };
+
         public WorldHud(Transform parent)
         {
             var canvasGo = new GameObject("HUD", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             canvasGo.transform.SetParent(parent, false);
-            var canvas = canvasGo.GetComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvasGo.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
             var scaler = canvasGo.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1080, 1920);
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
             scaler.matchWidthOrHeight = 0.5f;
-
             _font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
 
             _safeRoot = NewRect("SafeArea", canvasGo.transform);
             Stretch(_safeRoot);
 
-            // ---- Top bar: title row + button row ----
+            // ---- Top bar ----
             _topBar = NewRect("TopBar", _safeRoot);
             _topBar.anchorMin = new Vector2(0, 1); _topBar.anchorMax = new Vector2(1, 1);
-            _topBar.pivot = new Vector2(0.5f, 1); _topBar.sizeDelta = new Vector2(0, 230);
-            AddImage(_topBar, new Color(0.06f, 0.08f, 0.12f, 0.82f));
+            _topBar.pivot = new Vector2(0.5f, 1); _topBar.sizeDelta = new Vector2(0, 120);
+            AddImage(_topBar, PanelColor);
+            _title = AddText(_topBar, 32, TextAnchor.MiddleLeft);
+            Fill(_title.rectTransform, 28, 6, -28, -6);
 
-            _title = AddText(_topBar, 34, TextAnchor.MiddleLeft);
-            var titleRt = _title.rectTransform;
-            titleRt.anchorMin = new Vector2(0, 1); titleRt.anchorMax = new Vector2(1, 1);
-            titleRt.pivot = new Vector2(0.5f, 1);
-            titleRt.offsetMin = new Vector2(28, -110); titleRt.offsetMax = new Vector2(-28, -6);
+            // ---- Bottom toolbar: tab strip + content ----
+            _toolbar = NewRect("Toolbar", _safeRoot);
+            _toolbar.anchorMin = new Vector2(0, 0); _toolbar.anchorMax = new Vector2(1, 0);
+            _toolbar.pivot = new Vector2(0.5f, 0); _toolbar.sizeDelta = new Vector2(0, ToolbarHeight);
+            AddImage(_toolbar, PanelColor);
+            var border = NewRect("Border", _toolbar);
+            border.anchorMin = new Vector2(0, 1); border.anchorMax = new Vector2(1, 1);
+            border.pivot = new Vector2(0.5f, 1); border.sizeDelta = new Vector2(0, 4);
+            AddImage(border, BorderColor);
 
-            AddButton(_topBar, "New world", new Color(0.22f, 0.52f, 0.34f), 300, -20, () => NewWorldClicked?.Invoke());
-            _sizeLabel = AddButton(_topBar, "Size", new Color(0.24f, 0.36f, 0.56f), 300, -340, () => SizeClicked?.Invoke());
-            AddButton(_topBar, "Notice", new Color(0.32f, 0.32f, 0.38f), 200, -660, ShowNotice);
+            float tabW = 1f / Tabs.Length;
+            for (int i = 0; i < Tabs.Length; i++)
+            {
+                int index = i;
+                var tab = NewRect("Tab" + Tabs[i].Name, _toolbar);
+                tab.anchorMin = new Vector2(i * tabW, 1); tab.anchorMax = new Vector2((i + 1) * tabW, 1);
+                tab.pivot = new Vector2(0.5f, 1); tab.sizeDelta = new Vector2(-8, 96);
+                tab.anchoredPosition = new Vector2(0, -10);
+                var img = AddImage(tab, TabColor);
+                _tabImages.Add(img);
+                var btn = tab.gameObject.AddComponent<Button>();
+                btn.targetGraphic = img;
+                btn.onClick.AddListener(() => SelectTab(index));
+                AddIcon(tab, Tabs[i].Icon, 64, new Vector2(0, 8));
+                var label = AddText(tab, 22, TextAnchor.LowerCenter);
+                Fill(label.rectTransform, 0, 2, 0, 0);
+                label.text = Tabs[i].Name;
+            }
 
-            // ---- Bottom info panel ----
+            _content = NewRect("Content", _toolbar);
+            _content.anchorMin = Vector2.zero; _content.anchorMax = Vector2.one;
+            _content.offsetMin = new Vector2(16, 12); _content.offsetMax = new Vector2(-16, -116);
+            _placeholder = AddText(_content, 34, TextAnchor.MiddleCenter);
+            Stretch(_placeholder.rectTransform);
+            _placeholder.color = new Color(0.75f, 0.80f, 0.85f);
+
+            // ---- Selected tile panel (above the toolbar) ----
             _infoPanel = NewRect("TileInfo", _safeRoot);
             _infoPanel.anchorMin = new Vector2(0, 0); _infoPanel.anchorMax = new Vector2(1, 0);
-            _infoPanel.pivot = new Vector2(0.5f, 0); _infoPanel.sizeDelta = new Vector2(0, 250);
-            AddImage(_infoPanel, new Color(0.06f, 0.08f, 0.12f, 0.82f));
-            _info = AddText(_infoPanel, 36, TextAnchor.MiddleLeft);
-            _info.rectTransform.anchorMin = Vector2.zero; _info.rectTransform.anchorMax = Vector2.one;
-            _info.rectTransform.offsetMin = new Vector2(28, 12); _info.rectTransform.offsetMax = new Vector2(-28, -12);
+            _infoPanel.pivot = new Vector2(0.5f, 0); _infoPanel.sizeDelta = new Vector2(0, 190);
+            _infoPanel.anchoredPosition = new Vector2(0, ToolbarHeight);
+            AddImage(_infoPanel, new Color(0.06f, 0.08f, 0.12f, 0.86f));
+            _info = AddText(_infoPanel, 32, TextAnchor.MiddleLeft);
+            Fill(_info.rectTransform, 28, 10, -28, -10);
             _infoPanel.gameObject.SetActive(false);
 
-            // ---- Fiction notice (modal; blocks world input while open) ----
+            // ---- Fiction notice (modal) ----
             _noticeOverlay = NewRect("FictionNotice", _safeRoot);
             Stretch(_noticeOverlay);
-            AddImage(_noticeOverlay, new Color(0f, 0f, 0f, 0.86f)); // raycast target: swallows UI clicks
+            AddImage(_noticeOverlay, new Color(0f, 0f, 0f, 0.86f));
             var card = NewRect("Card", _noticeOverlay);
             card.anchorMin = new Vector2(0.06f, 0.25f); card.anchorMax = new Vector2(0.94f, 0.75f);
             card.offsetMin = Vector2.zero; card.offsetMax = Vector2.zero;
             AddImage(card, new Color(0.10f, 0.13f, 0.19f, 1f));
             var noticeText = AddText(card, 40, TextAnchor.UpperLeft);
-            noticeText.rectTransform.anchorMin = Vector2.zero; noticeText.rectTransform.anchorMax = Vector2.one;
-            noticeText.rectTransform.offsetMin = new Vector2(44, 170); noticeText.rectTransform.offsetMax = new Vector2(-44, -44);
+            Fill(noticeText.rectTransform, 44, 170, -44, -44);
             noticeText.text = FictionNotice;
             var ok = NewRect("Accept", card);
             ok.anchorMin = new Vector2(0.5f, 0); ok.anchorMax = new Vector2(0.5f, 0);
             ok.pivot = new Vector2(0.5f, 0); ok.sizeDelta = new Vector2(520, 120);
             ok.anchoredPosition = new Vector2(0, 36);
-            var okImg = AddImage(ok, new Color(0.22f, 0.52f, 0.34f));
+            var okImg = AddImage(ok, TabActive);
             var okBtn = ok.gameObject.AddComponent<Button>();
             okBtn.targetGraphic = okImg;
             okBtn.onClick.AddListener(() => { _noticeOverlay.gameObject.SetActive(false); NoticeAccepted?.Invoke(); });
@@ -105,19 +149,14 @@ namespace WorldSim.Presentation.UI
             okLabel.text = "I understand";
             _noticeOverlay.gameObject.SetActive(false);
 
+            SelectTab(0);
             ApplySafeArea();
         }
 
         public void SetTitle(string text) => _title.text = text;
-        public void SetSizeLabel(string text) => _sizeLabel.text = text;
+        public void SetSizeLabel(string text) { if (_sizeLabel != null) _sizeLabel.text = text; }
         public void ShowNotice() => _noticeOverlay.gameObject.SetActive(true);
-
-        public void ShowInfo(string text)
-        {
-            _info.text = text;
-            _infoPanel.gameObject.SetActive(true);
-        }
-
+        public void ShowInfo(string text) { _info.text = text; _infoPanel.gameObject.SetActive(true); }
         public void HideInfo() => _infoPanel.gameObject.SetActive(false);
 
         /// <summary>True if a touch at this screen point belongs to the UI, not the world.</summary>
@@ -125,6 +164,7 @@ namespace WorldSim.Presentation.UI
         {
             if (IsNoticeOpen) return true;
             if (RectTransformUtility.RectangleContainsScreenPoint(_topBar, screenPoint, null)) return true;
+            if (RectTransformUtility.RectangleContainsScreenPoint(_toolbar, screenPoint, null)) return true;
             return _infoPanel.gameObject.activeSelf &&
                    RectTransformUtility.RectangleContainsScreenPoint(_infoPanel, screenPoint, null);
         }
@@ -133,6 +173,73 @@ namespace WorldSim.Presentation.UI
         public void Tick()
         {
             if (Screen.safeArea != _appliedSafeArea) ApplySafeArea();
+        }
+
+        void SelectTab(int index)
+        {
+            for (int i = 0; i < _tabImages.Count; i++) _tabImages[i].color = i == index ? TabActive : TabColor;
+            for (int i = _content.childCount - 1; i >= 0; i--)
+            {
+                var child = _content.GetChild(i);
+                if (child != _placeholder.transform) UnityEngine.Object.Destroy(child.gameObject);
+            }
+            _sizeLabel = null;
+            _placeholder.text = Tabs[index].Milestone ?? "";
+            if (index == 0)
+            {
+                AddToolButton(0, Icon.Globe, "New world", () => NewWorldClicked?.Invoke());
+                _sizeLabel = AddToolButton(1, Icon.Resize, "Size", () => SizeClicked?.Invoke());
+                AddToolButton(2, Icon.Info, "Notice", ShowNotice);
+                SizeLabelRequested?.Invoke();
+            }
+        }
+
+        /// <summary>Raised when the World tab is rebuilt, so the owner can refill the size label.</summary>
+        public event Action SizeLabelRequested;
+
+        Text AddToolButton(int slot, Icon icon, string label, Action onClick)
+        {
+            const float w = 168f, h = 200f, gap = 14f;
+            var rt = NewRect(label + "Button", _content);
+            rt.anchorMin = new Vector2(0, 0.5f); rt.anchorMax = new Vector2(0, 0.5f);
+            rt.pivot = new Vector2(0, 0.5f); rt.sizeDelta = new Vector2(w, h);
+            rt.anchoredPosition = new Vector2(slot * (w + gap), 0);
+            var img = AddImage(rt, ButtonColor);
+            var outline = rt.gameObject.AddComponent<Outline>();
+            outline.effectColor = BorderColor;
+            outline.effectDistance = new Vector2(3, -3);
+            var btn = rt.gameObject.AddComponent<Button>();
+            btn.targetGraphic = img;
+            btn.onClick.AddListener(() => onClick());
+            AddIcon(rt, icon, 96, new Vector2(0, 26));
+            var text = AddText(rt, 26, TextAnchor.LowerCenter);
+            Fill(text.rectTransform, 4, 8, -4, 0);
+            text.text = label;
+            return text;
+        }
+
+        void AddIcon(RectTransform parent, Icon icon, float size, Vector2 offset)
+        {
+            var rt = NewRect("Icon", parent);
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(size, size);
+            rt.anchoredPosition = offset;
+            var img = rt.gameObject.AddComponent<Image>();
+            img.sprite = GetIconSprite(icon);
+            img.raycastTarget = false;
+            img.preserveAspect = true;
+        }
+
+        Sprite GetIconSprite(Icon icon)
+        {
+            if (_icons.TryGetValue(icon, out var s)) return s;
+            int n = IconLibrary.Size;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
+            tex.SetPixelData(IconLibrary.Build(icon), 0);
+            tex.Apply(false, true);
+            s = Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f), n);
+            _icons[icon] = s;
+            return s;
         }
 
         void ApplySafeArea()
@@ -146,23 +253,6 @@ namespace WorldSim.Presentation.UI
             _safeRoot.offsetMax = Vector2.zero;
         }
 
-        /// <summary>Button in the top bar's lower row, right-aligned at <paramref name="x"/> from the right edge.</summary>
-        Text AddButton(RectTransform bar, string label, Color color, float width, float x, Action onClick)
-        {
-            var rt = NewRect(label + "Button", bar);
-            rt.anchorMin = new Vector2(1, 0); rt.anchorMax = new Vector2(1, 0);
-            rt.pivot = new Vector2(1, 0); rt.sizeDelta = new Vector2(width, 96);
-            rt.anchoredPosition = new Vector2(x, 14);
-            var img = AddImage(rt, color);
-            var btn = rt.gameObject.AddComponent<Button>();
-            btn.targetGraphic = img;
-            btn.onClick.AddListener(() => onClick());
-            var text = AddText(rt, 36, TextAnchor.MiddleCenter);
-            Stretch(text.rectTransform);
-            text.text = label;
-            return text;
-        }
-
         static RectTransform NewRect(string name, Transform parent)
         {
             var go = new GameObject(name, typeof(RectTransform));
@@ -170,10 +260,12 @@ namespace WorldSim.Presentation.UI
             return (RectTransform)go.transform;
         }
 
-        static void Stretch(RectTransform rt)
+        static void Stretch(RectTransform rt) => Fill(rt, 0, 0, 0, 0);
+
+        static void Fill(RectTransform rt, float left, float bottom, float right, float top)
         {
             rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
-            rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+            rt.offsetMin = new Vector2(left, bottom); rt.offsetMax = new Vector2(right, top);
         }
 
         static Image AddImage(RectTransform rt, Color color)

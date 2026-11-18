@@ -58,6 +58,7 @@ namespace WorldSim.Presentation
             _hud = new WorldHud(transform);
             _hud.NewWorldClicked += NewWorld;
             _hud.SizeClicked += CycleSize;
+            _hud.SizeLabelRequested += UpdateSizeLabel;
             _hud.NoticeAccepted += () => { PlayerPrefs.SetInt(NoticePrefKey, 1); PlayerPrefs.Save(); };
             _hud.SetTitle("WorldSim\nGenerating world...");
             _sizeIndex = Mathf.Clamp(PlayerPrefs.GetInt(SizePrefKey, 0), 0, Sizes.Length - 1);
