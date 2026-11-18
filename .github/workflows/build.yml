@@ -33,6 +33,8 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 8.0.x
+      - name: Every Assets file has a committed .meta
+        run: python3 ci/make_meta.py --check
       - name: Core unit tests
         run: dotnet test Tools/CoreTests --logger "console;verbosity=normal" --logger "trx;LogFileName=core-tests.trx"
       - uses: actions/upload-artifact@v7

@@ -16,7 +16,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../Assets/WorldSim/Runtime/Core/**/*.cs" LinkBase="Core" />
-    <Compile Include="../../Assets/WorldSim/Tests/EditMode/CoreDeterminismTests.cs" LinkBase="Tests" />
+    <Compile Include="../../Assets/WorldSim/Runtime/Presentation/Input/GestureRecognizer.cs" LinkBase="Presentation" />
+    <Compile Include="../../Assets/WorldSim/Tests/EditMode/**/*.cs" LinkBase="Tests" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />

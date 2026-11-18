@@ -31,6 +31,9 @@ namespace WorldSim.Presentation
             Debug.LogError("[WorldSim] Legacy Input Manager is enabled. Set Player > Active Input Handling " +
                            "to 'Input System Package (New)' (§8.1).");
 #endif
+
+            if (GetComponent<WorldViewController>() == null)
+                gameObject.AddComponent<WorldViewController>();
         }
     }
 }

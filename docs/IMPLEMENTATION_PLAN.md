@@ -54,7 +54,7 @@ Rule: Burst cannot compile code that is loaded at runtime, so **mod code never r
 | 6 Disasters / weather / powers | `Simulation/Disasters` (radius query on a spatial hash, then typed effect buffers). Weather is a low-res grid, uploaded to a texture and read by the terrain shader. `PowerDefinition` is a ScriptableObject in ModAPI, compiled into blittable power data. |
 | 7 Rendering | Terrain: chunked quads plus a biome index texture, with blending done in one HLSL shader (no Tilemap). Units: `Graphics.RenderMeshInstanced`, with a tint and flash shader and positions interpolated between sim ticks. Water: UV scroll with a foam mask from marching squares. |
 | 8 Input / camera | Input System `EnhancedTouch` gesture recogniser (pan, pinch, tap, double-tap, long-press) as an explicit state machine, so pinch locks out pan until all fingers lift. Orthographic rig with clamps. |
-| 9 Modding | ModAPI plus first-party loader (see **Decision A**). `mod.json` schema validation, topological dependency sort, SHA-256 logging, optional RSA "Safe Mode". |
+| 9 Modding | ModAPI plus first-party loader (see **Decision A (decided 2026-11-17: HybridCLR + first-party loader)**). `mod.json` schema validation, topological dependency sort, SHA-256 logging, optional RSA "Safe Mode". |
 | 10 Save / load | `Core/Save`: BinaryWriter → GZipStream (built into .NET Standard 2.1; LZ4 would need a third-party library). Stable 64-bit entity IDs, a mod type table, placeholder entities for missing mods, rotating autosaves, and a write-to-temp-then-rename policy. |
 | 11 Economy | `Simulation/Economy`: per-village stockpile buffers, recipes as a BlobAsset, trade-request queue, caravan and boat agents. |
 | 12 UI | UGUI. Canvas Scaler "Scale With Screen Size", portrait and landscape layout prefabs swapped on orientation change, a `SafeAreaFitter`, and a dirty-flag `UiModel` polled at 4 Hz. |
@@ -78,6 +78,10 @@ Rule: Burst cannot compile code that is loaded at runtime, so **mod code never r
 9. **"Android Systrace" (§13.3).** Systrace is deprecated, so I'll document Perfetto instead.
 10. **Two-finger rotate (§8.1, optional).** Rotating a pixel-perfect orthographic view breaks pixel alignment. Deferred.
 11. **ARMv7 (§13.2).** Google Play requires 64-bit and §2.1 targets modern phones, so Release is ARM64 only.
+
+12. **Noise algorithm (§4.2).** OpenSimplex2/Simplex reference code is floating point. World generation uses **Q16.16 fixed-point gradient noise** (quintic fade, 8 gradients, fBm, domain warp), which plays the same role and is bit-identical on every CPU. Golden world hashes in `WorldGenTests` lock this down.
+13. **Terrain rendering (§7.3) in Stage 2.** There's no art yet, so the terrain is a Burst-painted texture (4×4 procedural pixels per tile) on one SpriteRenderer, with a Global Light2D (URP 17.3 clears the 2D light texture to black without one). The biome-blend shader and atlas arrive with real tile art.
+14. **Pixel Perfect Camera vs free pinch zoom (§3.1, §8.2).** The Pixel Perfect Camera sets `orthographicSize` itself, so it's disabled while free zoom is in use. Integer-step pixel-perfect zoom returns with the graphics settings (§7.2, item 3).
 
 ## Environment
 

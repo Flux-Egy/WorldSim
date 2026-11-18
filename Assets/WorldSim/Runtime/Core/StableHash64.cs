@@ -19,16 +19,18 @@ namespace WorldSim.Core
             unchecked { Value = (Value ^ b) * Prime; }
         }
 
-        public void Add(ushort v) { Add((byte)v); Add((byte)(v >> 8)); }
+        // Narrowing casts below deliberately take the low bits; they are unchecked so the code
+        // means the same thing whether or not the project enables overflow checking.
+        public void Add(ushort v) { unchecked { Add((byte)v); Add((byte)(v >> 8)); } }
 
         public void Add(uint v)
         {
-            Add((byte)v); Add((byte)(v >> 8)); Add((byte)(v >> 16)); Add((byte)(v >> 24));
+            unchecked { Add((byte)v); Add((byte)(v >> 8)); Add((byte)(v >> 16)); Add((byte)(v >> 24)); }
         }
 
         public void Add(int v) { Add(unchecked((uint)v)); }
 
-        public void Add(ulong v) { Add((uint)v); Add((uint)(v >> 32)); }
+        public void Add(ulong v) { unchecked { Add((uint)v); Add((uint)(v >> 32)); } }
 
         public void Add(long v) { Add(unchecked((ulong)v)); }
     }
