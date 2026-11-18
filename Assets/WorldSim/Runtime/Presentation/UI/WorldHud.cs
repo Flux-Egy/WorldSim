@@ -5,22 +5,37 @@ using UnityEngine.UI;
 namespace WorldSim.Presentation.UI
 {
     /// <summary>
-    /// Minimal Stage 2/3 HUD built in code (no prefabs yet): top bar with seed, world hash and
-    /// "New world"; bottom panel with the selected tile. Follows §12.1: Canvas Scaler "Scale With
-    /// Screen Size" (1080x1920 reference), anchors pinned to edges, and safe-area handling.
-    /// Text uses uGUI's built-in "LegacyRuntime.ttf" (the same font uGUI's Text falls back to);
+    /// Stage 2/3 HUD built in code (no prefabs yet): a top bar with seed and world hash, a
+    /// button row (notice, map size, new world), a bottom panel for the selected tile, and the
+    /// first-launch fiction notice (plan A3). Follows §12.1: Canvas Scaler "Scale With Screen
+    /// Size" (1080x1920 reference), anchors pinned to edges, and safe-area handling.
+    /// Text uses uGUI's built-in "LegacyRuntime.ttf" (the font uGUI's Text itself falls back to);
     /// TextMeshPro needs its Essential Resources imported, which this headless project has not done.
     /// </summary>
     public sealed class WorldHud
     {
+        public const string FictionNotice =
+            "WorldSim is a work of fiction.\n\n" +
+            "Every creed, belief, ritual, kingdom, name and character in this game is invented " +
+            "by the game itself. None of them represents, describes or refers to any real " +
+            "religion, belief, people or place. Any resemblance is coincidental.\n\n" +
+            "This is only a game.";
+
         readonly RectTransform _safeRoot;
         readonly RectTransform _topBar;
         readonly RectTransform _infoPanel;
+        readonly RectTransform _noticeOverlay;
         readonly Text _title;
         readonly Text _info;
+        readonly Text _sizeLabel;
+        readonly Font _font;
         Rect _appliedSafeArea;
 
         public event Action NewWorldClicked;
+        public event Action SizeClicked;
+        public event Action NoticeAccepted;
+
+        public bool IsNoticeOpen => _noticeOverlay.gameObject.activeSelf;
 
         public WorldHud(Transform parent)
         {
@@ -34,48 +49,68 @@ namespace WorldSim.Presentation.UI
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
             scaler.matchWidthOrHeight = 0.5f;
 
-            Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            _font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
 
             _safeRoot = NewRect("SafeArea", canvasGo.transform);
             Stretch(_safeRoot);
 
-            // Top bar
+            // ---- Top bar: title row + button row ----
             _topBar = NewRect("TopBar", _safeRoot);
             _topBar.anchorMin = new Vector2(0, 1); _topBar.anchorMax = new Vector2(1, 1);
-            _topBar.pivot = new Vector2(0.5f, 1); _topBar.sizeDelta = new Vector2(0, 150);
+            _topBar.pivot = new Vector2(0.5f, 1); _topBar.sizeDelta = new Vector2(0, 230);
             AddImage(_topBar, new Color(0.06f, 0.08f, 0.12f, 0.82f));
 
-            _title = AddText(_topBar, font, 34, TextAnchor.MiddleLeft);
+            _title = AddText(_topBar, 34, TextAnchor.MiddleLeft);
             var titleRt = _title.rectTransform;
-            titleRt.anchorMin = new Vector2(0, 0); titleRt.anchorMax = new Vector2(1, 1);
-            titleRt.offsetMin = new Vector2(28, 8); titleRt.offsetMax = new Vector2(-330, -8);
+            titleRt.anchorMin = new Vector2(0, 1); titleRt.anchorMax = new Vector2(1, 1);
+            titleRt.pivot = new Vector2(0.5f, 1);
+            titleRt.offsetMin = new Vector2(28, -110); titleRt.offsetMax = new Vector2(-28, -6);
 
-            var button = NewRect("NewWorldButton", _topBar);
-            button.anchorMin = new Vector2(1, 0.5f); button.anchorMax = new Vector2(1, 0.5f);
-            button.pivot = new Vector2(1, 0.5f); button.sizeDelta = new Vector2(290, 104);
-            button.anchoredPosition = new Vector2(-20, 0);
-            var buttonImage = AddImage(button, new Color(0.22f, 0.52f, 0.34f, 1f));
-            var btn = button.gameObject.AddComponent<Button>();
-            btn.targetGraphic = buttonImage;
-            btn.onClick.AddListener(() => NewWorldClicked?.Invoke());
-            var label = AddText(button, font, 38, TextAnchor.MiddleCenter);
-            Stretch(label.rectTransform);
-            label.text = "New world";
+            AddButton(_topBar, "New world", new Color(0.22f, 0.52f, 0.34f), 300, -20, () => NewWorldClicked?.Invoke());
+            _sizeLabel = AddButton(_topBar, "Size", new Color(0.24f, 0.36f, 0.56f), 300, -340, () => SizeClicked?.Invoke());
+            AddButton(_topBar, "Notice", new Color(0.32f, 0.32f, 0.38f), 200, -660, ShowNotice);
 
-            // Bottom info panel
+            // ---- Bottom info panel ----
             _infoPanel = NewRect("TileInfo", _safeRoot);
             _infoPanel.anchorMin = new Vector2(0, 0); _infoPanel.anchorMax = new Vector2(1, 0);
             _infoPanel.pivot = new Vector2(0.5f, 0); _infoPanel.sizeDelta = new Vector2(0, 250);
             AddImage(_infoPanel, new Color(0.06f, 0.08f, 0.12f, 0.82f));
-            _info = AddText(_infoPanel, font, 36, TextAnchor.MiddleLeft);
+            _info = AddText(_infoPanel, 36, TextAnchor.MiddleLeft);
             _info.rectTransform.anchorMin = Vector2.zero; _info.rectTransform.anchorMax = Vector2.one;
             _info.rectTransform.offsetMin = new Vector2(28, 12); _info.rectTransform.offsetMax = new Vector2(-28, -12);
             _infoPanel.gameObject.SetActive(false);
+
+            // ---- Fiction notice (modal; blocks world input while open) ----
+            _noticeOverlay = NewRect("FictionNotice", _safeRoot);
+            Stretch(_noticeOverlay);
+            AddImage(_noticeOverlay, new Color(0f, 0f, 0f, 0.86f)); // raycast target: swallows UI clicks
+            var card = NewRect("Card", _noticeOverlay);
+            card.anchorMin = new Vector2(0.06f, 0.25f); card.anchorMax = new Vector2(0.94f, 0.75f);
+            card.offsetMin = Vector2.zero; card.offsetMax = Vector2.zero;
+            AddImage(card, new Color(0.10f, 0.13f, 0.19f, 1f));
+            var noticeText = AddText(card, 40, TextAnchor.UpperLeft);
+            noticeText.rectTransform.anchorMin = Vector2.zero; noticeText.rectTransform.anchorMax = Vector2.one;
+            noticeText.rectTransform.offsetMin = new Vector2(44, 170); noticeText.rectTransform.offsetMax = new Vector2(-44, -44);
+            noticeText.text = FictionNotice;
+            var ok = NewRect("Accept", card);
+            ok.anchorMin = new Vector2(0.5f, 0); ok.anchorMax = new Vector2(0.5f, 0);
+            ok.pivot = new Vector2(0.5f, 0); ok.sizeDelta = new Vector2(520, 120);
+            ok.anchoredPosition = new Vector2(0, 36);
+            var okImg = AddImage(ok, new Color(0.22f, 0.52f, 0.34f));
+            var okBtn = ok.gameObject.AddComponent<Button>();
+            okBtn.targetGraphic = okImg;
+            okBtn.onClick.AddListener(() => { _noticeOverlay.gameObject.SetActive(false); NoticeAccepted?.Invoke(); });
+            var okLabel = AddText(ok, 42, TextAnchor.MiddleCenter);
+            Stretch(okLabel.rectTransform);
+            okLabel.text = "I understand";
+            _noticeOverlay.gameObject.SetActive(false);
 
             ApplySafeArea();
         }
 
         public void SetTitle(string text) => _title.text = text;
+        public void SetSizeLabel(string text) => _sizeLabel.text = text;
+        public void ShowNotice() => _noticeOverlay.gameObject.SetActive(true);
 
         public void ShowInfo(string text)
         {
@@ -88,6 +123,7 @@ namespace WorldSim.Presentation.UI
         /// <summary>True if a touch at this screen point belongs to the UI, not the world.</summary>
         public bool IsOverUi(Vector2 screenPoint)
         {
+            if (IsNoticeOpen) return true;
             if (RectTransformUtility.RectangleContainsScreenPoint(_topBar, screenPoint, null)) return true;
             return _infoPanel.gameObject.activeSelf &&
                    RectTransformUtility.RectangleContainsScreenPoint(_infoPanel, screenPoint, null);
@@ -110,6 +146,23 @@ namespace WorldSim.Presentation.UI
             _safeRoot.offsetMax = Vector2.zero;
         }
 
+        /// <summary>Button in the top bar's lower row, right-aligned at <paramref name="x"/> from the right edge.</summary>
+        Text AddButton(RectTransform bar, string label, Color color, float width, float x, Action onClick)
+        {
+            var rt = NewRect(label + "Button", bar);
+            rt.anchorMin = new Vector2(1, 0); rt.anchorMax = new Vector2(1, 0);
+            rt.pivot = new Vector2(1, 0); rt.sizeDelta = new Vector2(width, 96);
+            rt.anchoredPosition = new Vector2(x, 14);
+            var img = AddImage(rt, color);
+            var btn = rt.gameObject.AddComponent<Button>();
+            btn.targetGraphic = img;
+            btn.onClick.AddListener(() => onClick());
+            var text = AddText(rt, 36, TextAnchor.MiddleCenter);
+            Stretch(text.rectTransform);
+            text.text = label;
+            return text;
+        }
+
         static RectTransform NewRect(string name, Transform parent)
         {
             var go = new GameObject(name, typeof(RectTransform));
@@ -130,11 +183,11 @@ namespace WorldSim.Presentation.UI
             return img;
         }
 
-        static Text AddText(RectTransform parent, Font font, int size, TextAnchor anchor)
+        Text AddText(RectTransform parent, int size, TextAnchor anchor)
         {
             var rt = NewRect("Text", parent);
             var t = rt.gameObject.AddComponent<Text>();
-            t.font = font;
+            t.font = _font;
             t.fontSize = size;
             t.alignment = anchor;
             t.color = new Color(0.93f, 0.95f, 0.98f);

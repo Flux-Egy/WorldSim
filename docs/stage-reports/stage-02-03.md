@@ -23,6 +23,11 @@
 | Stage 3: pinch, pan, tap, long-press manual test | **Pending device** | Owner to test on phone |
 | All tests | **26/26 pass** | `dotnet test Tools/CoreTests` (C# 9, warnings as errors, overflow checking on) |
 
+## Added on owner request (same build)
+- **First-launch fiction notice** (plan A3): modal, must be accepted once, and can be reopened from the "Notice" button.
+- **Map sizes Small 256 / Medium 512 / Large 1024** (plan A5), cycled by the "Size" button and used by the next "New world". Terrain is 4 px per tile up to 512 and 2 px per tile for 1024.
+- **Feature sizes capped in absolute tiles** (continents 180, ridges 110, climate 130, warp 110/40, ocean border 48), so a large map gets more continents, ranges and lakes instead of the same world magnified. The caps sit above what a 256 map uses, so its golden hashes are unchanged. Reference timings (single-threaded .NET on the dev phone, no Burst): 256 = 0.2 s, 512 = 0.35 s, 1024 = 0.95 s.
+
 ## Found and fixed along the way
 - `StableHash64.Add(uint)` relied on unchecked narrowing casts. It threw under overflow checking and was latent since Stage 1. The casts are now explicitly `unchecked`.
 

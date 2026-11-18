@@ -7,7 +7,7 @@ using WorldSim.Core;
 namespace WorldSim.Presentation.Terrain
 {
     /// <summary>
-    /// Turns the tile grid into a pixel-art texture: <see cref="PixelsPerTile"/>² texels per tile,
+    /// Turns the tile grid into a pixel-art texture: <see cref="PixelsPerTileFor"/>² texels per tile,
     /// filled by a Burst job (§3.3: no per-pixel managed work). Presentation only: colours never
     /// feed back into the simulation.
     ///
@@ -17,11 +17,17 @@ namespace WorldSim.Presentation.Terrain
     /// </summary>
     public static class TerrainTexture
     {
-        public const int PixelsPerTile = 4;
+        /// <summary>
+        /// 4 px per tile up to 512 tiles, then 2 px: a 1024-tile map is a 2048² texture (16 MB)
+        /// instead of 4096² (64 MB). Larger maps use chunked rendering (plan A5).
+        /// </summary>
+        public static int PixelsPerTileFor(int widthTiles, int heightTiles) =>
+            (widthTiles > heightTiles ? widthTiles : heightTiles) <= 512 ? 4 : 2;
 
         public static Texture2D Create(int widthTiles, int heightTiles)
         {
-            var tex = new Texture2D(widthTiles * PixelsPerTile, heightTiles * PixelsPerTile, TextureFormat.RGBA32, false)
+            int ppt = PixelsPerTileFor(widthTiles, heightTiles);
+            var tex = new Texture2D(widthTiles * ppt, heightTiles * ppt, TextureFormat.RGBA32, false)
             {
                 filterMode = FilterMode.Point,
                 wrapMode = TextureWrapMode.Clamp,
@@ -34,7 +40,7 @@ namespace WorldSim.Presentation.Terrain
         public static void Paint(Texture2D tex, NativeArray<TileData> tiles, int width, int height)
         {
             NativeArray<Color32> pixels = tex.GetPixelData<Color32>(0);
-            new PaintJob { Tiles = tiles, Width = width, Height = height, Pixels = pixels }
+            new PaintJob { Tiles = tiles, Width = width, Height = height, Ppt = PixelsPerTileFor(width, height), Pixels = pixels }
                 .Schedule(height, 4).Complete();
             tex.Apply(false, false); // stays readable: terrain painting (Stage 6) repaints regions
         }
@@ -45,21 +51,24 @@ namespace WorldSim.Presentation.Terrain
             [ReadOnly] public NativeArray<TileData> Tiles;
             public int Width;
             public int Height;
+            public int Ppt; // pixels per tile: 4 or 2
             [NativeDisableParallelForRestriction, WriteOnly] public NativeArray<Color32> Pixels;
 
-            public void Execute(int ty)   // one row of tiles = PixelsPerTile rows of pixels
+            public void Execute(int ty)   // one row of tiles = Ppt rows of pixels
             {
-                int texWidth = Width * PixelsPerTile;
+                int texWidth = Width * Ppt;
                 for (int tx = 0; tx < Width; tx++)
                 {
                     TileData t = Tiles[ty * Width + tx];
                     int relief = Relief(tx, ty, t.Height);
                     bool coast = t.IsWater && TouchesLand(tx, ty);
-                    for (int py = 0; py < PixelsPerTile; py++)
-                        for (int px = 0; px < PixelsPerTile; px++)
+                    for (int py = 0; py < Ppt; py++)
+                        for (int px = 0; px < Ppt; px++)
                         {
-                            Color32 c = Shade(t, tx, ty, px, py, relief, coast);
-                            Pixels[(ty * PixelsPerTile + py) * texWidth + tx * PixelsPerTile + px] = c;
+                            // Patterns are designed on a 4x4 grid; at 2 px per tile sample every other cell.
+                            int sx = px * 4 / Ppt, sy = py * 4 / Ppt;
+                            Color32 c = Shade(t, tx, ty, sx, sy, relief, coast);
+                            Pixels[(ty * Ppt + py) * texWidth + tx * Ppt + px] = c;
                         }
                 }
             }

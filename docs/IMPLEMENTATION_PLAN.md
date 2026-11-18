@@ -137,6 +137,34 @@ The §5.2 mechanics stay: the "religion" weight in unit decisions and the "Worsh
 
 Lands in Stage 4 (the action and its utility weight) and Stage 5 (creed generation, spread, diplomacy).
 
+**Fiction notice (owner request).** On first launch the game shows a notice that it is fiction: all creeds, beliefs, rituals, kingdoms and characters are invented by the game and unrelated to any real religion, belief or people. It must be accepted once and stays readable from the HUD. It ships from the Stage 2/3 build onward, before creeds exist, so it is in place from the start.
+
+### A4. Unit traits the player can change, and inherited traits
+
+- Every sapient unit carries **traits** (data-driven `TraitDefinition`, extending §2.3 and §5.2). Examples: *Genius / Smart / Dull* (research output, invention chance, task speed), *Strong / Weak*, *Brave / Coward* (flee threshold), *Kind / Aggressive* (war and social weights), *Healthy / Frail* (lifespan, disease), *Fertile*, *Long-lived*, *Charismatic* (leader picks, creed spread).
+- Traits feed the utility AI as weighted inputs (§5.2) and the civilization layer. Geniuses produce more research and rare breakthroughs, which links to A1: smart populations advance faster.
+- **Player control.** A power lets you select a unit and add or remove traits, or make it smarter or duller. Area powers apply a trait to everyone in a radius. Possessing a unit (§2.2) shows its traits.
+- **Inheritance:** children inherit parents' traits with some probability and rare deterministic mutations (seeded PCG), so traits spread or fade over generations.
+- Mods add traits through the ModAPI (§2.3 "modify existing traits").
+- Lands in Stage 4 (trait component, AI weights, inheritance) and Stage 6 (trait-editing powers).
+
+### A5. Large maps (PC-class)
+
+| Size | Tiles | Tile data | Notes |
+|---|---|---|---|
+| Small | 256² | 0.3 MB | default today |
+| Medium | 512² | 1.3 MB | |
+| Large | 1024² | 5.2 MB | in the Stage 2/3 build (2 px per tile texture, 2048² RGBA = 16 MB) |
+| Huge | 2048² | 21 MB | needs chunked terrain rendering (below) |
+| Titanic | 4096² | 84 MB | high-end phones only; same chunking plus macro simulation |
+
+- Generation is per-tile and Burst-parallel, so cost grows linearly: Huge is about 16× Small, a few seconds behind a progress screen.
+- **Rendering at Huge and above:** one texture can't hold the map (mobile GPUs commonly cap textures at 4096–8192 px). The terrain is therefore split into **chunks** (e.g. 128×128 tiles per texture). Only chunks near the camera are kept at full detail, and a 1-px-per-tile overview texture is used when zoomed out. This also suits the §7.3 terrain shader.
+- **Simulation at Huge and above:** the hierarchical pathfinding grid (§5.3), AI LOD (§13.2) and A2's macro simulation keep cost tied to *visible activity*, not map area. Agent caps are per device tier.
+- Saves are about 5 bytes per tile before GZip (§10.2), which is fine.
+- Lands in: Stage 2/3 build (Small/Medium/Large selector), the rendering stage (chunked terrain; Huge/Titanic) and Stage 10 (profiling per device tier).
+
+
 ### Conflicts resolved
 - **§12.2 speed set vs A2:** A2 wins (owner request). It's a superset.
 - **§13.1 budgets vs high speed:** resolved by macro simulation; budgets apply per rendered frame at every speed.

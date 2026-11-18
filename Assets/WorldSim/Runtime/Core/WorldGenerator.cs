@@ -55,6 +55,16 @@ namespace WorldSim.Core
         public const byte MountainFrom = 196;
         public const byte SnowPeakFrom = 240;
 
+        // Feature sizes scale with the map up to these limits (in tiles). Past them a bigger map
+        // gets MORE continents, ranges and climate zones instead of the same ones magnified
+        // (plan A5). All limits are above what a 256-tile map uses, so its golden hashes hold.
+        public const int MaxContinentPeriod = 180;
+        public const int MaxRidgePeriod = 110;
+        public const int MaxClimatePeriod = 130;
+        public const int MaxWarpPeriod = 110;
+        public const int MaxWarpAmplitude = 40;
+        public const int MaxBorderBand = 48;
+
         public static TileData GenerateTile(in WorldGenParams p, int x, int y)
         {
             long px = (long)x << FixedNoise.FracBits;
@@ -62,16 +72,16 @@ namespace WorldSim.Core
             int minDim = p.Width < p.Height ? p.Width : p.Height;
 
             // ---- Pass 3a (edge refinement): domain warp, up to ~10% of the map size ----
-            int warpPeriod = Max(8, minDim / 5);
-            long warpAmp = (long)Max(2, minDim / 10);
+            int warpPeriod = Clamp(minDim / 5, 8, MaxWarpPeriod);
+            long warpAmp = Clamp(minDim / 10, 2, MaxWarpAmplitude);
             long wx = px + FixedNoise.Fbm(p.EdgeRefineSeed, px, py, warpPeriod, 3) * warpAmp;
             long wy = py + FixedNoise.Fbm(p.EdgeRefineSeed ^ 0xA5A5A5A5A5A5A5A5UL, px, py, warpPeriod, 3) * warpAmp;
 
             // ---- Pass 1: continental height ----
-            int continentPeriod = Max(16, minDim / 3);
+            int continentPeriod = Clamp(minDim / 3, 16, MaxContinentPeriod);
             int n = FixedNoise.Fbm(p.HeightSeed, wx, wy, continentPeriod, 5); // [-One, One], clusters near 0
             // Ridges: 1 - |noise| peaks along lines, which reads as mountain ranges.
-            long ridge = One - Abs(FixedNoise.Fbm(p.HeightSeed ^ 0x5A5A5A5A5A5A5A5AUL, wx, wy, Max(12, minDim / 5), 3));
+            long ridge = One - Abs(FixedNoise.Fbm(p.HeightSeed ^ 0x5A5A5A5A5A5A5A5AUL, wx, wy, Clamp(minDim / 5, 12, MaxRidgePeriod), 3));
             long ridgeLift = ridge > One * 74 / 100 ? (ridge - One * 74 / 100) * 2 : 0;  // 0..0.52
             long falloff = BorderFalloff(x, y, p.Width, p.Height);           // [0, One]
             // fBm stretched x1.7 (its octave sum rarely nears ±1), small land bias, ridges only
@@ -81,11 +91,11 @@ namespace WorldSim.Core
             byte height = ToByte(h);
 
             // ---- Moisture and temperature fields ----
-            byte moisture = ToByte(FixedNoise.Fbm(p.MoistureSeed, wx, wy, Max(12, minDim / 4), 4));
+            byte moisture = ToByte(FixedNoise.Fbm(p.MoistureSeed, wx, wy, Clamp(minDim / 4, 12, MaxClimatePeriod), 4));
 
             // Temperature: warm equator (middle row), cold poles, colder with altitude.
             long latitude = One - Abs((long)y * 2 * One / Max(1, p.Height - 1) - One); // [0, One]
-            long tNoise = FixedNoise.Fbm(p.TemperatureSeed, wx, wy, Max(12, minDim / 3), 3);
+            long tNoise = FixedNoise.Fbm(p.TemperatureSeed, wx, wy, Clamp(minDim / 3, 12, MaxClimatePeriod), 3);
             long altitudeChill = height > SeaLevel ? (long)(height - SeaLevel) * One / (255 - SeaLevel) : 0;
             long t = (latitude * 2 - One) * 80 / 100 + tNoise * 35 / 100 - altitudeChill * 45 / 100;
             byte temperature = ToByte(t);
@@ -166,7 +176,7 @@ namespace WorldSim.Core
             int dx = Min(x, w - 1 - x);
             int dy = Min(y, h - 1 - y);
             int d = Min(dx, dy);                     // tiles to the nearest border
-            int band = Max(4, Min(w, h) * 14 / 100);
+            int band = Clamp(Min(w, h) * 14 / 100, 4, MaxBorderBand);
             if (d >= band) return 0;
             long t = (long)(band - d) * One / band;  // 0..One towards the border
             return t * t >> FixedNoise.FracBits;     // ease-in
@@ -182,6 +192,7 @@ namespace WorldSim.Core
         }
 
         static int Max(int a, int b) => a > b ? a : b;
+        static int Clamp(int v, int lo, int hi) => v < lo ? lo : v > hi ? hi : v;
         static int Min(int a, int b) => a < b ? a : b;
         static long Abs(long a) => a < 0 ? -a : a;
 

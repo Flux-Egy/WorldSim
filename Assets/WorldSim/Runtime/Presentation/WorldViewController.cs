@@ -25,8 +25,13 @@ namespace WorldSim.Presentation
         /// <summary>First-launch seed. Its hash is pinned in WorldGenTests, so the value shown
         /// on a device can be compared with CI (§4.3 cross-device acceptance).</summary>
         public const ulong DefaultSeed = 0x5EED;
-        public const int WorldSize = 256;
+        /// <summary>Map sizes offered now (plan A5). Huge/Titanic need chunked rendering first.</summary>
+        static readonly int[] Sizes = { 256, 512, 1024 };
+        static readonly string[] SizeNames = { "Small", "Medium", "Large" };
         const string SeedPrefKey = "worldsim.lastSeed";
+        const string SizePrefKey = "worldsim.mapSizeIndex";
+        const string NoticePrefKey = "worldsim.fictionNoticeAccepted.v1";
+        int _sizeIndex;
 
         Camera _cam;
         CameraRig _rig;
@@ -59,7 +64,12 @@ namespace WorldSim.Presentation
 
             _hud = new WorldHud(transform);
             _hud.NewWorldClicked += NewWorld;
+            _hud.SizeClicked += CycleSize;
+            _hud.NoticeAccepted += () => { PlayerPrefs.SetInt(NoticePrefKey, 1); PlayerPrefs.Save(); };
             _hud.SetTitle("WorldSim\nGenerating world...");
+            _sizeIndex = Mathf.Clamp(PlayerPrefs.GetInt(SizePrefKey, 0), 0, Sizes.Length - 1);
+            UpdateSizeLabel();
+            if (PlayerPrefs.GetInt(NoticePrefKey, 0) != 1) _hud.ShowNotice(); // plan A3: first launch
 
             EnhancedTouchSupport.Enable();
             _gestures.PixelScale = Screen.dpi > 0 ? Screen.dpi / 160f : 2f;
@@ -67,7 +77,7 @@ namespace WorldSim.Presentation
             _em = World.DefaultGameObjectInjectionWorld.EntityManager;
             _mapQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<WorldMap>());
 
-            RequestWorld(LoadSeed());
+            RequestWorld(LoadSeed(), CurrentSize);
         }
 
         void OnDestroy()
@@ -123,19 +133,19 @@ namespace WorldSim.Presentation
             _map = map;
             _shownVersion = map.Version;
 
-            if (_terrainTex == null || _terrainTex.width != map.Width * TerrainTexture.PixelsPerTile ||
-                _terrainTex.height != map.Height * TerrainTexture.PixelsPerTile)
+            int ppt = TerrainTexture.PixelsPerTileFor(map.Width, map.Height);
+            if (_terrainTex == null || _terrainTex.width != map.Width * ppt || _terrainTex.height != map.Height * ppt)
             {
                 if (_terrainTex != null) Destroy(_terrainTex);
                 _terrainTex = TerrainTexture.Create(map.Width, map.Height);
             }
             TerrainTexture.Paint(_terrainTex, map.Tiles, map.Width, map.Height);
             _terrain.sprite = Sprite.Create(_terrainTex, new Rect(0, 0, _terrainTex.width, _terrainTex.height),
-                Vector2.zero, TerrainTexture.PixelsPerTile, 0, SpriteMeshType.FullRect);
+                Vector2.zero, ppt, 0, SpriteMeshType.FullRect);
             _rig.SetWorld(map.Width, map.Height);
             _selection.enabled = false;
             _hud.HideInfo();
-            _hud.SetTitle($"WorldSim   seed 0x{map.Seed:X}\nworld hash 0x{map.Hash:X16}");
+            _hud.SetTitle($"WorldSim   seed 0x{map.Seed:X}   {map.Width}x{map.Height}\nworld hash 0x{map.Hash:X16}");
             SaveSeed(map.Seed);
         }
 
@@ -177,13 +187,26 @@ namespace WorldSim.Presentation
             // forbids UnityEngine.Random *inside* generation, which stays seed-only).
             ulong seed = SplitMix64.Mix((ulong)System.DateTime.UtcNow.Ticks) & 0xFFFFFFFFUL;
             _hud.SetTitle("WorldSim\nGenerating world...");
-            RequestWorld(seed);
+            RequestWorld(seed, CurrentSize);
         }
 
-        void RequestWorld(ulong seed)
+        int CurrentSize => Sizes[_sizeIndex];
+
+        /// <summary>Changes the size used by the next "New world" (the current world is kept).</summary>
+        void CycleSize()
+        {
+            _sizeIndex = (_sizeIndex + 1) % Sizes.Length;
+            PlayerPrefs.SetInt(SizePrefKey, _sizeIndex);
+            PlayerPrefs.Save();
+            UpdateSizeLabel();
+        }
+
+        void UpdateSizeLabel() => _hud.SetSizeLabel($"{SizeNames[_sizeIndex]} {Sizes[_sizeIndex]}");
+
+        void RequestWorld(ulong seed, int size)
         {
             Entity e = _em.CreateEntity(typeof(WorldGenRequest));
-            _em.SetComponentData(e, new WorldGenRequest { Seed = seed, Width = WorldSize, Height = WorldSize });
+            _em.SetComponentData(e, new WorldGenRequest { Seed = seed, Width = size, Height = size });
         }
 
         static ulong LoadSeed()
