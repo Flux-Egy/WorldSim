@@ -29,6 +29,8 @@ How to choose:
 - UI, scenes and project settings are **built from code** (`WorldHud`, `WorldSimBootstrap`, `WorldSimCI.Bootstrap`), so CI can recreate them headlessly. Keep it that way: no hand-made scene or prefab edits that only the Editor can reproduce.
 - In the codespace, Unity **always runs with real rendering** (Xvfb + software OpenGL, the `up.sh` default), because screenshots are the point of the workshop. `--nographics` is for diagnostics only. Look at every screenshot you rely on.
 - Unity MCP is installed **only inside the codespace**. Never register it on the phone.
+- **Unity seems stuck in the codespace:** don't kill it straight away. First run `Tools/Unity/diagnose.sh`, which screenshots the Xvfb display (a hidden dialog such as Safe Mode, a project upgrade or package errors), checks the log age and "Loading completed", and shows CPU and thread states. A quiet log after "Loading completed" is normal: the Editor is waiting for commands. **Time-box: 30 min.** If it isn't solved by then, run `Tools/Unity/down.sh` (return the seat), stop the codespace (`gh codespace stop`) to save hours, and report what you found to the owner.
+- Anything started from a shell, tmux or `postStartCommand` that must keep running needs `setsid` (otherwise it dies with that session). `postStartCommand` kills even `setsid` background jobs, so do that work in the foreground.
 
 ## Commands
 ```bash
@@ -48,6 +50,7 @@ Tools/Unity/up.sh           # license + Editor with rendering (Xvfb) + MCP bridg
 Tools/Unity/remote.sh       # up.sh + claude --remote-control in tmux (owner drives from the Claude app)
 Tools/Unity/render-check.sh # proves real rendering works (first session, or when in doubt)
 Tools/Unity/usage.sh        # disk + core-hours: report them to the owner after every session
+Tools/Unity/diagnose.sh     # before killing a stuck Editor: display screenshot, log age, CPU/threads
 Tools/Unity/down.sh         # ALWAYS before stopping: quit Unity, return the license seat
 ```
 The device check (owner's rooted phone, from the chroot) is `pm install -r <apk>`, `am start -n com.fluxegy.worldsim/com.unity3d.player.UnityPlayerGameActivity`, then `screencap -p` and `logcat -s Unity`.

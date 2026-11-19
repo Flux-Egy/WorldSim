@@ -18,7 +18,7 @@ sudo apt-get update -qq
 sudo apt-get install -y -qq --no-install-recommends \
   ca-certificates libasound2t64 libc6-dev libcap2 libglu1-mesa libgtk-3-0t64 libncurses6 libnotify4 \
   libnss3 libvulkan1 mesa-vulkan-drivers libgl1-mesa-dri mesa-utils libxtst6 libxss1 cpio lsb-release \
-  python3 xvfb xauth xz-utils curl git jq unzip tmux >/dev/null
+  python3 xvfb xauth xz-utils curl git jq unzip tmux imagemagick >/dev/null
 echo "OK"
 
 say "uv (runs the Unity MCP server)"
