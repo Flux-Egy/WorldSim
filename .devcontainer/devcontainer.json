@@ -1,0 +1,39 @@
+// WorldSim "Unity workshop" Codespace: a headless Unity Editor + Unity MCP + Claude Code.
+// How to use it, the budget rules and the first-run spike checklist: docs/CODESPACES.md.
+//
+// The image is GameCI's Linux Unity Editor (no Android module: APKs are built by GitHub Actions).
+// Its tag MUST match ProjectSettings/ProjectVersion.txt. setup.sh checks this and warns.
+{
+  "name": "WorldSim Unity workshop",
+  "image": "unityci/editor:ubuntu-6000.3.28f1-base-3",
+
+  // Unity needs real RAM: 4 cores / 16 GB is the smallest comfortable machine.
+  // Free plan: 120 core-hours a month, i.e. about 30 hours on this machine.
+  "hostRequirements": { "cpus": 4, "memory": "16gb", "storage": "32gb" },
+
+  "features": {
+    // Lets the owner open a shell from Termux on the phone: gh codespace ssh
+    "ghcr.io/devcontainers/features/sshd:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  // Codespaces secrets (GitHub > Settings > Codespaces > Secrets, give this repo access).
+  // Same Unity account as the Actions secrets. Never printed by any script.
+  "secrets": {
+    "UNITY_EMAIL": { "description": "Unity account email (same as the Actions secret)" },
+    "UNITY_PASSWORD": { "description": "Unity account password (same as the Actions secret)" }
+  },
+
+  "containerEnv": {
+    // Unity MCP only starts its bridge in batch mode when this is set.
+    "UNITY_MCP_ALLOW_BATCH": "1",
+    "UNITY_MCP_BIND_HOST": "127.0.0.1",
+    // No usage telemetry from the MCP server or its Unity package.
+    "DISABLE_TELEMETRY": "1",
+    "UNITY_MCP_DISABLE_TELEMETRY": "1"
+  },
+
+  "remoteUser": "root",
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "postStartCommand": "bash .devcontainer/on-start.sh"
+}

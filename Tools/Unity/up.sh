@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Codespace only. Activates the Unity Personal license and starts the Unity Editor headless,
+# with the Unity MCP bridge, in the background. Stop it with Tools/Unity/down.sh.
+#
+#   Tools/Unity/up.sh              # rendering through software OpenGL on a virtual display
+#                                  # (needed for screenshots; slow but works without a GPU)
+#   Tools/Unity/up.sh --nographics # no rendering at all (faster; no screenshots)
+#
+# Licensing uses GameCI's own activate.sh / return_license.sh (the scripts our Actions builds
+# already use), pinned to game-ci/cli v0.1.76. Approach adapted from Unity MCP's
+# tools/ci_unity_license.py (MIT), see CREDITS.md.
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+REPO="$PWD"
+STATE=/workspaces/.unity-state
+GAMECI_SHA=39868753b787468332a1f5a85aa151d02c8555c6 # game-ci/cli tag v0.1.76
+MODE=graphics
+[ "${1:-}" = "--nographics" ] && MODE=nographics
+
+: "${UNITY_EMAIL:?UNITY_EMAIL is not set: add it as a Codespaces secret (docs/CODESPACES.md)}"
+: "${UNITY_PASSWORD:?UNITY_PASSWORD is not set: add it as a Codespaces secret (docs/CODESPACES.md)}"
+
+if pgrep -f "/opt/unity/Editor/Unity .*-projectPath" >/dev/null; then
+  echo "Unity is already running (log: $STATE/editor.log)."; exit 0
+fi
+
+mkdir -p "$STATE/activation" "$STATE/steps-$GAMECI_SHA"
+STEPS="$STATE/steps-$GAMECI_SHA"
+for f in activate.sh return_license.sh licensing_method.sh resolve_unity_path.sh; do
+  [ -s "$STEPS/$f" ] || curl -fsSL -o "$STEPS/$f" \
+    "https://raw.githubusercontent.com/game-ci/cli/$GAMECI_SHA/dist/platforms/ubuntu/steps/$f"
+done
+
+echo "== Activating Unity license (Personal, via account)"
+STEPS_DIR="$STEPS" ACTIVATE_LICENSE_PATH="$STATE/activation" UNITY_LICENSE="" UNITY_LICENSE_FILE="" \
+UNITY_LICENSING_SERVER="" HOME="$HOME" bash -c '
+  set +eux
+  unity-editor() { /opt/unity/Editor/Unity -batchmode -nographics "$@"; }
+  export -f unity-editor
+  source "$STEPS_DIR/activate.sh" || exit $?
+  printf "%s" "${GAME_CI_ACTIVATED_VIA:-}" > "$ACTIVATE_LICENSE_PATH/activated-via"
+' > "$STATE/activate.log" 2>&1 || { echo "Activation FAILED. Last lines:"; tail -25 "$STATE/activate.log"; exit 1; }
+cp "$STATE/activation/activated-via" "$STATE/activated-via"
+echo "License active (log: $STATE/activate.log)."
+
+echo "== Starting Unity Editor ($MODE). First start imports the whole project: 10-20 min."
+rm -f "$HOME"/.unity-mcp/unity-mcp-status-*.json 2>/dev/null || true
+ARGS=(-batchmode -projectPath "$REPO" -logFile "$STATE/editor.log")
+if [ "$MODE" = nographics ]; then
+  nohup /opt/unity/Editor/Unity "${ARGS[@]}" -nographics >/dev/null 2>&1 &
+else
+  nohup xvfb-run -a -s "-screen 0 1280x720x24" /opt/unity/Editor/Unity "${ARGS[@]}" -force-glcore >/dev/null 2>&1 &
+fi
+echo $! > "$STATE/editor.pid"
+
+for i in $(seq 1 240); do # up to 20 minutes
+  if ls "$HOME"/.unity-mcp/unity-mcp-status-*.json >/dev/null 2>&1; then
+    echo "Unity MCP bridge is up after $((i * 5)) s. Start (or restart) claude to use it."; exit 0
+  fi
+  if ! pgrep -f "/opt/unity/Editor/Unity .*-projectPath" >/dev/null; then
+    echo "Unity exited early. Last log lines:"; tail -40 "$STATE/editor.log" 2>/dev/null; exit 1
+  fi
+  [ $((i % 12)) -eq 0 ] && echo "  ... still starting ($((i * 5 / 60)) min). $(grep -c 'Start importing' "$STATE/editor.log" 2>/dev/null || echo 0) assets imported so far"
+  sleep 5
+done
+echo "Unity is running but the MCP bridge did not report in 20 min. Check $STATE/editor.log"
+exit 1
