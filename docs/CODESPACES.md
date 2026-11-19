@@ -89,3 +89,21 @@ Goal: prove the setup before relying on it. **The spike passes only if all MUST 
 - [ ] Time per screenshot and Editor responsiveness under software rendering.
 
 **If rendering fails:** the spike fails. Don't settle for `--nographics`. Record the exact error (`render-check.log`, `editor.log`) and try, in order: `-force-vulkan` instead of `-force-glcore`, a larger Xvfb screen or depth, and missing Mesa packages. If none of these work within the time box, stop and decide with the owner (for example, a cloud machine with a GPU, which costs more) before spending more hours.
+
+## Spike results (2026-11-19, codespace `worldsim-workshop`)
+
+| Item | Result |
+|---|---|
+| Codespace creation | 1st try: GameCI image "no space left on device" (host has ~14 GB for images). Recovery container. 2nd: no SSH (sshd feature needed). 3rd: OK in ~2 min with the Ubuntu 24.04 base. |
+| Editor install | `install-editor.sh`: 4.3 GB download at ~15-20 MB/s plus extraction, about 4-6 min. 8.2 GB in `/tmp`. |
+| License activation | PASS (GameCI scripts, Personal seat). |
+| `render-check.sh` | **PASS**: `device=OpenGLCore renderer="llvmpipe (LLVM 20.1.2)"`. Claude opened `render-check.png`: a lit, shaded cube on blue. |
+| Editor with rendering + import + bridge | First import of the project about 8 min (Library 2.0 GB). A quiet log after "Loading completed" is normal, not a hang. Bridge needed two fixes: `-executeMethod MCPForUnity.Editor.McpCiBoot.StartStdioForCi` (v10 defaults to HTTP) and `setsid` (Unity died when the launching tmux session closed). After that: bridge up in 15-20 s. |
+| Claude + UnityMCP | `claude mcp list`: UnityMCP connected. Console read: 0 errors. |
+| **Game screenshot via MCP** | **PASS.** Boot scene, Play Mode, log `World generated: seed=0x5EED size=256x256 hash=0xAD06CD8E776A783C` (matches the golden hash, so determinism holds in the Editor too). Screenshot via `manage_camera screenshot`. Claude opened it: generated world with ocean, continents, forest, sand, mountains, snow. **Limits:** 640x480 (Game view default) and **no HUD** (camera capture skips the screen-space overlay UI). Next session: enlarge the Game view and find an overlay-inclusive capture. |
+| `down.sh` return | PASS ("Successfully returned the entitlement license"). CI runs before, during and after codespace seats all activated and succeeded. |
+| Sudden stop | **PASS** (3rd attempt). Stopped with Unity up and the seat active. On the next start, `on-start.sh` detected it, reinstalled the Editor and returned the seat: started 16:48:57, `license returned` 16:52:59 (~4 min). Background jobs from `postStartCommand` are killed when it finishes (even with `setsid`), so the return runs in the foreground. |
+| Idle guard (15 min, no work) | Not run yet. |
+| Remote Control keeps the codespace awake | Not run yet (needs the owner on the Claude app). |
+| Storage after setup | **4.2 GB** of 15 GB-month (Library 2.0, Claude 0.36, uv 0.1; the Editor in `/tmp` isn't counted). |
+| Core-hours | This codespace ~0.9 h x 4 = ~3.6 core-hours at measurement time, plus ~1.9 for the two failed attempts. The official number goes on the billing page the next day. |
