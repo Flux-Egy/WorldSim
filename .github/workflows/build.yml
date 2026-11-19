@@ -105,6 +105,9 @@ jobs:
         with:
           cliVersion: v0.1.76 # pinned, same CLI as the builds
           testMode: editmode
+          # Only our test assembly. Run 44524214801 also ran ~2,900 package tests (Entities was
+          # listed under "testables"); our 51 passed, 4 Entities performance tests failed.
+          customParameters: -assemblyNames WorldSim.Tests.EditMode
           artifactsPath: unity-test-results
 
       - uses: actions/upload-artifact@v7
