@@ -25,6 +25,9 @@ if pgrep -f "/opt/unity/Editor/Unity .*-projectPath" >/dev/null; then
   echo "Unity is already running (log: $STATE/editor.log)."; exit 0
 fi
 
+# The Editor lives in /tmp (wiped on every stop): install it if needed (a few minutes).
+"$REPO/Tools/Unity/install-editor.sh"
+
 mkdir -p "$STATE/activation" "$STATE/steps-$GAMECI_SHA"
 STEPS="$STATE/steps-$GAMECI_SHA"
 for f in activate.sh return_license.sh licensing_method.sh resolve_unity_path.sh; do

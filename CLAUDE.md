@@ -57,5 +57,5 @@ The device check (owner's rooted phone, from the chroot) is `pm install -r <apk>
 - `Assets/WorldSim/Runtime/Render`: pure C# pixel painting (terrain, sprites, icons, `PngDecoder`), generic over struct interfaces so Burst and plain .NET share it.
 - `Runtime/Simulation`: ECS (fixed 10 Hz `SimulationTickGroup`). `Runtime/Presentation`: views, camera, input, HUD (uGUI built in code). `Editor/`: CI bootstrap and build (`WorldSimCI`, `WorldSimBuild`).
 - Tests: `Assets/WorldSim/Tests/EditMode` run in both `Tools/CoreTests` (.NET) and Unity (CI `unity-tests`). Add tests with every Core/Render change.
-- CI: `.github/workflows/build.yml` and `GITHUB_ACTIONS.md`. The Unity version comes from `ProjectSettings/ProjectVersion.txt`. game-ci CLI is pinned to `v0.1.76`. When upgrading Unity, also update the image tag in `.devcontainer/devcontainer.json`.
+- CI: `.github/workflows/build.yml` and `GITHUB_ACTIONS.md`. The Unity version comes from `ProjectSettings/ProjectVersion.txt`. game-ci CLI is pinned to `v0.1.76`. The codespace installs the Editor from `ProjectVersion.txt` too (`Tools/Unity/install-editor.sh`), so upgrading Unity there is enough.
 - Commits: on `main` unless asked otherwise, with a clear English message.

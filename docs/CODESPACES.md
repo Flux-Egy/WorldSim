@@ -2,7 +2,7 @@
 
 The owner works from an Android phone only, so the Unity Editor can't run locally. This Codespace runs the Unity Editor **with real rendering** on an Xvfb virtual display (software OpenGL, since there is no GPU) plus **Unity MCP**, so Claude can drive the Editor and **see screenshots of the game**. Seeing the game is the main reason this workshop exists, so rendering is a requirement, not an extra. It is for **planned work sessions**, not every change. See CLAUDE.md, "Where work happens".
 
-Files: `.devcontainer/` (image, setup), `Tools/Unity/up.sh` / `down.sh` (start and stop Unity with rendering, activate and return the license) and `Tools/Unity/render-check.sh` (proves rendering works, without MCP).
+Files: `.devcontainer/` (small Ubuntu 24.04 base image, setup), `Tools/Unity/install-editor.sh` (downloads the exact Editor from Unity into `/tmp`), `Tools/Unity/up.sh` / `down.sh` (start and stop Unity with rendering, activate and return the license) and `Tools/Unity/render-check.sh` (proves rendering works, without MCP).
 
 ## Budget
 - Machine: 4 cores / 16 GB RAM (`hostRequirements`). On the Free plan, 120 core-hours a month is **about 30 hours** on this machine. Storage: 15 GB-month free.
@@ -12,7 +12,7 @@ Files: `.devcontainer/` (image, setup), `Tools/Unity/up.sh` / `down.sh` (start a
 
 ## One-time setup (owner)
 1. **Codespaces secrets.** Go to github.com/settings/codespaces > *Secrets* > *New secret*. Add `UNITY_EMAIL` and `UNITY_PASSWORD` (same values as the Actions secrets) and give the `Flux-Egy/WorldSim` repository access to both.
-2. **Create the codespace** (from Termux): `gh codespace create -R Flux-Egy/WorldSim -b main --idle-timeout 30m`, then pick the **4-core** machine when asked. `hostRequirements` hides smaller machines. Or use the website: repo > *Code* > *Codespaces* > *+*. The first creation pulls a ~5 GB Unity image and runs `.devcontainer/setup.sh`, which takes 10-15 min.
+2. **Create the codespace** (from Termux): `gh codespace create -R Flux-Egy/WorldSim -b main --idle-timeout 30m`, then pick the **4-core** machine when asked. `hostRequirements` hides smaller machines. Or use the website: repo > *Code* > *Codespaces* > *+*. Creation takes about 5 min (small base image + `setup.sh`). The Unity Editor isn't in the image: the first `up.sh` after every start downloads it into `/tmp` (about 4.6 GB, a few minutes). `/tmp` is a large temporary disk that is wiped on stop and **isn't counted as codespace storage**. A first attempt with GameCI's full Unity image failed with "no space left on device" (the host has ~14 GB free for images).
 3. **Open a shell** from Termux with `gh codespace ssh -c <name>`, then run `claude` once and log in (it prints a link to open on the phone).
 
 ## Every session
@@ -70,7 +70,7 @@ Keep the codespace idle timeout **above** the guard's 15 min (see Budget).
 Goal: prove the setup before relying on it. **The spike passes only if all MUST items pass.** Write the results (with the screenshots' paths) into this file.
 
 **MUST (any failure means the spike fails):**
-- [ ] The image matches `ProjectVersion.txt` (`setup.sh` prints this).
+- [ ] `install-editor.sh` installs the Editor named in `ProjectVersion.txt` (version + changeset) into `/tmp`, and record how long it takes after a start.
 - [ ] `up.sh` activates the license.
 - [ ] `Tools/Unity/render-check.sh` prints `RENDER_CHECK PASS` with a real OpenGL device (not Null), and `render-check.png` shows the lit cube on a blue background. Claude opens the PNG and looks at it.
 - [ ] The WorldSim Editor starts **with rendering** (`up.sh` reports a graphics device, not Null), the project imports, and the MCP bridge reports.

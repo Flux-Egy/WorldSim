@@ -12,6 +12,7 @@ PROJ=/tmp/worldsim-render-check
 OUT="$STATE/render-check.png"
 mkdir -p "$STATE"
 [ -f "$STATE/activated-via" ] || { echo "No active Unity license. Run Tools/Unity/up.sh first."; exit 1; }
+"$(dirname "$0")/install-editor.sh" >/dev/null
 
 rm -rf "$PROJ" "$OUT"
 echo "== Creating a throwaway project"

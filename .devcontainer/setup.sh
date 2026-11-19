@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # One-time Codespace setup (postCreateCommand). Safe to re-run.
-# Installs: uv, Claude Code, software OpenGL for rendering without a GPU, the Unity MCP package
-# (locally only, never committed) and registers the Unity MCP server with Claude Code.
+# Installs: Unity's system libraries, software OpenGL + Xvfb, tmux, uv, Claude Code, the Unity MCP
+# package (locally only, never committed) and registers the Unity MCP server with Claude Code.
+# The Unity Editor itself is installed by Tools/Unity/install-editor.sh (called by up.sh) into /tmp.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 STATE=/workspaces/.unity-state
@@ -10,19 +11,14 @@ mkdir -p "$STATE"
 
 say() { printf '\n== %s\n' "$*"; }
 
-say "Unity version check"
-want=$(sed -n 's/^m_EditorVersion: //p' ProjectSettings/ProjectVersion.txt)
-have=$(cat "${UNITY_PATH:-/opt/unity}/version" 2>/dev/null || true) # GameCI images write the editor version here
-echo "project: $want   image editor: ${have:-unknown}"
-case "$have" in
-  "$want"*) echo "OK" ;;
-  *) echo "WARNING: the image does not match ProjectVersion.txt. Update the image tag in .devcontainer/devcontainer.json." ;;
-esac
-
-say "System packages (software OpenGL + virtual display for rendering without a GPU)"
+say "System packages: Unity's runtime libraries (list from GameCI's Ubuntu 24.04 base image),"
+say "software OpenGL/Vulkan + Xvfb virtual display (rendering without a GPU), tmux"
 export DEBIAN_FRONTEND=noninteractive
-apt-get update -qq
-apt-get install -y -qq --no-install-recommends tmux xvfb xauth libgl1-mesa-dri libglu1-mesa mesa-utils mesa-vulkan-drivers libvulkan1 curl ca-certificates jq >/dev/null
+sudo apt-get update -qq
+sudo apt-get install -y -qq --no-install-recommends \
+  ca-certificates libasound2t64 libc6-dev libcap2 libglu1-mesa libgtk-3-0t64 libncurses6 libnotify4 \
+  libnss3 libvulkan1 mesa-vulkan-drivers libgl1-mesa-dri mesa-utils libxtst6 libxss1 cpio lsb-release \
+  python3 xvfb xauth xz-utils curl git jq unzip tmux >/dev/null
 echo "OK"
 
 say "uv (runs the Unity MCP server)"
@@ -67,7 +63,7 @@ say "Done"
 cat <<'EOF'
 Next (see docs/CODESPACES.md):
   1. claude            # first time: log in, then exit
-  2. Tools/Unity/up.sh # activate the Unity license and start the headless Editor
+  2. Tools/Unity/up.sh # installs the Editor if needed (~10 min after each start), license, Editor with rendering
   3. claude            # work; Unity MCP tools are available
   4. Tools/Unity/down.sh  # ALWAYS before stopping: quits Unity and returns the license seat
 EOF

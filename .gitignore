@@ -56,3 +56,6 @@ Thumbs.db
 /Tools/**/bin/
 /Tools/**/obj/
 /Tools/**/TestResults/
+
+# Local-only analysis of reference material (third-party footage). Never commit.
+/.local-reference/
