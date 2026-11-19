@@ -45,6 +45,7 @@ gh run list -L 3
 gh run download <run-id> -n WorldSim-android-release
 # Codespace only
 Tools/Unity/up.sh           # license + Editor with rendering (Xvfb) + MCP bridge + idle guard
+Tools/Unity/remote.sh       # up.sh + claude --remote-control in tmux (owner drives from the Claude app)
 Tools/Unity/render-check.sh # proves real rendering works (first session, or when in doubt)
 Tools/Unity/usage.sh        # disk + core-hours: report them to the owner after every session
 Tools/Unity/down.sh         # ALWAYS before stopping: quit Unity, return the license seat
