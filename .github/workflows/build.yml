@@ -1,6 +1,15 @@
 # WorldSim CI. See GITHUB_ACTIONS.md for setup (Unity license secrets) and the first-run bootstrap.
 # Action versions verified on 2026-11-17: game-ci/unity-builder v6.0.0 (thin wrapper over the
-# game-ci CLI), unityci/editor:ubuntu-6000.3.28f1-android-3.
+# game-ci CLI), unityci/editor:ubuntu-6000.3.28f1-android-3. 2026-11-19: game-ci/unity-test-runner
+# v4.4.0 is also a thin wrapper that runs `game-ci test` (CLI v0.1.76 has the command), and the
+# CLI reads UNITY_EMAIL/UNITY_PASSWORD from its environment, so Personal licensing works there too.
+#
+# Unity version: both actions default unityVersion to 'auto', so the CLI reads
+# ProjectSettings/ProjectVersion.txt (currently 6000.3.28f1). Nothing is hard-coded here.
+#
+# When it runs: tests (.NET + Unity EditMode) on every push to any branch and on pull requests.
+# The Android build runs after the tests pass; in a private repo only on main (saves Actions
+# minutes, since public repos get free minutes and private ones don't).
 #
 # Licensing: Personal license via UNITY_EMAIL + UNITY_PASSWORD only (the game-ci CLI's
 # "personal" method requests a seat from Unity's licensing service and returns it on exit).
@@ -9,7 +18,7 @@ name: Build
 
 on:
   push:
-    branches: [main]
+    branches: ['**']
   pull_request:
   workflow_dispatch:
 
@@ -69,15 +78,48 @@ jobs:
           python3 ci/check_unity_credentials.py
           echo "available=true" >> "$GITHUB_OUTPUT"
 
-  # Unity EditMode tests are not run in Unity yet: game-ci/unity-test-runner v4.3.2 cannot activate
-  # a Personal license from UNITY_EMAIL/UNITY_PASSWORD alone (its activate.sh only knows serial,
-  # license file and license server). Today the EditMode tests are exactly the Core tests that
-  # core-tests already runs. When Unity-only tests exist (Stage 2), they will run via a
-  # unity-builder buildMethod that drives the Test Runner API.
-
-  build-android:
+  # Unity EditMode tests inside the real Unity Editor (the same tests as core-tests, plus anything
+  # that needs UnityEngine). Runs before the build, so at most one Unity seat is in use per run.
+  unity-tests:
     needs: [core-tests, license-check]
     if: needs.license-check.outputs.available == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/cache@v6
+        with:
+          path: Library
+          key: Library-EditMode-${{ hashFiles('Packages/manifest.json', 'Packages/packages-lock.json', 'ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: Library-EditMode-
+
+      - name: Unity EditMode tests
+        uses: game-ci/unity-test-runner@v4.4.0
+        timeout-minutes: 30 # same guard as the builds: Unity batchmode has hung once at startup
+        env:
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # authenticated GitHub API calls (CLI download)
+        with:
+          cliVersion: v0.1.76 # pinned, same CLI as the builds
+          testMode: editmode
+          artifactsPath: unity-test-results
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: unity-editmode-test-results
+          path: unity-test-results/
+          if-no-files-found: warn
+
+  build-android:
+    needs: [core-tests, license-check, unity-tests]
+    # Public repo: every branch. Private repo: main only.
+    if: >-
+      needs.license-check.outputs.available == 'true' &&
+      (github.event.repository.private == false || github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 120
     # One Unity job at a time per account: Personal accounts have very few seats.

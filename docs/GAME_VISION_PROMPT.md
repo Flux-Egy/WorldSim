@@ -18,7 +18,7 @@ Core promises:
 
 ## 2. Ground rules (non-negotiable)
 
-- **Original work only.** All code, mechanics implementations, art, audio and UI are created for WorldSim. Never decompile, copy, trace, or derive from any existing game's code or assets (including WorldBox). Genre conventions are fine; specific designs of other games are not.
+- **Original work only; learning is welcome, taking is not.** All code, art, audio and UI are created for WorldSim, and no ready-made asset packs are shipped. Studying open-source projects, tutorials, references and genre conventions is encouraged; reusing permissively licensed code is fine when credited in CREDITS.md. Never use anything decompiled or ripped from another game (including WorldBox), even renamed or edited. Full policy: docs/ORIGINALITY.md.
 - **No word "God"** anywhere: product, code, UI, docs, assets. The game is "WorldSim"; package `com.fluxegy.worldsim`. "God powers" are just **Powers**.
 - **Beliefs are fully fictional** (see §6.6). A **fiction notice** is shown on first launch: every creed, belief, ritual, kingdom, name and character is invented and refers to no real religion, belief, people or place.
 - **Deterministic simulation**: the same seed + settings + inputs give the same world and history on every device (integer/fixed-point math in simulation; floats only in presentation).

@@ -3,6 +3,7 @@
 Give this whole file to the image model. Every asset must follow it.
 
 ## 0. Originality (mandatory)
+See docs/ORIGINALITY.md. Learning from references, tutorials and open-source projects is encouraged; shipping or editing someone else's art is not.
 - **Original designs only.** Do **not** imitate, trace, recolour or "loosely copy" the sprites, characters, UI or overall look of any existing game (including WorldBox). The game's identity is its own.
 - Generic genre conventions are fine: top-down pixel art, small readable characters, bright natural colours, dark outlines.
 - No text, logos, real-world symbols, flags or religious symbols in any image.

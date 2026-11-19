@@ -6,7 +6,10 @@ The Unity Editor can't run on the ARM development machine, so GitHub Actions is 
 |---|---|---|
 | `core-tests` | No | Compiles `WorldSim.Core` with plain .NET 8 and runs the determinism tests |
 | `license-check` | No | Checks whether `UNITY_EMAIL` and `UNITY_PASSWORD` exist. If not, the Unity job is **skipped** rather than failed |
-| `build-android` | Yes | Pass 1 sets up the project headlessly. Pass 2 builds the Release APK (IL2CPP, ARM64, stripping High) |
+| `unity-tests` | Yes | Runs the EditMode tests inside the real Unity Editor (`game-ci/unity-test-runner` v4.4.0) |
+| `build-android` | Yes | Runs after the tests pass. Pass 1 sets up the project headlessly. Pass 2 builds the Release APK (IL2CPP, ARM64, stripping High) |
+
+**When it runs:** the tests run on every push to any branch and on pull requests. The APK build runs after them: on every branch while the repo is public, and **only on `main` if the repo is ever made private** (to save Actions minutes). The Unity version is never hard-coded: both game-ci actions read `ProjectSettings/ProjectVersion.txt`.
 
 ## 1. Unity license: phone only, no license file
 
@@ -94,7 +97,7 @@ Open **Actions > Build > (run) > Artifacts > `WorldSim-android-release`**, or ru
 gh run download <run-id> -n WorldSim-android-release
 adb install -r WorldSim-release.apk
 ```
-The APK is debug-signed (see "Not yet covered").
+The APK is signed with the committed **test** key `ci/worldsim-test.keystore`, so each new build installs over the previous one. It is not a store key.
 
 ## 4. Costs and limits
 
@@ -103,8 +106,6 @@ The APK is debug-signed (see "Not yet covered").
 
 ## 5. Not yet covered (deliberately)
 
-- **Unity EditMode tests in CI.** `game-ci/unity-test-runner` v4.3.2 can't activate a Personal license from email and password alone; its activation script only accepts a serial, a license file or a license server. The current EditMode tests are the same Core tests `core-tests` already runs. Unity-only tests (Stage 2) will run through a unity-builder `buildMethod` instead.
-
-- **Release signing.** In v6, unity-builder's `androidKeystore*` inputs are passed to the new game-ci CLI. I couldn't confirm how they reach a *custom* `buildMethod`, so the workflow doesn't use them yet. Until then the APK is debug-signed, which is fine for sideloading and testing but not for the Play Store. This gets added and verified before any store release.
+- **Release signing.** In v6, unity-builder's `androidKeystore*` inputs are passed to the new game-ci CLI. I couldn't confirm how they reach a *custom* `buildMethod`, so the workflow doesn't use them yet. Until then `WorldSimBuild` signs with the committed test key, which is fine for sideloading and testing but not for the Play Store. This gets added and verified before any store release.
 - **Modder build.** It waits on Decision A (the mod loader) in `docs/IMPLEMENTATION_PLAN.md`. `WorldSimBuild.BuildModderCI` already exists. Adding it is one more builder step.
 - **`cliVersion`.** Pinned to `v0.1.76` (the version every successful build so far used). `latest` makes an unauthenticated GitHub API call that hit HTTP 403 in run 44271009767. Bump it deliberately and re-test.
