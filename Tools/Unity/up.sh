@@ -11,6 +11,10 @@
 # already use), pinned to game-ci/cli v0.1.76. Approach adapted from Unity MCP's
 # tools/ci_unity_license.py (MIT), see CREDITS.md.
 set -euo pipefail
+# Codespaces secrets are exported only in login shells: re-run in one if they're missing.
+if [ -z "${UNITY_EMAIL:-}" ] && [ -z "${WORLDSIM_LOGIN_SHELL:-}" ]; then
+  WORLDSIM_LOGIN_SHELL=1 exec bash -lc "$(printf '%q ' "$0" "$@")"
+fi
 cd "$(dirname "$0")/../.."
 REPO="$PWD"
 STATE=/workspaces/.unity-state
@@ -55,7 +59,10 @@ fi
 
 echo "== Starting Unity Editor ($MODE). First start imports the whole project: 10-20 min."
 rm -f "$HOME"/.unity-mcp/unity-mcp-status-*.json 2>/dev/null || true
-ARGS=(-batchmode -projectPath "$REPO" -logFile "$STATE/editor.log")
+# McpCiBoot.StartStdioForCi is Unity MCP's own entry point for headless editors: it pins the
+# stdio transport for this session (v10 defaults to HTTP) and starts the bridge. Without it the
+# bridge never starts in batch mode (spike, 2026-11-19).
+ARGS=(-batchmode -projectPath "$REPO" -logFile "$STATE/editor.log" -executeMethod MCPForUnity.Editor.McpCiBoot.StartStdioForCi)
 if [ "$MODE" = nographics ]; then
   nohup /opt/unity/Editor/Unity "${ARGS[@]}" -nographics >/dev/null 2>&1 &
 else
@@ -81,7 +88,10 @@ for i in $(seq 1 240); do # up to 20 minutes
   if ! pgrep -f "/opt/unity/Editor/Unity .*-projectPath" >/dev/null; then
     echo "Unity exited early. Last log lines:"; tail -40 "$STATE/editor.log" 2>/dev/null; exit 1
   fi
-  [ $((i % 12)) -eq 0 ] && echo "  ... still starting ($((i * 5 / 60)) min). $(grep -c 'Start importing' "$STATE/editor.log" 2>/dev/null || echo 0) assets imported so far"
+  if [ $((i % 12)) -eq 0 ]; then
+    age=$(( $(date +%s) - $(stat -c %Y "$STATE/editor.log" 2>/dev/null || date +%s) ))
+    echo "  ... still starting ($((i * 5 / 60)) min). Editor log $(du -h "$STATE/editor.log" 2>/dev/null | cut -f1), last written ${age}s ago$(grep -q 'Loading completed' "$STATE/editor.log" 2>/dev/null && echo ', project loaded')"
+  fi
   sleep 5
 done
 echo "Unity is running but the MCP bridge did not report in 20 min. Check $STATE/editor.log"

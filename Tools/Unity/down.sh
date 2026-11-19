@@ -3,6 +3,10 @@
 # Always run this before stopping the codespace: a seat left active can block the Actions
 # builds (Personal accounts have very few seats).
 set -uo pipefail
+# Codespaces secrets are exported only in login shells: re-run in one if they're missing.
+if [ -z "${UNITY_EMAIL:-}" ] && [ -z "${WORLDSIM_LOGIN_SHELL:-}" ]; then
+  WORLDSIM_LOGIN_SHELL=1 exec bash -lc "$(printf '%q ' "$0" "$@")"
+fi
 cd "$(dirname "$0")/../.." || exit 1
 STATE=/workspaces/.unity-state
 GAMECI_SHA=39868753b787468332a1f5a85aa151d02c8555c6 # game-ci/cli tag v0.1.76
