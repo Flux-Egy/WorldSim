@@ -22,5 +22,5 @@ if [ -f "$STATE/activated-via" ] && ! pgrep -f "/opt/unity/Editor/Unity" >/dev/n
   echo "$(date -u +%FT%TZ) auto-return after sudden stop" >> "$STATE/sessions.log"
   # The Editor (needed to return the seat) lives in /tmp, which was wiped: reinstall it first.
   REPO="$(cd "$(dirname "$0")/.." && pwd)"
-  nohup bash -c "'$REPO/Tools/Unity/install-editor.sh' && '$REPO/Tools/Unity/down.sh'" >> "$STATE/auto-return.log" 2>&1 &
+  setsid nohup bash -lc "'$REPO/Tools/Unity/install-editor.sh' && '$REPO/Tools/Unity/down.sh'" >> "$STATE/auto-return.log" 2>&1 < /dev/null &
 fi
