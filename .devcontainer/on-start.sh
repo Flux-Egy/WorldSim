@@ -12,9 +12,13 @@ fi
 cp "$STATE/machine-id" /etc/machine-id
 mkdir -p /var/lib/dbus && cp "$STATE/machine-id" /var/lib/dbus/machine-id
 
-if pgrep -f "/opt/unity/Editor/Unity" >/dev/null 2>&1; then
-  echo "Unity is already running."
-elif [ -f "$STATE/activated-via" ]; then
-  echo "NOTE: the Unity license from the last session may still be active (the codespace stopped"
-  echo "without Tools/Unity/down.sh). Run Tools/Unity/up.sh to reuse it, or down.sh to return it."
+echo "$(date -u +%FT%TZ) codespace started ($(nproc) cores)" >> "$STATE/sessions.log"
+
+# A codespace that stopped suddenly (idle timeout, manual stop) never ran down.sh, so its license
+# seat may still be active. Return it now, in the background, with the same machine id it was
+# activated with. Log: $STATE/return.log
+if [ -f "$STATE/activated-via" ] && ! pgrep -f "/opt/unity/Editor/Unity" >/dev/null 2>&1; then
+  echo "Unity license left active by a sudden stop: returning it in the background (see $STATE/return.log)."
+  echo "$(date -u +%FT%TZ) auto-return after sudden stop" >> "$STATE/sessions.log"
+  nohup "$(dirname "$0")/../Tools/Unity/down.sh" >> "$STATE/auto-return.log" 2>&1 &
 fi

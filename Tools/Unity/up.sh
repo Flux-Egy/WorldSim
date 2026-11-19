@@ -43,6 +43,12 @@ UNITY_LICENSING_SERVER="" HOME="$HOME" bash -c '
 ' > "$STATE/activate.log" 2>&1 || { echo "Activation FAILED. Last lines:"; tail -25 "$STATE/activate.log"; exit 1; }
 cp "$STATE/activation/activated-via" "$STATE/activated-via"
 echo "License active (log: $STATE/activate.log)."
+echo "$(date -u +%FT%TZ) license activated" >> "$STATE/sessions.log"
+# Return the seat automatically if no terminal stays open for 15 min (see idle-guard.sh).
+if ! { [ -f "$STATE/idle-guard.pid" ] && kill -0 "$(cat "$STATE/idle-guard.pid")" 2>/dev/null; }; then
+  nohup "$REPO/Tools/Unity/idle-guard.sh" >/dev/null 2>&1 &
+  echo "Idle guard started: the license is returned after 15 min with no open terminal."
+fi
 
 echo "== Starting Unity Editor ($MODE). First start imports the whole project: 10-20 min."
 rm -f "$HOME"/.unity-mcp/unity-mcp-status-*.json 2>/dev/null || true

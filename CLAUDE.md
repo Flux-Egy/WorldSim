@@ -44,8 +44,10 @@ dotnet run --project Tools/WorldPreview -- sprites|icons|creatures <out.png>
 gh run list -L 3
 gh run download <run-id> -n WorldSim-android-release
 # Codespace only
-Tools/Unity/up.sh   # license + headless Editor + MCP bridge
-Tools/Unity/down.sh # ALWAYS before stopping: quit Unity, return the license seat
+Tools/Unity/up.sh           # license + Editor with rendering (Xvfb) + MCP bridge + idle guard
+Tools/Unity/render-check.sh # proves real rendering works (first session, or when in doubt)
+Tools/Unity/usage.sh        # disk + core-hours: report them to the owner after every session
+Tools/Unity/down.sh         # ALWAYS before stopping: quit Unity, return the license seat
 ```
 The device check (owner's rooted phone, from the chroot) is `pm install -r <apk>`, `am start -n com.fluxegy.worldsim/com.unity3d.player.UnityPlayerGameActivity`, then `screencap -p` and `logcat -s Unity`.
 
