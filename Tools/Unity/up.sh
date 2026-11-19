@@ -53,10 +53,12 @@ echo "License active (log: $STATE/activate.log)."
 echo "$(date -u +%FT%TZ) license activated" >> "$STATE/sessions.log"
 # Return the seat automatically if no terminal stays open for 15 min (see idle-guard.sh).
 if ! { [ -f "$STATE/idle-guard.pid" ] && kill -0 "$(cat "$STATE/idle-guard.pid")" 2>/dev/null; }; then
-  nohup "$REPO/Tools/Unity/idle-guard.sh" >/dev/null 2>&1 &
+  setsid nohup "$REPO/Tools/Unity/idle-guard.sh" >/dev/null 2>&1 < /dev/null &
   echo "Idle guard started: the license is returned after 15 min with no open terminal."
 fi
 
+# setsid: Unity must not belong to the terminal/tmux session that ran this script. In the spike,
+# Unity died ~15 s after start when the tmux session running up.sh closed (session hang-up).
 echo "== Starting Unity Editor ($MODE). First start imports the whole project: 10-20 min."
 rm -f "$HOME"/.unity-mcp/unity-mcp-status-*.json 2>/dev/null || true
 # McpCiBoot.StartStdioForCi is Unity MCP's own entry point for headless editors: it pins the
@@ -64,9 +66,9 @@ rm -f "$HOME"/.unity-mcp/unity-mcp-status-*.json 2>/dev/null || true
 # bridge never starts in batch mode (spike, 2026-11-19).
 ARGS=(-batchmode -projectPath "$REPO" -logFile "$STATE/editor.log" -executeMethod MCPForUnity.Editor.McpCiBoot.StartStdioForCi)
 if [ "$MODE" = nographics ]; then
-  nohup /opt/unity/Editor/Unity "${ARGS[@]}" -nographics >/dev/null 2>&1 &
+  setsid nohup /opt/unity/Editor/Unity "${ARGS[@]}" -nographics >/dev/null 2>&1 < /dev/null &
 else
-  nohup xvfb-run -a -s "-screen 0 1280x720x24" /opt/unity/Editor/Unity "${ARGS[@]}" -force-glcore >/dev/null 2>&1 &
+  setsid nohup xvfb-run -a -s "-screen 0 1280x720x24" /opt/unity/Editor/Unity "${ARGS[@]}" -force-glcore >/dev/null 2>&1 < /dev/null &
 fi
 echo $! > "$STATE/editor.pid"
 
