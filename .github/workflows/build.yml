@@ -84,6 +84,11 @@ jobs:
     needs: [core-tests, license-check]
     if: needs.license-check.outputs.available == 'true'
     runs-on: ubuntu-latest
+    # checks: write lets the test runner publish its results as a check (run 44528628150: all 51
+    # tests passed, then the job failed with "Resource not accessible by integration").
+    permissions:
+      contents: read
+      checks: write
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
