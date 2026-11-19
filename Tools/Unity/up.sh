@@ -2,9 +2,10 @@
 # Codespace only. Activates the Unity Personal license and starts the Unity Editor headless,
 # with the Unity MCP bridge, in the background. Stop it with Tools/Unity/down.sh.
 #
-#   Tools/Unity/up.sh              # rendering through software OpenGL on a virtual display
-#                                  # (needed for screenshots; slow but works without a GPU)
-#   Tools/Unity/up.sh --nographics # no rendering at all (faster; no screenshots)
+#   Tools/Unity/up.sh              # DEFAULT and the normal way: real rendering through software
+#                                  # OpenGL (Mesa llvmpipe) on an Xvfb virtual display. Needed for
+#                                  # screenshots, which are the main reason to use the workshop.
+#   Tools/Unity/up.sh --nographics # diagnostics only: no rendering at all, NO screenshots
 #
 # Licensing uses GameCI's own activate.sh / return_license.sh (the scripts our Actions builds
 # already use), pinned to game-ci/cli v0.1.76. Approach adapted from Unity MCP's
@@ -55,7 +56,18 @@ echo $! > "$STATE/editor.pid"
 
 for i in $(seq 1 240); do # up to 20 minutes
   if ls "$HOME"/.unity-mcp/unity-mcp-status-*.json >/dev/null 2>&1; then
-    echo "Unity MCP bridge is up after $((i * 5)) s. Start (or restart) claude to use it."; exit 0
+    echo "Unity MCP bridge is up after $((i * 5)) s."
+    echo "== Graphics device (from the Editor log)"
+    grep -E "GfxDevice|Renderer:|Version: *OpenGL|NullGfxDevice|-nographics" "$STATE/editor.log" | head -6 | sed 's/^/  /'
+    if [ "$MODE" = nographics ]; then
+      echo "NOTE: --nographics mode: no rendering, screenshots will NOT work."
+    elif grep -qiE "NullGfxDevice|null device|Null graphics" "$STATE/editor.log"; then
+      echo "WARNING: Unity started WITHOUT a graphics device: screenshots will NOT work."
+      echo "Run Tools/Unity/render-check.sh to diagnose (docs/CODESPACES.md)."
+    else
+      echo "Rendering device present. Confirm with Tools/Unity/render-check.sh on the first session."
+    fi
+    echo "Start (or restart) claude to use Unity MCP."; exit 0
   fi
   if ! pgrep -f "/opt/unity/Editor/Unity .*-projectPath" >/dev/null; then
     echo "Unity exited early. Last log lines:"; tail -40 "$STATE/editor.log" 2>/dev/null; exit 1

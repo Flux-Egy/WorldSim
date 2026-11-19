@@ -1,8 +1,8 @@
 # Unity workshop in GitHub Codespaces
 
-The owner works from an Android phone only, so the Unity Editor can't run locally. This Codespace runs a **headless Unity Editor** (no screen; software OpenGL on a virtual display) with **Unity MCP**, so Claude can drive the Editor and see screenshots. It is for **planned work sessions**, not every change. See CLAUDE.md, "Where work happens".
+The owner works from an Android phone only, so the Unity Editor can't run locally. This Codespace runs the Unity Editor **with real rendering** on an Xvfb virtual display (software OpenGL, since there is no GPU) plus **Unity MCP**, so Claude can drive the Editor and **see screenshots of the game**. Seeing the game is the main reason this workshop exists, so rendering is a requirement, not an extra. It is for **planned work sessions**, not every change. See CLAUDE.md, "Where work happens".
 
-Files: `.devcontainer/` (image, setup) and `Tools/Unity/up.sh` / `down.sh` (start and stop Unity, activate and return the license).
+Files: `.devcontainer/` (image, setup), `Tools/Unity/up.sh` / `down.sh` (start and stop Unity with rendering, activate and return the license) and `Tools/Unity/render-check.sh` (proves rendering works, without MCP).
 
 ## Budget
 - Machine: 4 cores / 16 GB RAM (`hostRequirements`). On the Free plan, 120 core-hours a month is **about 30 hours** on this machine. Storage: 15 GB-month free.
@@ -27,7 +27,7 @@ Tools/Unity/down.sh            # ALWAYS: quits Unity and returns the license sea
 exit
 gh codespace stop -c <name>
 ```
-`up.sh --nographics` starts Unity without any rendering. It's faster, but there are no screenshots.
+`up.sh` always renders by default. `up.sh --nographics` exists **for diagnostics only**: it turns rendering off completely, so screenshots will not work.
 
 ## License seats
 A Personal Unity account has very few seats. The Actions jobs take one and return it per run, and this codespace takes one while Unity is up. `down.sh` returns it. If a codespace stops without `down.sh`, the seat may stay taken. `on-start.sh` keeps one stable machine id per codespace, so the next `up.sh` reuses that seat instead of taking another. If Actions fails with "no seat available", run `up.sh` then `down.sh` in the codespace, or release the activation at id.unity.com.
@@ -37,14 +37,21 @@ A Personal Unity account has very few seats. The Actions jobs take one and retur
 - Unity MCP is registered with Claude Code **inside the codespace only**. It is never registered on the phone.
 
 ## First-session spike (time box: 2 hours)
-Goal: prove the setup before relying on it. Check each item and write the result into this file:
+Goal: prove the setup before relying on it. **The spike passes only if all MUST items pass.** Write the results (with the screenshots' paths) into this file.
+
+**MUST (any failure means the spike fails):**
 - [ ] The image matches `ProjectVersion.txt` (`setup.sh` prints this).
 - [ ] `up.sh` activates the license.
-- [ ] The Editor imports the project and the MCP bridge reports.
-- [ ] `claude` lists the UnityMCP tools and can read the console.
-- [ ] Enter Play Mode on `Boot`, and a Game view screenshot shows the world (software OpenGL).
-- [ ] Run EditMode tests through MCP.
+- [ ] `Tools/Unity/render-check.sh` prints `RENDER_CHECK PASS` with a real OpenGL device (not Null), and `render-check.png` shows the lit cube on a blue background. Claude opens the PNG and looks at it.
+- [ ] The WorldSim Editor starts **with rendering** (`up.sh` reports a graphics device, not Null), the project imports, and the MCP bridge reports.
+- [ ] `claude` lists the UnityMCP tools and can read the Editor console.
+- [ ] **A real game screenshot through MCP:** enter Play Mode on `Boot`, take a Game view screenshot through Unity MCP, and the image shows the generated world (terrain, not a blank or black frame). Claude opens the image and describes what it shows.
 - [ ] `down.sh` returns the license, and the next Actions run still activates.
-- [ ] Record the hours and storage used.
 
-If rendering fails, record the error and fall back to `--nographics` (console, tests and scene/asset queries still work). Then decide with the owner whether the workshop is still worth it.
+**SHOULD (record, but not blocking):**
+- [ ] Run EditMode tests through MCP.
+- [ ] A screenshot that includes the HUD. Screen-space overlay UI may not appear in camera captures; record what does.
+- [ ] Time per screenshot and Editor responsiveness under software rendering.
+- [ ] Hours and storage used.
+
+**If rendering fails:** the spike fails. Don't settle for `--nographics`. Record the exact error (`render-check.log`, `editor.log`) and try, in order: `-force-vulkan` instead of `-force-glcore`, a larger Xvfb screen or depth, and missing Mesa packages. If none of these work within the time box, stop and decide with the owner (for example, a cloud machine with a GPU, which costs more) before spending more hours.

@@ -27,6 +27,7 @@ How to choose:
 - Use Codespaces when the work is mostly Unity-side and needs many small try-and-look cycles, or when a Unity-only problem has failed twice in Actions. Plan the session's goal first, about 2-3 sessions of ~3 h a week, and report the hours used afterwards.
 - The **phone is the final judge** of look, feel and performance. Editor screenshots (software rendering, no GPU) are not.
 - UI, scenes and project settings are **built from code** (`WorldHud`, `WorldSimBootstrap`, `WorldSimCI.Bootstrap`), so CI can recreate them headlessly. Keep it that way: no hand-made scene or prefab edits that only the Editor can reproduce.
+- In the codespace, Unity **always runs with real rendering** (Xvfb + software OpenGL, the `up.sh` default), because screenshots are the point of the workshop. `--nographics` is for diagnostics only. Look at every screenshot you rely on.
 - Unity MCP is installed **only inside the codespace**. Never register it on the phone.
 
 ## Commands

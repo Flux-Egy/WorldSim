@@ -22,7 +22,7 @@ esac
 say "System packages (software OpenGL + virtual display for rendering without a GPU)"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y -qq --no-install-recommends xvfb xauth libgl1-mesa-dri libglu1-mesa mesa-utils curl ca-certificates jq >/dev/null
+apt-get install -y -qq --no-install-recommends xvfb xauth libgl1-mesa-dri libglu1-mesa mesa-utils mesa-vulkan-drivers libvulkan1 curl ca-certificates jq >/dev/null
 echo "OK"
 
 say "uv (runs the Unity MCP server)"
