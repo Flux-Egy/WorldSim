@@ -1,6 +1,8 @@
 // WorldSim/RecolorSprite
 // Recolours the masked parts of a sprite with the owner's palette (kingdom TEAM, culture ACC/ACC2/ROOF, person SKIN/HAIR).
-// _MaskTex  (mask page of the same atlas, linear; set per renderer by WorldSimRecolor via MaterialPropertyBlock):  R = regionId*36 (1 TEAM, 2 ACC, 3 ACC2, 4 ROOF, 5 SKIN, 6 HAIR), G = shade, A = 255 if masked
+// _MaskTex  (mask page of the same atlas, set per renderer by WorldSimRecolor via MaterialPropertyBlock): one byte per pixel (R8), a code 0..255,
+//            0 = no region. _MaskLut (global, 256x1, set by WorldSimArtDB) maps the code to the original mask texel:
+//            R = regionId*36 (1 TEAM, 2 ACC, 3 ACC2, 4 ROOF, 5 SKIN, 6 HAIR), G = shade, A = 255 if masked. Encoded by Tools/ArtIndex/encode_masks.py (lossless).
 // _RampTex  5 x 8 px, point filtered, row r-1 = region r. Rows 1-4: 5-step dark->light ramp. Rows 5-6: base colour in column 2.
 // Also: _Flash (hit flash to white), _Sick (pale-green skin), _Night (multiply tint used by the day/night system).
 // Building states (v3.1): _Burn (0 = normal, ~0.4 burning, 1 = burnt shell), _Frost (blue tint + snow on top edges), _Overgrown (moss/vine speckle).
@@ -34,6 +36,7 @@ Shader "WorldSim/RecolorSprite"
             #pragma fragment frag
             #include "UnityCG.cginc"
             sampler2D _MainTex, _MaskTex, _RampTex;
+            sampler2D _MaskLut;   // global (Shader.SetGlobalTexture), 256 x 1, point filtered
             float _Flash, _Sick, _UseRamp, _Burn, _Frost, _Overgrown;
             float4 _MainTex_TexelSize;
             fixed4 _Night;
@@ -47,7 +50,9 @@ Shader "WorldSim/RecolorSprite"
             fixed4 frag (v2f i) : SV_Target
             {
                 fixed4 col = tex2D(_MainTex, i.uv);
-                fixed4 m = tex2D(_MaskTex, i.uv);
+                // R8 mask code -> original mask texel (region, shade) through the lookup table; code 0 has A = 0.
+                float code = round(tex2D(_MaskTex, i.uv).r * 255.0);
+                fixed4 m = tex2D(_MaskLut, float2((code + 0.5) / 256.0, 0.5));
                 if (_UseRamp > 0.5 && m.a > 0.5)
                 {
                     float region = round(m.r * 255.0 / 36.0);          // 1..6

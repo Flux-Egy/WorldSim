@@ -107,6 +107,29 @@ namespace WorldSim.Tests.UnityOnly
         }
 
         [Test]
+        public void Masks_AreOneBytePerPixel_DecodedByAGlobalLookupTable()
+        {
+            var db = WorldSimArtDB.Load();
+            var mask = db.GetMask(Person);
+            Assert.IsNotNull(mask);
+            Assert.AreEqual(TextureFormat.R8, mask.format, "masks must import as R8 (WorldSimArtPostprocessor)");
+            var lut = db.MaskLut;
+            Assert.IsNotNull(lut);
+            Assert.AreEqual(256, lut.width);
+            Assert.AreEqual(1, lut.height);
+            Assert.AreEqual(FilterMode.Point, lut.filterMode);
+            Assert.AreSame(lut, Shader.GetGlobalTexture("_MaskLut"));
+            Assert.AreEqual((long)mask.width * mask.height, db.LoadedTextureBytes - PageBytes(db, Person));
+        }
+
+        static long PageBytes(WorldSimArtDB db, string frame)
+        {
+            Assert.IsTrue(db.TryGetFrameId(frame, out int id));
+            var f = db.Frame(id);
+            return db.IsPageLoaded(f.Atlas, f.Page) ? (long)db.GetPageTexture(f.Atlas, f.Page).width * db.GetPageTexture(f.Atlas, f.Page).height * 4 : 0;
+        }
+
+        [Test]
         public void UvRect_MatchesTheSpriteRect()
         {
             var db = WorldSimArtDB.Load();

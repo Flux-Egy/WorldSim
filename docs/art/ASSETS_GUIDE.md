@@ -117,7 +117,9 @@ db.TryGetAnchor("u_rifle_0", "muzzle", out var muzzleLocal);    // where to spaw
 
 ## 4. Recolour system (why cultures can be infinite)
 
-Each atlas page may have a `_mask.png` with the same layout:
+**In the repo, masks are one byte per pixel** (since 2026-11-20). `Tools/ArtIndex/encode_masks.py` turns each exported RGBA mask into an 8-bit grey PNG of **codes** (0 = no region) and writes `Resources/WorldSimArt/mask_lut.png` (256 × 1). The table maps each code back to the exported texel below, so the result is identical (checked on all 30.6 M pixels). The shader reads the code, then the texel from the global `_MaskLut`. This cuts mask memory by 4× (117 → 29 MiB if everything were loaded). The generator may keep exporting RGBA masks: the encoder converts them, and CI fails if anyone forgets. It may also write the codes directly in the same format.
+
+Each atlas page may have a `_mask.png` with the same layout (as exported by the generator):
 - **R** = region id × 36;
 - **G** = the shade the pixel had when drawn with a neutral grey ramp (40/84/128/172/216);
 - **A** = 255 where the pixel belongs to a region.
@@ -266,7 +268,8 @@ cd Tools/ArtGen && pip install numpy pillow
 python export_all.py                     # everything, straight into Assets/WorldSim/Resources/WorldSimArt (+ atlas_index.json)
 python export_all.py strategic army      # only some: buildings houses people animals army air fx nature terrain ui strategic
 python data_export.py                    # Assets/WorldSim/Resources/WorldSimData/*.json
-cd ../.. && python3 Tools/ArtIndex/build_art_index.py   # REQUIRED after any art change: rebuilds Resources/WorldSimArt/art_index.bytes
+cd ../.. && python3 Tools/ArtIndex/encode_masks.py     # REQUIRED after any art change: masks -> one byte per pixel + mask_lut.png
+python3 Tools/ArtIndex/build_art_index.py               # REQUIRED after any art change: rebuilds Resources/WorldSimArt/art_index.bytes
 python strategicsheet.py                 # example preview renderer (sheets / GIFs), writes PNGs next to the script
 ```
 

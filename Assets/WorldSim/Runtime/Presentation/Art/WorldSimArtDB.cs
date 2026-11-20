@@ -243,11 +243,27 @@ namespace WorldSim.Presentation.Art
             st.Masks ??= new Texture2D[_index.AtlasPageCount(atlas)];
             if (st.Masks[page] == null)
             {
+                EnsureMaskLut();
                 string path = _index.GetString(maskId);
                 st.Masks[page] = Resources.Load<Texture2D>(Root + "/" + path);
                 if (st.Masks[page] == null) Debug.LogWarning("WorldSimArtDB: mask not found: " + path);
             }
             return st.Masks[page];
+        }
+
+        static readonly int MaskLutId = Shader.PropertyToID("_MaskLut");
+        Texture2D _maskLut;
+
+        /// <summary>Masks are one byte per pixel (codes); the recolour shader decodes them through this 256 x 1 lookup
+        /// table, set as the global _MaskLut. Loaded with the first mask and kept (1 KB).</summary>
+        public Texture2D MaskLut { get { EnsureMaskLut(); return _maskLut; } }
+
+        void EnsureMaskLut()
+        {
+            if (_maskLut != null) return;
+            _maskLut = Resources.Load<Texture2D>(Root + "/mask_lut");
+            if (_maskLut == null) { Debug.LogError("WorldSimArtDB: Resources/" + Root + "/mask_lut.png missing (run Tools/ArtIndex/encode_masks.py)"); return; }
+            Shader.SetGlobalTexture(MaskLutId, _maskLut);
         }
 
         // ---------------------------------------------------------------- lifecycle
@@ -276,7 +292,7 @@ namespace WorldSim.Presentation.Art
 
         public int LoadedAtlasCount { get { int n = 0; foreach (var st in _atlases) if (st.AnyLoaded) n++; return n; } }
 
-        /// <summary>Bytes of the pages and masks currently loaded (RGBA32: width x height x 4).</summary>
+        /// <summary>Bytes of the pages (RGBA32: 4 per pixel) and masks (R8: 1 per pixel) currently loaded.</summary>
         public long LoadedTextureBytes
         {
             get
@@ -288,9 +304,9 @@ namespace WorldSim.Presentation.Art
                     for (int p = 0; p < _index.AtlasPageCount(a); p++)
                     {
                         var pg = _index.Page(a, p);
-                        long bytes = (long)pg.Width * pg.Height * 4;
-                        if (st.Pages != null && st.Pages[p] != null) total += bytes;
-                        if (st.Masks != null && st.Masks[p] != null) total += bytes;
+                        long pixels = (long)pg.Width * pg.Height;
+                        if (st.Pages != null && st.Pages[p] != null) total += pixels * 4;
+                        if (st.Masks != null && st.Masks[p] != null) total += pixels;
                     }
                 }
                 return total;
