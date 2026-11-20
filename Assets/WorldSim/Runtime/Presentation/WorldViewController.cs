@@ -107,6 +107,12 @@ namespace WorldSim.Presentation
             _hud.TimeLabelsRequested += UpdateTimeLabels;
             _hud.BrushSizeClicked += CycleBrush;
             _hud.BrushSizeLabelRequested += UpdateBrushLabel;
+            _hud.ArtTestClicked += () =>
+            {
+                var view = GetComponent<WorldSim.Presentation.Art.ArtTestView>();
+                if (view == null) view = gameObject.AddComponent<WorldSim.Presentation.Art.ArtTestView>(); // Unity objects: no ?? (overloaded ==)
+                view.Toggle(_cam);
+            };
             _brushIndex = Mathf.Clamp(PlayerPrefs.GetInt(BrushPrefKey, 2), 0, BrushRadii.Length - 1);
             _hud.SetTitle("WorldSim\nGenerating world...");
             _sizeIndex = Mathf.Clamp(PlayerPrefs.GetInt(SizePrefKey, 0), 0, Sizes.Length - 1);

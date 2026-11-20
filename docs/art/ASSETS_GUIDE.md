@@ -91,7 +91,7 @@ Scale is **16 px = 1 world unit** (`ppu` in every JSON). All art sits on one fin
 ```csharp
 using WorldSim.Presentation.Art;
 
-var db = WorldSimArtDB.Instance;                       // loads atlas_index + all atlases once
+var db = WorldSimArtDB.Instance;                       // reads only art_index.bytes; pages load on first use
 var go = new GameObject("villager");
 var sr = go.AddComponent<SpriteRenderer>();
 var rc = go.AddComponent<WorldSimRecolor>();
@@ -111,7 +111,8 @@ db.TryGetAnchor("u_rifle_0", "muzzle", out var muzzleLocal);    // where to spaw
 - **Pool renderers** and fetch sprites by name. `Sprite.Create` runs once per frame name; the result is cached.
 - **Sorting.** Y-sort by pivot. Pivots are the ground contact point: feet, or the base centre for buildings. Use `Transparency Sort Mode = Custom Axis (0,1,0)`.
 - **Aircraft and missiles.** They sit on a higher sorting layer. Draw their shadow on the ground layer: the same sprite in 30 % black, offset `(+alt/3, +alt)` px.
-- **Big pages.** Pages up to 2048² are uncompressed, about 4–16 MB each in memory. Load per category when needed: the houses and people pages only when zoomed in. Unload with `Resources.UnloadUnusedAssets` on scene changes.
+- **Loading and memory.** Nothing loads at start except the index. A page loads the first time one of its frames is used, and its recolour mask loads separately, only when a mask is needed. Pages are uncompressed, about 4–16 MB each. Warm a category before showing it with `StartCoroutine(db.Preload("Buildings/houses_culture_kit"))`. Free one with `db.Release("Characters/Titans")`: atlases that are still shown (by an active SpriteRenderer or UI Image, including a recolour mask) or held by `db.Acquire(prefix)` are kept, and sprites made from released pages are destroyed.
+- **Instanced rendering.** Use the int API: `db.TryGetFrameId(name, out id)`, `db.Frame(id)`, `db.UvRect(id)`, `db.GetPageTexture(atlas, page)` and `db.GetMaskTexture(atlas, page)`. Hold an `Acquire` lease for the atlases you draw.
 - **Tags.** `GetTagsJson(name)` returns the tag object (era, category, roof, wall, tier, species, angle, frame…). Parse it once into lookup tables, for example `houses[(roof, wall, tier)]` and `aircraft[(type, angle)]`.
 
 ## 4. Recolour system (why cultures can be infinite)
@@ -265,9 +266,11 @@ cd Tools/ArtGen && pip install numpy pillow
 python export_all.py                     # everything, straight into Assets/WorldSim/Resources/WorldSimArt (+ atlas_index.json)
 python export_all.py strategic army      # only some: buildings houses people animals army air fx nature terrain ui strategic
 python data_export.py                    # Assets/WorldSim/Resources/WorldSimData/*.json
+cd ../.. && python3 Tools/ArtIndex/build_art_index.py   # REQUIRED after any art change: rebuilds Resources/WorldSimArt/art_index.bytes
 python strategicsheet.py                 # example preview renderer (sheets / GIFs), writes PNGs next to the script
 ```
 
+- **Rebuild the index after every regeneration.** The game finds frames and animations through `Resources/WorldSimArt/art_index.bytes`, not the atlas JSON. Run `python3 Tools/ArtIndex/build_art_index.py` from the repo root and commit the result. CI runs it with `--check` and fails if the index doesn't match the atlases. It also warns about animation events placed after an animation's last frame (they are moved to the last frame; fix them in the generator).
 - **Adding a sprite.** Write a drawer `fn(canvas, ctx)` that reads palette regions from `ctx.v[...]`, then call `atlas.add(key, fn, W, H, pivot, regions=(...), tags=..., anchors=...)` in `export_all.py`.
 - **Alpha.** It is recovered from two passes (black and white background), so shadows and glows export as real semi-transparency.
 - **Masks.** They come from re-rendering with a probe colour for each region.
