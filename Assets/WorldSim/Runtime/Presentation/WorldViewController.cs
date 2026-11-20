@@ -107,6 +107,12 @@ namespace WorldSim.Presentation
             _hud.TimeLabelsRequested += UpdateTimeLabels;
             _hud.BrushSizeClicked += CycleBrush;
             _hud.BrushSizeLabelRequested += UpdateBrushLabel;
+            _hud.ArtLabClicked += () =>
+            {
+                var lab = GetComponent<WorldSim.Presentation.Art.ArtLabView>();
+                if (lab == null) lab = gameObject.AddComponent<WorldSim.Presentation.Art.ArtLabView>();
+                lab.Open(_hud);
+            };
             _hud.ArtTestClicked += () =>
             {
                 var view = GetComponent<WorldSim.Presentation.Art.ArtTestView>();

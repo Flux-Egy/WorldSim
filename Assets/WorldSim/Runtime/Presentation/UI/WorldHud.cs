@@ -83,11 +83,20 @@ namespace WorldSim.Presentation.UI
             new TabDef { Name = "Settings", Icon = Icon.Gear, Milestone = "Settings arrive in Beta milestone B8." },
         };
 
+        readonly Canvas _canvas;
+
+        /// <summary>Hides or shows the whole HUD (e.g. for the Art Lab's fixed-camera captures).</summary>
+        public bool Visible { get => _canvas.enabled; set => _canvas.enabled = value; }
+
+        /// <summary>Settings > "Art lab": fixed-camera sprite grid for pixel-exact comparisons (developer).</summary>
+        public event Action ArtLabClicked;
+
         public WorldHud(Transform parent)
         {
             var canvasGo = new GameObject("HUD", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             canvasGo.transform.SetParent(parent, false);
-            canvasGo.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
+            _canvas = canvasGo.GetComponent<Canvas>();
+            _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             var scaler = canvasGo.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1080, 1920);
@@ -249,6 +258,7 @@ namespace WorldSim.Presentation.UI
                 // Developer checks until the real Settings screen (B8).
                 RectTransform row = BuildScrollRow(0f);
                 AddRowButton(row, GetIconSprite(Icon.Gear), "Art test", () => ArtTestClicked?.Invoke());
+                AddRowButton(row, GetIconSprite(Icon.Gear), "Art lab", () => ArtLabClicked?.Invoke());
             }
             else if (index == 2)
             {
