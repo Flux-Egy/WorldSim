@@ -32,6 +32,17 @@ namespace WorldSim.EditorTools
             ti.isReadable = false;
             ti.maxTextureSize = 4096;
             ti.textureCompression = TextureImporterCompression.Uncompressed;
+            if (!isMask && !isLut)
+            {
+                // ASTC experiment (branch art/astc-test): colour pages compressed on Android only (1 byte/px instead
+                // of 4). Masks and the LUT are data and stay exact. Compare with the Art Lab before adopting.
+                ti.SetPlatformTextureSettings(new TextureImporterPlatformSettings
+                {
+                    name = "Android", overridden = true, maxTextureSize = 4096,
+                    format = TextureImporterFormat.ASTC_4x4, textureCompression = TextureImporterCompression.CompressedHQ,
+                    compressionQuality = 100,
+                });
+            }
             if (isMask)
             {
                 // One byte per pixel: the mask is an 8-bit grey PNG of codes (Tools/ArtIndex/encode_masks.py).
