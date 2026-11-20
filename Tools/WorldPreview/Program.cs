@@ -14,10 +14,11 @@ struct ArrayTiles : ITileSource { public TileData[] A; public TileData Get(int i
 struct ArrayPixels : IPixelTarget { public uint[] A; public uint Get(int i) => A[i]; public void Set(int i, uint c) => A[i] = c; }
 struct ArrayAtlas : IAtlasSource { public uint[] A; public uint Get(int i) => A[i]; }
 
-static class Program
+static partial class Program
 {
     static int Main(string[] args)
     {
+        if (args.Length >= 4 && args[0] == "pack") return PackPreview.Run(args);
         if (args.Length == 2 && args[0] == "icons") return IconSheet(args[1]);
         if (args.Length == 2 && args[0] == "sprites") return SpriteSheet(args[1]);
         if (args.Length == 2 && args[0] == "creatures") return CreatureSheet(args[1]);
@@ -130,7 +131,7 @@ static class Program
     }
 
     /// <summary>Writes a window of the bottom-up RGBA texture as a top-down RGB PNG, optionally downscaled.</summary>
-    static void WritePng(string path, uint[] px, int texW, int x0, int y0, int w, int h, int down, int up = 1)
+    internal static void WritePng(string path, uint[] px, int texW, int x0, int y0, int w, int h, int down, int up = 1)
     {
         int ow = w / down * up, oh = h / down * up;
         var rgb = new byte[ow * oh * 3];

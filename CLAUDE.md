@@ -43,6 +43,8 @@ python3 ci/make_meta.py --check
 # Render previews as PNG without Unity (worlds, crops, sprite and icon sheets)
 dotnet run --project Tools/WorldPreview -- <seedHex> <size> <out.png> [cropX cropY tiles up]
 dotnet run --project Tools/WorldPreview -- sprites|icons|creatures <out.png>
+# New terrain look (rebuild): the real art pack, far + near zoom, optional near crops (cellX cellY cells)
+dotnet run -c Release --project Tools/WorldPreview -- pack <seedHex> <size> <outDir> [cx cy n ...]
 # CI
 gh run list -L 3
 gh run download <run-id> -n WorldSim-android-release

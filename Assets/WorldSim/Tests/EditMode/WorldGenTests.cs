@@ -21,11 +21,11 @@ namespace WorldSim.Tests
             return tiles;
         }
 
-        // Regenerated 2026-11-20 for the rebuild (owner-approved): the art pack's 24 biomes + Lava, BirchForest,
-        // Glimmerwood, EmberWastes + water; new decorations (coral, fern, charred stump, ember vent, lava rock).
-        [TestCase(0x5EEDUL, 0x99EAAE344E22A0B0UL)]
-        [TestCase(0xC0FFEEUL, 0x5107F97A92EE8006UL)]
-        [TestCase(0x1UL, 0x831628091A8EE389UL)]
+        // Regenerated 2026-11-21 (rebuild, owner-approved): pack biomes, larger coherent climate regions, snow only on
+        // peaks, rarer/smaller anomaly patches, about half the decorations.
+        [TestCase(0x5EEDUL, 0x9D90CDC3E9A0725DUL)]
+        [TestCase(0xC0FFEEUL, 0xE150A7D56104EF58UL)]
+        [TestCase(0x1UL, 0x5E57E2FDFF2D72B9UL)]
         public void GoldenHash_IsStableAcrossPlatforms(ulong seed, ulong expected)
         {
             ulong hash = WorldHash.Compute(seed, Size, Size, Generate(seed));
@@ -129,7 +129,7 @@ namespace WorldSim.Tests
             Assert.AreEqual(Biome.Mountain, WorldGenerator.Classify(210, 128, 128, 0));
             Assert.AreEqual(Biome.Snow, WorldGenerator.Classify(250, 128, 128, 0));   // peak
             Assert.AreEqual(Biome.Glacier, WorldGenerator.Classify(150, 128, 10, 0)); // polar ice sheet
-            Assert.AreEqual(Biome.Snow, WorldGenerator.Classify(150, 128, 28, 0));    // polar snow
+            Assert.AreEqual(Biome.Tundra, WorldGenerator.Classify(150, 100, 28, 0));  // no lowland snow: snow is for peaks
             Assert.AreEqual(Biome.Tundra, WorldGenerator.Classify(150, 60, 50, 0));
             Assert.AreEqual(Biome.PineTaiga, WorldGenerator.Classify(150, 200, 50, 0));
             Assert.AreEqual(Biome.BirchForest, WorldGenerator.Classify(150, 130, 90, 0));
@@ -138,9 +138,11 @@ namespace WorldSim.Tests
             Assert.AreEqual(Biome.Badlands, WorldGenerator.Classify(165, 30, 230, 0));
             Assert.AreEqual(Biome.CoralShallows, WorldGenerator.Classify(108, 128, 200, 0));
             Assert.AreEqual(Biome.ShallowWater, WorldGenerator.Classify(108, 128, 120, 0));
-            Assert.AreEqual(Biome.Glacier, WorldGenerator.Classify(245, 128, 60, 0));  // cold peak
-            Assert.AreEqual(Biome.RockyHighland, WorldGenerator.Classify(185, 90, 128, 0));
-            Assert.AreEqual(Biome.Forest, WorldGenerator.Classify(185, 140, 128, 0)); // wet foothills stay green
+            Assert.AreEqual(Biome.Snow, WorldGenerator.Classify(245, 128, 60, 0));     // every peak is snow-capped
+            Assert.AreEqual(Biome.Mountain, WorldGenerator.Classify(220, 128, 20, 0)); // cold mountains stay rock below the cap
+            Assert.AreEqual(Biome.Beach, WorldGenerator.Classify(115, 128, 20, 0));    // cold coasts still have a beach
+            Assert.AreEqual(Biome.RockyHighland, WorldGenerator.Classify(195, 90, 128, 0));
+            Assert.AreEqual(Biome.Forest, WorldGenerator.Classify(195, 140, 128, 0)); // wet foothills stay green
             Assert.AreEqual(Biome.Savanna, WorldGenerator.Classify(150, 120, 230, 0));
             Assert.AreEqual(Biome.Jungle, WorldGenerator.Classify(150, 200, 230, 0));
         }

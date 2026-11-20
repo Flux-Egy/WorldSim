@@ -80,8 +80,8 @@ namespace WorldSim.Core
         public const byte DeepWaterBelow = 88;
         public const byte SeaLevel = 112;        // below: shallow water
         public const byte BeachBelow = 119;      // below: sand
-        public const byte HighlandFrom = 180;    // dry land from here up: rocky highland
-        public const byte MountainFrom = 196;
+        public const byte HighlandFrom = 188;    // dry land from here up: rocky highland
+        public const byte MountainFrom = 204;
         public const byte SnowPeakFrom = 240;
 
         // Feature sizes scale with the map up to these limits (in tiles). Past them a bigger map
@@ -123,12 +123,13 @@ namespace WorldSim.Core
 
             // ---- Moisture and temperature fields ----
             // fBm clusters near 0: stretch x1.6 so very dry (desert) and very wet (jungle, swamp) occur.
-            byte moisture = ToByte((long)FixedNoise.Fbm(p.MoistureSeed, wx, wy, Clamp(minDim / 4, 12, MaxClimatePeriod), 4) * 160 / 100
+            // Two octaves over a third of the map: large, coherent climate regions (rebuild: "big clean biomes").
+            byte moisture = ToByte((long)FixedNoise.Fbm(p.MoistureSeed, wx, wy, Clamp(minDim * 2 / 5, 12, MaxClimatePeriod), 2) * 185 / 100
                                    + (long)p.Settings.Moisture * One / 100);
 
             // Temperature: warm equator (middle row), cold poles, colder with altitude.
             long latitude = One - Abs((long)y * 2 * One / Max(1, p.Height - 1) - One); // [0, One]
-            long tNoise = FixedNoise.Fbm(p.TemperatureSeed, wx, wy, Clamp(minDim / 3, 12, MaxClimatePeriod), 3);
+            long tNoise = FixedNoise.Fbm(p.TemperatureSeed, wx, wy, Clamp(minDim / 3, 12, MaxClimatePeriod), 2);
             long altitudeChill = height > SeaLevel ? (long)(height - SeaLevel) * One / (255 - SeaLevel) : 0;
             long t = (latitude * 2 - One) * 80 / 100 + tNoise * 35 / 100 - altitudeChill * 45 / 100
                      + (long)p.Settings.Temperature * One / 100;
@@ -136,7 +137,7 @@ namespace WorldSim.Core
 
             // ---- Pass 3b (edge refinement): smooth small-scale threshold jitter (period ~3 tiles).
             // Smooth rather than per-tile random, so borders get wiggly instead of speckled.
-            int jitter = FixedNoise.Sample(p.EdgeRefineSeed ^ 0x3C3C3C3C3C3C3C3CUL, px / 3, py / 3) * 5 / One; // -5..+5
+            int jitter = FixedNoise.Sample(p.EdgeRefineSeed ^ 0x3C3C3C3C3C3C3C3CUL, px / 5, py / 5) * 2 / One; // -2..+2
 
             // ---- Pass 2: biome (climate table + fictional anomaly regions) ----
             Biome biome = Classify(height, moisture, temperature, jitter);
@@ -164,17 +165,16 @@ namespace WorldSim.Core
         public static Biome Classify(byte height, byte moisture, byte temperature, int jitter)
         {
             int h = height + jitter;
-            int m = moisture + jitter * 2;
+            int m = moisture + jitter;
             int t = temperature;
             if (h < DeepWaterBelow) return Biome.DeepWater;
             if (h < SeaLevel) return t >= 168 && h >= SeaLevel - 10 ? Biome.CoralShallows : Biome.ShallowWater; // warm reefs near shore
-            if (h < BeachBelow) return t < 40 ? Biome.Snow : Biome.Beach;
-            if (h >= SnowPeakFrom) return t < 70 ? Biome.Glacier : Biome.Snow;
-            if (h >= MountainFrom) return t < 48 ? Biome.Snow : Biome.Mountain;
+            if (h < BeachBelow) return Biome.Beach;
+            if (h >= SnowPeakFrom) return Biome.Snow;                                // snow caps only on the peaks
+            if (h >= MountainFrom) return Biome.Mountain;
             if (h >= HighlandFrom && m < 128 && t >= 48) return Biome.RockyHighland;   // dry foothills below the peaks
 
-            if (t < 20) return Biome.Glacier;                                        // polar ice sheet
-            if (t < 34) return Biome.Snow;                                           // polar snow
+            if (t < 16) return Biome.Glacier;                                        // polar ice sheet (small)
             if (t < 64) return m >= 125 ? Biome.PineTaiga : Biome.Tundra;            // cold
             if (t < 110)                                                             // cool
             {
@@ -209,18 +209,18 @@ namespace WorldSim.Core
             if (Biomes.IsWater(b) || b == Biome.Beach || b == Biome.Mountain || b == Biome.Snow ||
                 b == Biome.Glacier || b == Biome.RockyHighland || b == Biome.SaltFlats)
                 return b;
-            int period = Clamp(minDim / 5, 16, 70);
+            int period = Clamp(minDim / 7, 12, 50);
             int a = FixedNoise.Fbm(p.AnomalySeed, wx, wy, period, 2);              // [-One, One]
-            int threshold = One * 22 / 100;
+            int threshold = One * 36 / 100;                                          // rare: a few small patches per map
             if (a < threshold) return b;
             int kind = FixedNoise.Sample(p.AnomalySeed ^ 0x1F1F1F1F1F1F1F1FUL, wx / (period * 2), wy / (period * 2));
             // Sample is ~[-0.7, 0.7]; split into four bands. The fire family is ringed: ember wastes, ash, volcanic rock, lava core.
             if (kind < -One * 18 / 100) return Biome.CrystalCaves;
             if (kind < 0) return Biome.FungalGrove;
             if (kind < One * 18 / 100) return Biome.Glimmerwood;
-            if (a > One * 44 / 100) return Biome.Lava;
-            if (a > One * 36 / 100) return Biome.Volcanic;
-            if (a > One * 29 / 100) return Biome.AshWaste;
+            if (a > One * 47 / 100) return Biome.Lava;
+            if (a > One * 43 / 100) return Biome.Volcanic;
+            if (a > One * 40 / 100) return Biome.AshWaste;
             return Biome.EmberWastes;
         }
 
@@ -240,115 +240,115 @@ namespace WorldSim.Core
             switch (b)
             {
                 case Biome.Meadow:
-                    if (roll < (70 * clump / 100)) return pick < 80 ? Decoration.OakTree : Decoration.BirchTree;
-                    if (roll < (70 * clump / 100) + 40) return pick < 60 ? Decoration.Bush : Decoration.BerryBush;
-                    if (roll < (70 * clump / 100) + 110) return pick < 55 ? Decoration.Flowers : Decoration.TallGrass;
-                    if (roll < (70 * clump / 100) + 125) return Decoration.Rock;
+                    if (roll < (31 * clump / 100)) return pick < 80 ? Decoration.OakTree : Decoration.BirchTree;
+                    if (roll < (31 * clump / 100) + 20) return pick < 60 ? Decoration.Bush : Decoration.BerryBush;
+                    if (roll < (31 * clump / 100) + 55) return pick < 55 ? Decoration.Flowers : Decoration.TallGrass;
+                    if (roll < (31 * clump / 100) + 62) return Decoration.Rock;
                     return Decoration.None;
                 case Biome.Forest:
-                    if (roll < (560 * clump / 100)) return pick < 85 ? Decoration.OakTree : Decoration.BirchTree;
-                    if (roll < (560 * clump / 100) + 80) return pick < 70 ? Decoration.Bush : Decoration.BerryBush;
-                    if (roll < (560 * clump / 100) + 120) return pick < 50 ? Decoration.Mushroom : Decoration.Fern;
+                    if (roll < (252 * clump / 100)) return pick < 85 ? Decoration.OakTree : Decoration.BirchTree;
+                    if (roll < (252 * clump / 100) + 40) return pick < 70 ? Decoration.Bush : Decoration.BerryBush;
+                    if (roll < (252 * clump / 100) + 60) return pick < 50 ? Decoration.Mushroom : Decoration.Fern;
                     return Decoration.None;
                 case Biome.BirchForest:
-                    if (roll < (480 * clump / 100)) return pick < 80 ? Decoration.BirchTree : Decoration.PineTree;
-                    if (roll < (480 * clump / 100) + 90) return pick < 50 ? Decoration.Flowers : Decoration.TallGrass;
+                    if (roll < (216 * clump / 100)) return pick < 80 ? Decoration.BirchTree : Decoration.PineTree;
+                    if (roll < (216 * clump / 100) + 45) return pick < 50 ? Decoration.Flowers : Decoration.TallGrass;
                     return Decoration.None;
                 case Biome.PineTaiga:
-                    if (roll < (560 * clump / 100)) return temperature < 50 && pick < 45 ? Decoration.SnowPine : Decoration.PineTree;
-                    if (roll < (560 * clump / 100) + 30) return Decoration.Rock;
+                    if (roll < (252 * clump / 100)) return temperature < 50 && pick < 45 ? Decoration.SnowPine : Decoration.PineTree;
+                    if (roll < (252 * clump / 100) + 15) return Decoration.Rock;
                     return Decoration.None;
                 case Biome.Tundra:
-                    if (roll < 25) return Decoration.SnowPine;
-                    if (roll < 55) return Decoration.Rock;
-                    if (roll < 75) return Decoration.TallGrass;
+                    if (roll < 12) return Decoration.SnowPine;
+                    if (roll < 27) return Decoration.Rock;
+                    if (roll < 37) return Decoration.TallGrass;
                     return Decoration.None;
                 case Biome.Snow:
-                    if (roll < 18) return Decoration.IceRock;
-                    if (roll < 26) return Decoration.SnowPine;
+                    if (roll < 9) return Decoration.IceRock;
+                    if (roll < 13) return Decoration.SnowPine;
                     return Decoration.None;
                 case Biome.Jungle:
-                    if (roll < (650 * clump / 100)) return pick < 80 ? Decoration.JungleTree : Decoration.PalmTree;
-                    if (roll < (650 * clump / 100) + 120) return pick < 50 ? Decoration.Fern : Decoration.Bush;
-                    if (roll < (650 * clump / 100) + 160) return Decoration.Flowers;
+                    if (roll < (292 * clump / 100)) return pick < 80 ? Decoration.JungleTree : Decoration.PalmTree;
+                    if (roll < (292 * clump / 100) + 60) return pick < 50 ? Decoration.Fern : Decoration.Bush;
+                    if (roll < (292 * clump / 100) + 80) return Decoration.Flowers;
                     return Decoration.None;
                 case Biome.Savanna:
-                    if (roll < (45 * clump / 100)) return Decoration.AcaciaTree;
-                    if (roll < (45 * clump / 100) + 120) return Decoration.TallGrass;
-                    if (roll < (45 * clump / 100) + 145) return Decoration.Bush;
-                    if (roll < (45 * clump / 100) + 155) return Decoration.Rock;
+                    if (roll < (20 * clump / 100)) return Decoration.AcaciaTree;
+                    if (roll < (20 * clump / 100) + 60) return Decoration.TallGrass;
+                    if (roll < (20 * clump / 100) + 72) return Decoration.Bush;
+                    if (roll < (20 * clump / 100) + 77) return Decoration.Rock;
                     return Decoration.None;
                 case Biome.DesertDunes:
-                    if (roll < 22) return Decoration.Cactus;
-                    if (roll < 36) return Decoration.Rock;
-                    if (roll < 40) return Decoration.DeadTree;
+                    if (roll < 11) return Decoration.Cactus;
+                    if (roll < 18) return Decoration.Rock;
+                    if (roll < 20) return Decoration.DeadTree;
                     return Decoration.None;
                 case Biome.Swamp:
-                    if (roll < (280 * clump / 100)) return Decoration.SwampTree;
-                    if (roll < (280 * clump / 100) + 170) return Decoration.Reeds;
-                    if (roll < (280 * clump / 100) + 210) return Decoration.Mushroom;
+                    if (roll < (126 * clump / 100)) return Decoration.SwampTree;
+                    if (roll < (126 * clump / 100) + 85) return Decoration.Reeds;
+                    if (roll < (126 * clump / 100) + 105) return Decoration.Mushroom;
                     return Decoration.None;
                 case Biome.Beach:
-                    if (temperature > 170 && roll < 30) return Decoration.PalmTree;
-                    if (roll < 45) return Decoration.Rock;
+                    if (temperature > 170 && roll < 15) return Decoration.PalmTree;
+                    if (roll < 22) return Decoration.Rock;
                     return Decoration.None;
                 case Biome.Mountain:
-                    if (roll < 70) return pick < 60 ? Decoration.Rock : Decoration.Boulder;
-                    if (roll < 85) return Decoration.PineTree;
+                    if (roll < 35) return pick < 60 ? Decoration.Rock : Decoration.Boulder;
+                    if (roll < 42) return Decoration.PineTree;
                     return Decoration.None;
                 case Biome.CrystalCaves:
-                    if (roll < (170 * clump / 100)) return Decoration.Crystal;
-                    if (roll < (170 * clump / 100) + 40) return Decoration.Rock;
+                    if (roll < (76 * clump / 100)) return Decoration.Crystal;
+                    if (roll < (76 * clump / 100) + 20) return Decoration.Rock;
                     return Decoration.None;
                 case Biome.FungalGrove:
-                    if (roll < (300 * clump / 100)) return Decoration.GiantMushroom;
-                    if (roll < (300 * clump / 100) + 160) return Decoration.Mushroom;
+                    if (roll < (135 * clump / 100)) return Decoration.GiantMushroom;
+                    if (roll < (135 * clump / 100) + 80) return Decoration.Mushroom;
                     return Decoration.None;
                 case Biome.EmberWastes:
-                    if (roll < 80) return Decoration.EmberRock;
-                    if (roll < 120) return Decoration.CharredStump;
-                    if (roll < 140) return Decoration.EmberVent;
+                    if (roll < 40) return Decoration.EmberRock;
+                    if (roll < 60) return Decoration.CharredStump;
+                    if (roll < 70) return Decoration.EmberVent;
                     return Decoration.None;
                 case Biome.Glimmerwood:
-                    if (roll < (480 * clump / 100)) return Decoration.GlowTree;
-                    if (roll < (480 * clump / 100) + 120) return Decoration.Flowers;
+                    if (roll < (216 * clump / 100)) return Decoration.GlowTree;
+                    if (roll < (216 * clump / 100) + 60) return Decoration.Flowers;
                     return Decoration.None;
                 case Biome.FlowerField:
-                    if (roll < 260) return pick < 70 ? Decoration.Flowers : Decoration.TallGrass;
-                    if (roll < 300) return pick < 50 ? Decoration.Bush : Decoration.BerryBush;
-                    if (roll < (30 * clump / 100) + 300) return Decoration.BirchTree;
+                    if (roll < 130) return pick < 70 ? Decoration.Flowers : Decoration.TallGrass;
+                    if (roll < 150) return pick < 50 ? Decoration.Bush : Decoration.BerryBush;
+                    if (roll < (13 * clump / 100) + 150) return Decoration.BirchTree;
                     return Decoration.None;
                 case Biome.Steppe:
-                    if (roll < 150) return Decoration.TallGrass;
-                    if (roll < 175) return Decoration.Rock;
-                    if (roll < 185) return Decoration.Bush;
+                    if (roll < 75) return Decoration.TallGrass;
+                    if (roll < 87) return Decoration.Rock;
+                    if (roll < 92) return Decoration.Bush;
                     return Decoration.None;
                 case Biome.Badlands:
-                    if (roll < 60) return pick < 55 ? Decoration.Rock : Decoration.Boulder;
-                    if (roll < 75) return Decoration.DeadTree;
-                    if (roll < 85) return Decoration.Cactus;
+                    if (roll < 30) return pick < 55 ? Decoration.Rock : Decoration.Boulder;
+                    if (roll < 37) return Decoration.DeadTree;
+                    if (roll < 42) return Decoration.Cactus;
                     return Decoration.None;
                 case Biome.SaltFlats:
-                    if (roll < 12) return Decoration.Rock;
+                    if (roll < 6) return Decoration.Rock;
                     return Decoration.None;
                 case Biome.Glacier:
-                    if (roll < 20) return Decoration.IceRock;
+                    if (roll < 10) return Decoration.IceRock;
                     return Decoration.None;
                 case Biome.RockyHighland:
-                    if (roll < 90) return pick < 55 ? Decoration.Rock : Decoration.Boulder;
-                    if (roll < 115) return Decoration.PineTree;
-                    if (roll < 135) return Decoration.TallGrass;
+                    if (roll < 45) return pick < 55 ? Decoration.Rock : Decoration.Boulder;
+                    if (roll < 57) return Decoration.PineTree;
+                    if (roll < 67) return Decoration.TallGrass;
                     return Decoration.None;
                 case Biome.Volcanic:
-                    if (roll < 90) return pick < 60 ? Decoration.LavaRock : Decoration.EmberRock;
-                    if (roll < 100) return Decoration.EmberVent;
+                    if (roll < 45) return pick < 60 ? Decoration.LavaRock : Decoration.EmberRock;
+                    if (roll < 50) return Decoration.EmberVent;
                     return Decoration.None;
                 case Biome.AshWaste:
-                    if (roll < 60) return Decoration.CharredStump;
-                    if (roll < 90) return Decoration.DeadTree;
+                    if (roll < 30) return Decoration.CharredStump;
+                    if (roll < 45) return Decoration.DeadTree;
                     return Decoration.None;
                 case Biome.CoralShallows:
-                    if (roll < (220 * clump / 100)) return Decoration.Coral;
+                    if (roll < (99 * clump / 100)) return Decoration.Coral;
                     return Decoration.None;
                 default:
                     return Decoration.None; // water, lava, farmland, irradiated waste
