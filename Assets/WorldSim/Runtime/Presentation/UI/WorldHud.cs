@@ -66,6 +66,8 @@ namespace WorldSim.Presentation.UI
         public event Action LandClicked, ClimateClicked, MountainsClicked, BlankClicked;
         Text _landLabel, _climateLabel, _mountainsLabel, _blankLabel;
         public event Action NoticeAccepted;
+        /// <summary>Settings > "Art test": show/hide the art pack check (developer).</summary>
+        public event Action ArtTestClicked;
 
         public bool IsNoticeOpen => _noticeOverlay.gameObject.activeSelf;
 
@@ -241,6 +243,12 @@ namespace WorldSim.Presentation.UI
             else if (index == 1)
             {
                 BuildTerrainPalette();
+            }
+            else if (index == 5)
+            {
+                // Developer checks until the real Settings screen (B8).
+                RectTransform row = BuildScrollRow(0f);
+                AddRowButton(row, GetIconSprite(Icon.Gear), "Art test", () => ArtTestClicked?.Invoke());
             }
             else if (index == 2)
             {

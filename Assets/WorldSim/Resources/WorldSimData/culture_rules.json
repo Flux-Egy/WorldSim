@@ -1,0 +1,491 @@
+{
+ "how_it_works": "Each new kingdom rolls 3 founders with 2 traits each. Votes: leader x2. Top 2 values -> belief, rule, town layout, roof, dress, colours, crest symbol. Biome -> wall material, skin & hair pools.",
+ "traits": [
+  "BRAVE",
+  "CRUEL",
+  "CUNNING",
+  "GREEDY",
+  "PIOUS",
+  "KIND",
+  "CURIOUS",
+  "PATIENT",
+  "PROUD",
+  "STOIC",
+  "WANDERER",
+  "ARTISTIC"
+ ],
+ "trait_colors": {
+  "BRAVE": "#e06a55",
+  "CRUEL": "#b03a3a",
+  "CUNNING": "#9d76c2",
+  "GREEDY": "#ecc25c",
+  "PIOUS": "#f0e6c8",
+  "KIND": "#7cc46a",
+  "CURIOUS": "#5fe0e8",
+  "PATIENT": "#8fb4d8",
+  "PROUD": "#e8a04a",
+  "STOIC": "#a0a8b0",
+  "WANDERER": "#c8a070",
+  "ARTISTIC": "#e87ab8"
+ },
+ "value_of_trait": {
+  "BRAVE": "MARTIAL",
+  "CRUEL": "MARTIAL",
+  "CUNNING": "MERCANTILE",
+  "GREEDY": "MERCANTILE",
+  "PIOUS": "DEVOUT",
+  "KIND": "COMMUNAL",
+  "CURIOUS": "SCHOLARLY",
+  "PATIENT": "SCHOLARLY",
+  "PROUD": "GRANDEUR",
+  "STOIC": "TRADITION",
+  "WANDERER": "NOMADIC",
+  "ARTISTIC": "ARTISAN"
+ },
+ "rule_of_value": {
+  "MARTIAL": "WARLORD CHIEFDOM",
+  "MERCANTILE": "MERCHANT COUNCIL",
+  "DEVOUT": "THEOCRACY",
+  "COMMUNAL": "ELDER COUNCIL",
+  "SCHOLARLY": "SAGE KINGS",
+  "GRANDEUR": "SUN MONARCHY",
+  "TRADITION": "ANCESTRAL LAW",
+  "NOMADIC": "KHANATE",
+  "ARTISAN": "GUILD REPUBLIC"
+ },
+ "belief_of_value": {
+  "MARTIAL": {
+   "name": "CREED OF THE IRON PEAK",
+   "hue": 210
+  },
+  "MERCANTILE": {
+   "name": "CREED OF THE GOLDEN SCALE",
+   "hue": 45
+  },
+  "DEVOUT": {
+   "name": "CREED OF THE ELDER TREE",
+   "hue": 20
+  },
+  "COMMUNAL": {
+   "name": "CREED OF THE FIRST HEARTH",
+   "hue": 100
+  },
+  "SCHOLARLY": {
+   "name": "CREED OF THE OPEN EYE",
+   "hue": 185
+  },
+  "GRANDEUR": {
+   "name": "CREED OF THE SUN CRATER",
+   "hue": 35
+  },
+  "TRADITION": {
+   "name": "CREED OF THE FOUNDERS",
+   "hue": 28
+  },
+  "NOMADIC": {
+   "name": "CREED OF THE GREAT RIVER",
+   "hue": 195
+  },
+  "ARTISAN": {
+   "name": "CREED OF THE GREAT WORKS",
+   "hue": 320
+  }
+ },
+ "biome_walls": {
+  "RIVER": [
+   "mudw",
+   "adobe",
+   "whitew"
+  ],
+  "FOREST": [
+   "planks",
+   "logs"
+  ],
+  "MOUNTAIN": [
+   "stone"
+  ],
+  "COAST": [
+   "whitew",
+   "plaster"
+  ],
+  "STEPPE": [
+   "hide"
+  ],
+  "SNOW": [
+   "logs"
+  ],
+  "JUNGLE": [
+   "reedw",
+   "planks"
+  ]
+ },
+ "biome_ground_tint": {
+  "RIVER": "#cdb27c",
+  "FOREST": "#3f6a3c",
+  "MOUNTAIN": "#8a9478",
+  "COAST": "#b8c890",
+  "STEPPE": "#b8b070",
+  "SNOW": "#dfe8ec",
+  "JUNGLE": "#2f6a34"
+ },
+ "biome_skins": {
+  "RIVER": [
+   "#8a5a3a",
+   "#9e6a44",
+   "#b07a50"
+  ],
+  "FOREST": [
+   "#e8c4a4",
+   "#dcb090",
+   "#c89a74"
+  ],
+  "MOUNTAIN": [
+   "#c89a74",
+   "#d4a882",
+   "#b88a66"
+  ],
+  "COAST": [
+   "#b07a50",
+   "#c89a74",
+   "#d4a882"
+  ],
+  "STEPPE": [
+   "#c8946a",
+   "#d4a47a",
+   "#b88458"
+  ],
+  "SNOW": [
+   "#f0d0b4",
+   "#e8c4a4",
+   "#f4dcc4"
+  ],
+  "JUNGLE": [
+   "#6e4428",
+   "#7a4e32",
+   "#8a5a3a"
+  ]
+ },
+ "biome_hairs": {
+  "RIVER": [
+   "#1a1410",
+   "#2a1e16"
+  ],
+  "FOREST": [
+   "#5a3a22",
+   "#a8642e",
+   "#3a2618"
+  ],
+  "MOUNTAIN": [
+   "#3a2618",
+   "#2a1e16",
+   "#7a4a26"
+  ],
+  "COAST": [
+   "#2a1e16",
+   "#5a3a22"
+  ],
+  "STEPPE": [
+   "#1a1410",
+   "#2a1e16"
+  ],
+  "SNOW": [
+   "#d8b46a",
+   "#e6cc8a",
+   "#c8743a"
+  ],
+  "JUNGLE": [
+   "#1a1410",
+   "#120e0a"
+  ]
+ },
+ "symbol_of_value": {
+  "MARTIAL": "axe",
+  "MERCANTILE": "scale",
+  "DEVOUT": "tree",
+  "COMMUNAL": "hearth",
+  "SCHOLARLY": "eye",
+  "GRANDEUR": "sun",
+  "TRADITION": "leaf",
+  "NOMADIC": "horn",
+  "ARTISAN": "gear"
+ },
+ "crest_symbols": [
+  "sun",
+  "leaf",
+  "tree",
+  "wave",
+  "peak",
+  "eye",
+  "axe",
+  "gear",
+  "hearth",
+  "horn",
+  "scale"
+ ],
+ "roof_rules": [
+  "nomadic or steppe -> yurt",
+  "GRANDEUR/DEVOUT -> dome|cone",
+  "TRADITION/SCHOLARLY -> tiered|hip",
+  "COMMUNAL -> gable|thatch",
+  "MERCANTILE -> flat|hip",
+  "else -> gable|cone|flat|thatch",
+  "river/steppe: gable/tiered 50% -> flat",
+  "snow/forest: flat -> gable"
+ ],
+ "ornament_rules": {
+  "MARTIAL": [
+   "banner",
+   "spikes"
+  ],
+  "DEVOUT": [
+   "spire"
+  ],
+  "GRANDEUR": [
+   "spire"
+  ],
+  "MERCANTILE": [
+   "awning"
+  ],
+  "ARTISAN": [
+   "tiles"
+  ],
+  "COMMUNAL": [
+   "garden"
+  ],
+  "TRADITION": [
+   "totem"
+  ],
+  "trait KIND": [
+   "garden"
+  ],
+  "trait PROUD or GRANDEUR": [
+   "tall towers"
+  ]
+ },
+ "layout_of_value": {
+  "MARTIAL": "RING + WALLS",
+  "MERCANTILE": "ALONG ROADS",
+  "DEVOUT": "AROUND SANCTUM",
+  "COMMUNAL": "CLUSTERS",
+  "SCHOLARLY": "GRID",
+  "GRANDEUR": "AXIAL AVENUE",
+  "TRADITION": "TERRACES",
+  "NOMADIC": "CAMP CIRCLES",
+  "ARTISAN": "WINDING QUARTERS"
+ },
+ "dress": {
+  "garment": "river/coast/jungle -> robe|pants, else pants|kilt; nomads pants; women dress",
+  "male_head_by_value": {
+   "MARTIAL": [
+    "band",
+    "feathers"
+   ],
+   "DEVOUT": [
+    "turban (river/coast)",
+    "hood"
+   ],
+   "MERCANTILE": [
+    "turban",
+    "skullcap",
+    "flatcap"
+   ],
+   "SCHOLARLY": [
+    "skullcap",
+    "band"
+   ],
+   "GRANDEUR": [
+    "turban"
+   ],
+   "TRADITION": [
+    "bonnet",
+    "band"
+   ],
+   "NOMADIC": [
+    "furhat"
+   ],
+   "COMMUNAL": [
+    "bare",
+    "band"
+   ],
+   "ARTISAN": [
+    "feathers",
+    "bonnet"
+   ],
+   "SNOW biome": [
+    "furhat"
+   ]
+  },
+  "female_head": "DEVOUT/GRANDEUR/TRADITION -> scarf|veil|bare|kerchief, else bare|kerchief|band",
+  "ruler_crown": {
+   "MARTIAL": "crown_north",
+   "GRANDEUR": "crown_river",
+   "DEVOUT": "crown_river",
+   "NOMADIC": "furhat",
+   "else": "circlet"
+  }
+ },
+ "palette": "ACC = hsv ramp from belief hue (+-18), ACC2 = complementary-ish (+150..200); ROOF = ACC for dome/cone, else from gable list; TEAM = kingdom colour",
+ "names": {
+  "consonant_sets": [
+   [
+    "b",
+    "d",
+    "g",
+    "k",
+    "l",
+    "m",
+    "n",
+    "r",
+    "s",
+    "t",
+    "v",
+    "z"
+   ],
+   [
+    "h",
+    "k",
+    "m",
+    "n",
+    "r",
+    "s",
+    "t",
+    "w",
+    "y"
+   ],
+   [
+    "f",
+    "g",
+    "l",
+    "m",
+    "n",
+    "r",
+    "s",
+    "v",
+    "z",
+    "th"
+   ],
+   [
+    "b",
+    "d",
+    "g",
+    "k",
+    "p",
+    "q",
+    "r",
+    "t",
+    "z",
+    "kh",
+    "sh"
+   ],
+   [
+    "l",
+    "m",
+    "n",
+    "r",
+    "s",
+    "v",
+    "y",
+    "ph"
+   ],
+   [
+    "d",
+    "g",
+    "j",
+    "k",
+    "m",
+    "n",
+    "r",
+    "s",
+    "t",
+    "z",
+    "zh",
+    "ch"
+   ]
+  ],
+  "vowel_sets": [
+   [
+    "a",
+    "e",
+    "i",
+    "o",
+    "u"
+   ],
+   [
+    "a",
+    "a",
+    "i",
+    "o",
+    "u"
+   ],
+   [
+    "e",
+    "e",
+    "i",
+    "a",
+    "o"
+   ],
+   [
+    "a",
+    "a",
+    "o",
+    "o",
+    "u"
+   ],
+   [
+    "a",
+    "e",
+    "i",
+    "ia",
+    "ae"
+   ],
+   [
+    "a",
+    "o",
+    "u",
+    "ai",
+    "ei"
+   ]
+  ],
+  "endings": [
+   "ia",
+   "an",
+   "ar",
+   "eth",
+   "or",
+   "um",
+   "ani",
+   "esh",
+   "ova",
+   "ir",
+   "ka",
+   "oth"
+  ],
+  "patterns": [
+   [
+    "CV",
+    "CVC"
+   ],
+   [
+    "CV",
+    "CV",
+    "CVC"
+   ],
+   [
+    "CVC",
+    "CV"
+   ],
+   [
+    "CV",
+    "CVN"
+   ]
+  ],
+  "rules": "one consonant+vowel set per culture (children cultures keep it -> names sound related); collapse 3+ vowels to 2; max 8 letters; place = word + ending"
+ },
+ "split_rules": [
+  "sea / mountain isolation for 200+ years",
+  "new seer (PIOUS/CURIOUS hero)",
+  "conquest merges -> hybrid",
+  "civil war",
+  "child keeps ~78% genes, mutates 1 visual gene"
+ ]
+}

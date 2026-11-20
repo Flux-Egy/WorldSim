@@ -1,0 +1,613 @@
+{
+ "palettes": [
+  {
+   "name": "scarlet",
+   "team": [
+    "#961304",
+    "#c42311",
+    "#f23824",
+    "#ff5744",
+    "#ff8072"
+   ],
+   "accent": [
+    "#205c63",
+    "#388891",
+    "#56b4bf",
+    "#7ed4dd",
+    "#bdf6fc"
+   ],
+   "ui_tint": "#ff5744",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "coral",
+   "team": [
+    "#9e4934",
+    "#cc684f",
+    "#f98b70",
+    "#ffa791",
+    "#ffcbbf"
+   ],
+   "accent": [
+    "#205663",
+    "#387f91",
+    "#56aabf",
+    "#7ecadd",
+    "#bdeffc"
+   ],
+   "ui_tint": "#ffa791",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "ember",
+   "team": [
+    "#7c3003",
+    "#aa480f",
+    "#d86420",
+    "#f78442",
+    "#ffa672"
+   ],
+   "accent": [
+    "#204b63",
+    "#387091",
+    "#5698bf",
+    "#7ebadd",
+    "#bde5fc"
+   ],
+   "ui_tint": "#f78442",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "brown",
+   "team": [
+    "#0f0804",
+    "#3d2514",
+    "#6b452a",
+    "#896347",
+    "#a88a75"
+   ],
+   "accent": [
+    "#204763",
+    "#386c91",
+    "#5693bf",
+    "#7eb6dd",
+    "#bde2fc"
+   ],
+   "ui_tint": "#896347",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "bronze",
+   "team": [
+    "#42270b",
+    "#70451a",
+    "#9e662f",
+    "#bc854f",
+    "#dbaf83"
+   ],
+   "accent": [
+    "#204263",
+    "#386591",
+    "#568abf",
+    "#7eaedd",
+    "#bddcfc"
+   ],
+   "ui_tint": "#bc854f",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "tan",
+   "team": [
+    "#6b5233",
+    "#997a52",
+    "#c6a477",
+    "#e5c9a5",
+    "#fff3e5"
+   ],
+   "accent": [
+    "#203d63",
+    "#385f91",
+    "#5683bf",
+    "#7ea7dd",
+    "#bdd8fc"
+   ],
+   "ui_tint": "#e5c9a5",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "amber",
+   "team": [
+    "#965c04",
+    "#c47c11",
+    "#f29f24",
+    "#ffb444",
+    "#ffc672"
+   ],
+   "accent": [
+    "#203b63",
+    "#385c91",
+    "#5680bf",
+    "#7ea4dd",
+    "#bdd6fc"
+   ],
+   "ui_tint": "#ffb444",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "gold",
+   "team": [
+    "#7c6509",
+    "#aa8d17",
+    "#d8b62b",
+    "#f7d54f",
+    "#ffe57f"
+   ],
+   "accent": [
+    "#202e63",
+    "#384a91",
+    "#566bbf",
+    "#7e91dd",
+    "#bdc9fc"
+   ],
+   "ui_tint": "#f7d54f",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "lemon",
+   "team": [
+    "#9e9a24",
+    "#ccc73b",
+    "#f9f457",
+    "#fffa77",
+    "#fffca5"
+   ],
+   "accent": [
+    "#202363",
+    "#383b91",
+    "#5659bf",
+    "#7e81dd",
+    "#bdbffc"
+   ],
+   "ui_tint": "#fffa77",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "olive",
+   "team": [
+    "#222309",
+    "#4f511b",
+    "#7c7f33",
+    "#9b9e52",
+    "#babc84"
+   ],
+   "accent": [
+    "#232063",
+    "#3b3891",
+    "#5956bf",
+    "#817edd",
+    "#bfbdfc"
+   ],
+   "ui_tint": "#9b9e52",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "lime",
+   "team": [
+    "#5a7c16",
+    "#7faa29",
+    "#a6d841",
+    "#c7f767",
+    "#ddff99"
+   ],
+   "accent": [
+    "#372063",
+    "#563891",
+    "#7956bf",
+    "#9e7edd",
+    "#d2bdfc"
+   ],
+   "ui_tint": "#c7f767",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "grass",
+   "team": [
+    "#1a4911",
+    "#307722",
+    "#4ba53a",
+    "#6dc45c",
+    "#a0e293"
+   ],
+   "accent": [
+    "#582063",
+    "#823891",
+    "#ad56bf",
+    "#cd7edd",
+    "#f1bdfc"
+   ],
+   "ui_tint": "#6dc45c",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "forest",
+   "team": [
+    "#020c05",
+    "#10381a",
+    "#236634",
+    "#3e844f",
+    "#6aa378"
+   ],
+   "accent": [
+    "#632052",
+    "#91387b",
+    "#bf56a4",
+    "#dd7ec6",
+    "#fcbdec"
+   ],
+   "ui_tint": "#3e844f",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "mint",
+   "team": [
+    "#448e69",
+    "#65bc91",
+    "#8ceabb",
+    "#b7ffdb",
+    "#e5fff2"
+   ],
+   "accent": [
+    "#632042",
+    "#913865",
+    "#bf568a",
+    "#dd7eae",
+    "#fcbddc"
+   ],
+   "ui_tint": "#b7ffdb",
+   "text_on": "#0b0e13"
+  },
+  {
+   "name": "jade",
+   "team": [
+    "#0b422e",
+    "#1a7050",
+    "#2f9e75",
+    "#4fbc94",
+    "#83dbbb"
+   ],
+   "accent": [
+    "#632039",
+    "#913859",
+    "#bf567c",
+    "#dd7ea1",
+    "#fcbdd4"
+   ],
+   "ui_tint": "#4fbc94",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "teal",
+   "team": [
+    "#06302d",
+    "#115e59",
+    "#238c85",
+    "#3faaa3",
+    "#6ec9c3"
+   ],
+   "accent": [
+    "#632025",
+    "#91383e",
+    "#bf565d",
+    "#dd7e84",
+    "#fcbdc1"
+   ],
+   "ui_tint": "#3faaa3",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "sky",
+   "team": [
+    "#43809e",
+    "#63a9cc",
+    "#89d4f9",
+    "#aae2ff",
+    "#d8f2ff"
+   ],
+   "accent": [
+    "#633720",
+    "#915638",
+    "#bf7956",
+    "#dd9e7e",
+    "#fcd2bd"
+   ],
+   "ui_tint": "#aae2ff",
+   "text_on": "#0b0e13"
+  },
+  {
+   "name": "azure",
+   "team": [
+    "#10467c",
+    "#2065aa",
+    "#3687d8",
+    "#5ba9f7",
+    "#8cc5ff"
+   ],
+   "accent": [
+    "#634220",
+    "#916538",
+    "#bf8a56",
+    "#ddae7e",
+    "#fcdcbd"
+   ],
+   "ui_tint": "#5ba9f7",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "slate",
+   "team": [
+    "#1e2730",
+    "#414f5e",
+    "#697a8c",
+    "#949faa",
+    "#c9c9c9"
+   ],
+   "accent": [
+    "#634220",
+    "#916538",
+    "#bf8a56",
+    "#ddae7e",
+    "#fcdcbd"
+   ],
+   "ui_tint": "#949faa",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "cobalt",
+   "team": [
+    "#021e56",
+    "#0b3484",
+    "#1a4db2",
+    "#386bd1",
+    "#6b97ef"
+   ],
+   "accent": [
+    "#634d20",
+    "#917338",
+    "#bf9c56",
+    "#ddbe7e",
+    "#fce7bd"
+   ],
+   "ui_tint": "#386bd1",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "navy",
+   "team": [
+    "#01030c",
+    "#091133",
+    "#182660",
+    "#2f3f7f",
+    "#56659e"
+   ],
+   "accent": [
+    "#635620",
+    "#917f38",
+    "#bfaa56",
+    "#ddca7e",
+    "#fcefbd"
+   ],
+   "ui_tint": "#2f3f7f",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "lavender",
+   "team": [
+    "#61528e",
+    "#8978bc",
+    "#b5a4ea",
+    "#dcd1ff",
+    "#ffffff"
+   ],
+   "accent": [
+    "#526320",
+    "#7b9138",
+    "#a4bf56",
+    "#c6dd7e",
+    "#ecfcbd"
+   ],
+   "ui_tint": "#dcd1ff",
+   "text_on": "#0b0e13"
+  },
+  {
+   "name": "violet",
+   "team": [
+    "#44236b",
+    "#673b99",
+    "#8c59c6",
+    "#b082e5",
+    "#ddbfff"
+   ],
+   "accent": [
+    "#446320",
+    "#679138",
+    "#8ebf56",
+    "#b1dd7e",
+    "#defcbd"
+   ],
+   "ui_tint": "#b082e5",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "orchid",
+   "team": [
+    "#7c3b7c",
+    "#aa5caa",
+    "#d882d8",
+    "#f7b2f7",
+    "#ffe5ff"
+   ],
+   "accent": [
+    "#206320",
+    "#389138",
+    "#56bf56",
+    "#7edd7e",
+    "#bdfcbd"
+   ],
+   "ui_tint": "#f7b2f7",
+   "text_on": "#0b0e13"
+  },
+  {
+   "name": "plum",
+   "team": [
+    "#0f050f",
+    "#3d1a3d",
+    "#6b356b",
+    "#895589",
+    "#a886a8"
+   ],
+   "accent": [
+    "#206320",
+    "#389138",
+    "#56bf56",
+    "#7edd7e",
+    "#bdfcbd"
+   ],
+   "ui_tint": "#895589",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "magenta",
+   "team": [
+    "#7c1061",
+    "#aa2088",
+    "#d836b0",
+    "#f75bd0",
+    "#ff8ce2"
+   ],
+   "accent": [
+    "#206331",
+    "#38914e",
+    "#56bf70",
+    "#7edd96",
+    "#bdfccd"
+   ],
+   "ui_tint": "#f75bd0",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "rose",
+   "team": [
+    "#963960",
+    "#c45684",
+    "#f279ab",
+    "#ff9ec6",
+    "#ffcce1"
+   ],
+   "accent": [
+    "#206347",
+    "#38916c",
+    "#56bf93",
+    "#7eddb6",
+    "#bdfce2"
+   ],
+   "ui_tint": "#ff9ec6",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "maroon",
+   "team": [
+    "#0c0103",
+    "#380a12",
+    "#661926",
+    "#84313e",
+    "#a35966"
+   ],
+   "accent": [
+    "#206358",
+    "#389182",
+    "#56bfad",
+    "#7eddcd",
+    "#bdfcf1"
+   ],
+   "ui_tint": "#84313e",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "crimson",
+   "team": [
+    "#630c14",
+    "#911b25",
+    "#bf2f3b",
+    "#dd525d",
+    "#fc8a94"
+   ],
+   "accent": [
+    "#20635d",
+    "#389189",
+    "#56bfb6",
+    "#7eddd5",
+    "#bdfcf7"
+   ],
+   "ui_tint": "#dd525d",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "ivory",
+   "team": [
+    "#9e957b",
+    "#ccc3ab",
+    "#f9f3e0",
+    "#ffffff",
+    "#ffffff"
+   ],
+   "accent": [
+    "#705c1f",
+    "#9e8435",
+    "#ccad51",
+    "#eace79",
+    "#ffebb2"
+   ],
+   "ui_tint": "#ffffff",
+   "text_on": "#0b0e13"
+  },
+  {
+   "name": "steel",
+   "team": [
+    "#455963",
+    "#6e8591",
+    "#9cb3bf",
+    "#d0d9dd",
+    "#fcfcfc"
+   ],
+   "accent": [
+    "#705c1f",
+    "#9e8435",
+    "#ccad51",
+    "#eace79",
+    "#ffebb2"
+   ],
+   "ui_tint": "#d0d9dd",
+   "text_on": "#f3e6c8"
+  },
+  {
+   "name": "charcoal",
+   "team": [
+    "#090a0c",
+    "#0e0f11",
+    "#393b3f",
+    "#5e5e5e",
+    "#7c7c7c"
+   ],
+   "accent": [
+    "#705c1f",
+    "#9e8435",
+    "#ccad51",
+    "#eace79",
+    "#ffebb2"
+   ],
+   "ui_tint": "#5e5e5e",
+   "text_on": "#f3e6c8"
+  }
+ ],
+ "note": "team ramp feeds WorldSimRecolor TEAM region (5 shades dark->light); accent = ACC2; 32 distinct kingdom colours"
+}
