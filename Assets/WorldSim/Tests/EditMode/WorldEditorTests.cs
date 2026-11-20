@@ -23,7 +23,7 @@ namespace WorldSim.Tests
             return (new Grid { A = tiles }, p);
         }
 
-        static TerrainEdit Edit(TerrainTool tool, int x, int y, int r, Biome b = Biome.Grass) =>
+        static TerrainEdit Edit(TerrainTool tool, int x, int y, int r, Biome b = Biome.Meadow) =>
             new TerrainEdit { Tool = tool, X = x, Y = y, Radius = r, Biome = b };
 
         [Test]
@@ -42,7 +42,7 @@ namespace WorldSim.Tests
         public void RaiseRepeatedly_ClimbsToMountainThenSnow()
         {
             var (g, p) = World();
-            WorldEditor.Apply(ref g, p, Edit(TerrainTool.PaintBiome, 20, 20, 0, Biome.Grass));
+            WorldEditor.Apply(ref g, p, Edit(TerrainTool.PaintBiome, 20, 20, 0, Biome.Meadow));
             bool sawMountain = false;
             for (int i = 0; i < 40; i++)
             {
@@ -57,7 +57,7 @@ namespace WorldSim.Tests
         public void LowerRepeatedly_SinksIntoWater()
         {
             var (g, p) = World();
-            WorldEditor.Apply(ref g, p, Edit(TerrainTool.PaintBiome, 40, 40, 0, Biome.Grass));
+            WorldEditor.Apply(ref g, p, Edit(TerrainTool.PaintBiome, 40, 40, 0, Biome.Meadow));
             for (int i = 0; i < 20; i++) WorldEditor.Apply(ref g, p, Edit(TerrainTool.Lower, 40, 40, 0));
             Assert.IsTrue(g.Get(40 * N + 40).IsWater);
         }
@@ -66,7 +66,7 @@ namespace WorldSim.Tests
         public void PlantThenClear_TogglesTreesAndWood()
         {
             var (g, p) = World();
-            WorldEditor.Apply(ref g, p, Edit(TerrainTool.PaintBiome, 10, 10, 2, Biome.Grass));
+            WorldEditor.Apply(ref g, p, Edit(TerrainTool.PaintBiome, 10, 10, 2, Biome.Meadow));
             WorldEditor.Apply(ref g, p, Edit(TerrainTool.PlantTrees, 10, 10, 2));
             TileData t = g.Get(10 * N + 10);
             Assert.IsTrue(TileData.IsTree(t.Decoration));

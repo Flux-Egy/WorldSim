@@ -80,6 +80,7 @@ namespace WorldSim.Core
         public const byte DeepWaterBelow = 88;
         public const byte SeaLevel = 112;        // below: shallow water
         public const byte BeachBelow = 119;      // below: sand
+        public const byte HighlandFrom = 180;    // dry land from here up: rocky highland
         public const byte MountainFrom = 196;
         public const byte SnowPeakFrom = 240;
 
@@ -166,21 +167,36 @@ namespace WorldSim.Core
             int m = moisture + jitter * 2;
             int t = temperature;
             if (h < DeepWaterBelow) return Biome.DeepWater;
-            if (h < SeaLevel) return Biome.ShallowWater;
-            if (h < BeachBelow) return t < 40 ? Biome.Snow : Biome.Sand;
-            if (h >= SnowPeakFrom) return Biome.Snow;
+            if (h < SeaLevel) return t >= 168 && h >= SeaLevel - 10 ? Biome.CoralShallows : Biome.ShallowWater; // warm reefs near shore
+            if (h < BeachBelow) return t < 40 ? Biome.Snow : Biome.Beach;
+            if (h >= SnowPeakFrom) return t < 70 ? Biome.Glacier : Biome.Snow;
             if (h >= MountainFrom) return t < 48 ? Biome.Snow : Biome.Mountain;
+            if (h >= HighlandFrom && m < 128 && t >= 48) return Biome.RockyHighland;   // dry foothills below the peaks
 
-            if (t < 34) return Biome.Snow;                                         // polar ice
-            if (t < 64) return m >= 125 ? Biome.Taiga : Biome.Tundra;              // cold
-            if (t < 110) return m >= 150 ? Biome.Taiga : m >= 118 ? Biome.BirchForest : Biome.Grass; // cool
-            if (t < 150)                                                            // temperate
+            if (t < 20) return Biome.Glacier;                                        // polar ice sheet
+            if (t < 34) return Biome.Snow;                                           // polar snow
+            if (t < 64) return m >= 125 ? Biome.PineTaiga : Biome.Tundra;            // cold
+            if (t < 110)                                                             // cool
+            {
+                if (m >= 150) return Biome.PineTaiga;
+                if (m >= 118) return Biome.BirchForest;
+                return m < 72 ? Biome.Steppe : Biome.Meadow;
+            }
+            if (t < 150)                                                             // temperate
             {
                 if (m >= 168 && h < 140) return Biome.Swamp;
-                return m >= 134 ? Biome.Forest : Biome.Grass;
+                if (m >= 134) return Biome.Forest;
+                if (m >= 120) return Biome.FlowerField;                              // the meadow-forest edge
+                return m < 80 ? Biome.Steppe : Biome.Meadow;
             }
-            if (t < 176) return m >= 160 ? Biome.Jungle : m >= 118 ? Biome.Forest : m >= 100 ? Biome.Grass : Biome.Savanna; // warm
-            return m >= 150 ? Biome.Jungle : m >= 92 ? Biome.Savanna : Biome.Desert; // hot
+            if (t < 176)                                                             // warm
+                return m >= 160 ? Biome.Jungle : m >= 118 ? Biome.Forest : m >= 100 ? Biome.Meadow : Biome.Savanna;
+            // hot
+            if (m >= 150) return Biome.Jungle;
+            if (m >= 92) return Biome.Savanna;
+            if (h >= 156) return Biome.Badlands;                                     // raised dry land: eroded mesas
+            if (m < 60 && h < 134) return Biome.SaltFlats;                           // driest low basins
+            return Biome.DesertDunes;
         }
 
         /// <summary>
@@ -190,19 +206,22 @@ namespace WorldSim.Core
         /// </summary>
         static Biome ApplyAnomaly(in WorldGenParams p, long wx, long wy, int minDim, Biome b)
         {
-            if (b == Biome.DeepWater || b == Biome.ShallowWater || b == Biome.Sand ||
-                b == Biome.Mountain || b == Biome.Snow)
+            if (Biomes.IsWater(b) || b == Biome.Beach || b == Biome.Mountain || b == Biome.Snow ||
+                b == Biome.Glacier || b == Biome.RockyHighland || b == Biome.SaltFlats)
                 return b;
             int period = Clamp(minDim / 5, 16, 70);
             int a = FixedNoise.Fbm(p.AnomalySeed, wx, wy, period, 2);              // [-One, One]
             int threshold = One * 22 / 100;
             if (a < threshold) return b;
             int kind = FixedNoise.Sample(p.AnomalySeed ^ 0x1F1F1F1F1F1F1F1FUL, wx / (period * 2), wy / (period * 2));
-            // Sample is ~[-0.7, 0.7]; split into four bands.
-            if (kind < -One * 18 / 100) return Biome.CrystalFields;
-            if (kind < 0) return Biome.MushroomGrove;
+            // Sample is ~[-0.7, 0.7]; split into four bands. The fire family is ringed: ember wastes, ash, volcanic rock, lava core.
+            if (kind < -One * 18 / 100) return Biome.CrystalCaves;
+            if (kind < 0) return Biome.FungalGrove;
             if (kind < One * 18 / 100) return Biome.Glimmerwood;
-            return a > One * 40 / 100 ? Biome.Lava : Biome.EmberWastes;
+            if (a > One * 44 / 100) return Biome.Lava;
+            if (a > One * 36 / 100) return Biome.Volcanic;
+            if (a > One * 29 / 100) return Biome.AshWaste;
+            return Biome.EmberWastes;
         }
 
         /// <summary>
@@ -220,7 +239,7 @@ namespace WorldSim.Core
 
             switch (b)
             {
-                case Biome.Grass:
+                case Biome.Meadow:
                     if (roll < (70 * clump / 100)) return pick < 80 ? Decoration.OakTree : Decoration.BirchTree;
                     if (roll < (70 * clump / 100) + 40) return pick < 60 ? Decoration.Bush : Decoration.BerryBush;
                     if (roll < (70 * clump / 100) + 110) return pick < 55 ? Decoration.Flowers : Decoration.TallGrass;
@@ -229,13 +248,13 @@ namespace WorldSim.Core
                 case Biome.Forest:
                     if (roll < (560 * clump / 100)) return pick < 85 ? Decoration.OakTree : Decoration.BirchTree;
                     if (roll < (560 * clump / 100) + 80) return pick < 70 ? Decoration.Bush : Decoration.BerryBush;
-                    if (roll < (560 * clump / 100) + 120) return Decoration.Mushroom;
+                    if (roll < (560 * clump / 100) + 120) return pick < 50 ? Decoration.Mushroom : Decoration.Fern;
                     return Decoration.None;
                 case Biome.BirchForest:
                     if (roll < (480 * clump / 100)) return pick < 80 ? Decoration.BirchTree : Decoration.PineTree;
                     if (roll < (480 * clump / 100) + 90) return pick < 50 ? Decoration.Flowers : Decoration.TallGrass;
                     return Decoration.None;
-                case Biome.Taiga:
+                case Biome.PineTaiga:
                     if (roll < (560 * clump / 100)) return temperature < 50 && pick < 45 ? Decoration.SnowPine : Decoration.PineTree;
                     if (roll < (560 * clump / 100) + 30) return Decoration.Rock;
                     return Decoration.None;
@@ -250,7 +269,7 @@ namespace WorldSim.Core
                     return Decoration.None;
                 case Biome.Jungle:
                     if (roll < (650 * clump / 100)) return pick < 80 ? Decoration.JungleTree : Decoration.PalmTree;
-                    if (roll < (650 * clump / 100) + 120) return Decoration.Bush;
+                    if (roll < (650 * clump / 100) + 120) return pick < 50 ? Decoration.Fern : Decoration.Bush;
                     if (roll < (650 * clump / 100) + 160) return Decoration.Flowers;
                     return Decoration.None;
                 case Biome.Savanna:
@@ -259,7 +278,7 @@ namespace WorldSim.Core
                     if (roll < (45 * clump / 100) + 145) return Decoration.Bush;
                     if (roll < (45 * clump / 100) + 155) return Decoration.Rock;
                     return Decoration.None;
-                case Biome.Desert:
+                case Biome.DesertDunes:
                     if (roll < 22) return Decoration.Cactus;
                     if (roll < 36) return Decoration.Rock;
                     if (roll < 40) return Decoration.DeadTree;
@@ -269,7 +288,7 @@ namespace WorldSim.Core
                     if (roll < (280 * clump / 100) + 170) return Decoration.Reeds;
                     if (roll < (280 * clump / 100) + 210) return Decoration.Mushroom;
                     return Decoration.None;
-                case Biome.Sand:
+                case Biome.Beach:
                     if (temperature > 170 && roll < 30) return Decoration.PalmTree;
                     if (roll < 45) return Decoration.Rock;
                     return Decoration.None;
@@ -277,24 +296,62 @@ namespace WorldSim.Core
                     if (roll < 70) return pick < 60 ? Decoration.Rock : Decoration.Boulder;
                     if (roll < 85) return Decoration.PineTree;
                     return Decoration.None;
-                case Biome.CrystalFields:
+                case Biome.CrystalCaves:
                     if (roll < (170 * clump / 100)) return Decoration.Crystal;
                     if (roll < (170 * clump / 100) + 40) return Decoration.Rock;
                     return Decoration.None;
-                case Biome.MushroomGrove:
+                case Biome.FungalGrove:
                     if (roll < (300 * clump / 100)) return Decoration.GiantMushroom;
                     if (roll < (300 * clump / 100) + 160) return Decoration.Mushroom;
                     return Decoration.None;
                 case Biome.EmberWastes:
-                    if (roll < 110) return Decoration.EmberRock;
-                    if (roll < 150) return Decoration.DeadTree;
+                    if (roll < 80) return Decoration.EmberRock;
+                    if (roll < 120) return Decoration.CharredStump;
+                    if (roll < 140) return Decoration.EmberVent;
                     return Decoration.None;
                 case Biome.Glimmerwood:
                     if (roll < (480 * clump / 100)) return Decoration.GlowTree;
                     if (roll < (480 * clump / 100) + 120) return Decoration.Flowers;
                     return Decoration.None;
+                case Biome.FlowerField:
+                    if (roll < 260) return pick < 70 ? Decoration.Flowers : Decoration.TallGrass;
+                    if (roll < 300) return pick < 50 ? Decoration.Bush : Decoration.BerryBush;
+                    if (roll < (30 * clump / 100) + 300) return Decoration.BirchTree;
+                    return Decoration.None;
+                case Biome.Steppe:
+                    if (roll < 150) return Decoration.TallGrass;
+                    if (roll < 175) return Decoration.Rock;
+                    if (roll < 185) return Decoration.Bush;
+                    return Decoration.None;
+                case Biome.Badlands:
+                    if (roll < 60) return pick < 55 ? Decoration.Rock : Decoration.Boulder;
+                    if (roll < 75) return Decoration.DeadTree;
+                    if (roll < 85) return Decoration.Cactus;
+                    return Decoration.None;
+                case Biome.SaltFlats:
+                    if (roll < 12) return Decoration.Rock;
+                    return Decoration.None;
+                case Biome.Glacier:
+                    if (roll < 20) return Decoration.IceRock;
+                    return Decoration.None;
+                case Biome.RockyHighland:
+                    if (roll < 90) return pick < 55 ? Decoration.Rock : Decoration.Boulder;
+                    if (roll < 115) return Decoration.PineTree;
+                    if (roll < 135) return Decoration.TallGrass;
+                    return Decoration.None;
+                case Biome.Volcanic:
+                    if (roll < 90) return pick < 60 ? Decoration.LavaRock : Decoration.EmberRock;
+                    if (roll < 100) return Decoration.EmberVent;
+                    return Decoration.None;
+                case Biome.AshWaste:
+                    if (roll < 60) return Decoration.CharredStump;
+                    if (roll < 90) return Decoration.DeadTree;
+                    return Decoration.None;
+                case Biome.CoralShallows:
+                    if (roll < (220 * clump / 100)) return Decoration.Coral;
+                    return Decoration.None;
                 default:
-                    return Decoration.None; // water, lava
+                    return Decoration.None; // water, lava, farmland, irradiated waste
             }
         }
 
@@ -315,11 +372,20 @@ namespace WorldSim.Core
                 case Biome.Snow:
                     if (roll < 60) f |= ResourceFlags.Gems;
                     break;
-                case Biome.CrystalFields:
+                case Biome.CrystalCaves:
                     if (deco == Decoration.Crystal) f |= ResourceFlags.Gems;
                     break;
                 case Biome.EmberWastes:
+                case Biome.Volcanic:
                     if (roll < 300) f |= ResourceFlags.Gold;
+                    break;
+                case Biome.RockyHighland:
+                case Biome.Badlands:
+                    f |= ResourceFlags.Stone;
+                    if (roll < 120) f |= ResourceFlags.Gold;
+                    break;
+                case Biome.Glacier:
+                    if (roll < 40) f |= ResourceFlags.Gems;
                     break;
             }
             return (byte)f;

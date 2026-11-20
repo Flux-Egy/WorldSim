@@ -35,23 +35,35 @@ namespace WorldSim.Render
             {
                 case Biome.DeepWater: return Rgba.Pack(30, 76, 156);
                 case Biome.ShallowWater: return Rgba.Pack(56, 126, 206);
-                case Biome.Sand: return Rgba.Pack(228, 210, 148);
-                case Biome.Grass: return Rgba.Pack(104, 174, 64);
+                case Biome.Beach: return Rgba.Pack(228, 210, 148);
+                case Biome.Meadow: return Rgba.Pack(104, 174, 64);
                 case Biome.Forest: return Rgba.Pack(72, 144, 54);
                 case Biome.Mountain: return Rgba.Pack(124, 116, 108);
                 case Biome.Snow: return Rgba.Pack(232, 238, 246);
-                case Biome.Desert: return Rgba.Pack(232, 198, 120);
+                case Biome.DesertDunes: return Rgba.Pack(232, 198, 120);
                 case Biome.Savanna: return Rgba.Pack(194, 184, 90);
                 case Biome.Jungle: return Rgba.Pack(46, 128, 52);
                 case Biome.Swamp: return Rgba.Pack(84, 104, 66);
-                case Biome.Taiga: return Rgba.Pack(76, 118, 96);
+                case Biome.PineTaiga: return Rgba.Pack(76, 118, 96);
                 case Biome.Tundra: return Rgba.Pack(156, 166, 146);
                 case Biome.BirchForest: return Rgba.Pack(132, 184, 88);
-                case Biome.CrystalFields: return Rgba.Pack(150, 196, 214);
-                case Biome.MushroomGrove: return Rgba.Pack(140, 106, 150);
+                case Biome.CrystalCaves: return Rgba.Pack(150, 196, 214);
+                case Biome.FungalGrove: return Rgba.Pack(140, 106, 150);
                 case Biome.EmberWastes: return Rgba.Pack(74, 62, 60);
                 case Biome.Glimmerwood: return Rgba.Pack(66, 150, 142);
                 case Biome.Lava: return Rgba.Pack(226, 76, 24);
+                // New in the rebuild: the pack's map colours (lod.json). This painter is replaced in phase 2.
+                case Biome.FlowerField: return Rgba.Pack(0x7b, 0xad, 0x58);
+                case Biome.Badlands: return Rgba.Pack(0xb6, 0x67, 0x3b);
+                case Biome.Steppe: return Rgba.Pack(0xab, 0xaa, 0x6a);
+                case Biome.Glacier: return Rgba.Pack(0xc2, 0xdd, 0xea);
+                case Biome.RockyHighland: return Rgba.Pack(0x81, 0x87, 0x77);
+                case Biome.Volcanic: return Rgba.Pack(0x3e, 0x35, 0x2f);
+                case Biome.AshWaste: return Rgba.Pack(0x62, 0x5e, 0x58);
+                case Biome.SaltFlats: return Rgba.Pack(0xea, 0xe6, 0xde);
+                case Biome.CoralShallows: return Rgba.Pack(0x4f, 0x99, 0xc3);
+                case Biome.Farmland: return Rgba.Pack(0xa1, 0x81, 0x44);
+                case Biome.IrradiatedWaste: return Rgba.Pack(0x61, 0x72, 0x40);
                 default: return Rgba.Pack(200, 60, 160); // unknown (mod) biome without a colour
             }
         }
@@ -61,7 +73,7 @@ namespace WorldSim.Render
             unchecked { return (uint)(SplitMix64.Mix(((ulong)(uint)x << 32) | (uint)y) >> 32); }
         }
 
-        static bool IsWater(Biome b) => b == Biome.DeepWater || b == Biome.ShallowWater;
+        static bool IsWater(Biome b) => Biomes.IsWater(b);
 
         // ---------------------------------------------------------------- ground pass
         /// <summary>Tile sampled for a pixel after a small random displacement: biome borders
@@ -122,7 +134,7 @@ namespace WorldSim.Render
                 else if (gy < texH - 1 && !IsWater(tiles.Get(DisplacedIndex(gx, gy + 1, w, h, ppt)).Biome)) shore = true;
                 if (shore) return (hs & 3) != 0 ? Rgba.Pack(196, 228, 240) : Rgba.Shift(c, 40);
                 // Sparse wave dots, a little denser in shallow water.
-                int period = b == Biome.ShallowWater ? 9 : 13;
+                int period = b == Biome.DeepWater ? 13 : 9;
                 if (((gx + (gy >> 1) * 5) % period == 0) && (gy % 3 == 0)) return Rgba.Shift(c, 26);
                 return Rgba.Shift(c, (int)(hs % 5) - 2);
             }
@@ -149,7 +161,7 @@ namespace WorldSim.Render
             col = Rgba.Shift(col, heightTint + relief * 2 + (int)(hs >> 8 & 3) - 1);
             if (b == Biome.Mountain && (hs & 63) == 0) col = Rgba.Pack(150, 146, 140);   // pebbles
             if (b == Biome.EmberWastes && (hs & 127) == 1) col = Rgba.Pack(240, 110, 30); // embers
-            if (b == Biome.CrystalFields && (hs & 63) == 2) col = Rgba.Pack(210, 240, 250);
+            if (b == Biome.CrystalCaves && (hs & 63) == 2) col = Rgba.Pack(210, 240, 250);
             if (b == Biome.Glimmerwood && (hs & 127) == 3) col = Rgba.Pack(230, 230, 150);
             return col;
         }

@@ -21,10 +21,11 @@ namespace WorldSim.Tests
             return tiles;
         }
 
-        // Regenerated 2026-11-18 for Beta B1 (19 biomes, decorations, stretched moisture).
-        [TestCase(0x5EEDUL, 0xAD06CD8E776A783CUL)]
-        [TestCase(0xC0FFEEUL, 0xA5E2D7CA353B7D8EUL)]
-        [TestCase(0x1UL, 0x8E42B86FB7CE7364UL)]
+        // Regenerated 2026-11-20 for the rebuild (owner-approved): the art pack's 24 biomes + Lava, BirchForest,
+        // Glimmerwood, EmberWastes + water; new decorations (coral, fern, charred stump, ember vent, lava rock).
+        [TestCase(0x5EEDUL, 0x99EAAE344E22A0B0UL)]
+        [TestCase(0xC0FFEEUL, 0x5107F97A92EE8006UL)]
+        [TestCase(0x1UL, 0x831628091A8EE389UL)]
         public void GoldenHash_IsStableAcrossPlatforms(ulong seed, ulong expected)
         {
             ulong hash = WorldHash.Compute(seed, Size, Size, Generate(seed));
@@ -102,9 +103,12 @@ namespace WorldSim.Tests
             {
                 Decoration d = t.Decoration;
                 Assert.AreEqual(TileData.IsTree(d), t.Has(ResourceFlags.Wood), "wood iff tree");
-                if (TileData.IsRock(d) || t.Biome == Biome.Mountain) Assert.IsTrue(t.Has(ResourceFlags.Stone));
-                if (t.Has(ResourceFlags.Gold)) Assert.That(t.Biome, Is.EqualTo(Biome.Mountain).Or.EqualTo(Biome.EmberWastes));
-                if (t.IsWater || t.Biome == Biome.Lava) { Assert.AreEqual(0, t.ResourceFlags); Assert.AreEqual(0, t.DecorationId); }
+                if (TileData.IsRock(d) || t.Biome == Biome.Mountain || t.Biome == Biome.RockyHighland || t.Biome == Biome.Badlands) Assert.IsTrue(t.Has(ResourceFlags.Stone));
+                if (t.Has(ResourceFlags.Gold)) Assert.That(t.Biome, Is.EqualTo(Biome.Mountain).Or.EqualTo(Biome.EmberWastes).Or.EqualTo(Biome.Volcanic)
+                    .Or.EqualTo(Biome.RockyHighland).Or.EqualTo(Biome.Badlands));
+                if (t.IsWater || t.Biome == Biome.Lava) Assert.AreEqual(0, t.ResourceFlags);
+                if (t.IsWater && t.Biome != Biome.CoralShallows || t.Biome == Biome.Lava) Assert.AreEqual(0, t.DecorationId);
+                if (t.Biome == Biome.CoralShallows) Assert.That(d, Is.EqualTo(Decoration.None).Or.EqualTo(Decoration.Coral));
                 Assert.Less(t.DecorationId, (byte)Decoration.Count);
                 if (d != Decoration.None) decorated++;
             }
@@ -116,17 +120,27 @@ namespace WorldSim.Tests
         {
             Assert.AreEqual(Biome.DeepWater, WorldGenerator.Classify(10, 128, 128, 0));
             Assert.AreEqual(Biome.ShallowWater, WorldGenerator.Classify(100, 128, 128, 0));
-            Assert.AreEqual(Biome.Sand, WorldGenerator.Classify(115, 128, 128, 0));
-            Assert.AreEqual(Biome.Grass, WorldGenerator.Classify(150, 60, 128, 0));
+            Assert.AreEqual(Biome.Beach, WorldGenerator.Classify(115, 128, 128, 0));
+            Assert.AreEqual(Biome.Meadow, WorldGenerator.Classify(150, 100, 128, 0));
+            Assert.AreEqual(Biome.Steppe, WorldGenerator.Classify(150, 60, 128, 0));
+            Assert.AreEqual(Biome.FlowerField, WorldGenerator.Classify(150, 125, 128, 0));
             Assert.AreEqual(Biome.Forest, WorldGenerator.Classify(150, 200, 128, 0));
             Assert.AreEqual(Biome.Swamp, WorldGenerator.Classify(130, 200, 128, 0));
             Assert.AreEqual(Biome.Mountain, WorldGenerator.Classify(210, 128, 128, 0));
             Assert.AreEqual(Biome.Snow, WorldGenerator.Classify(250, 128, 128, 0));   // peak
-            Assert.AreEqual(Biome.Snow, WorldGenerator.Classify(150, 128, 10, 0));    // polar
+            Assert.AreEqual(Biome.Glacier, WorldGenerator.Classify(150, 128, 10, 0)); // polar ice sheet
+            Assert.AreEqual(Biome.Snow, WorldGenerator.Classify(150, 128, 28, 0));    // polar snow
             Assert.AreEqual(Biome.Tundra, WorldGenerator.Classify(150, 60, 50, 0));
-            Assert.AreEqual(Biome.Taiga, WorldGenerator.Classify(150, 200, 50, 0));
+            Assert.AreEqual(Biome.PineTaiga, WorldGenerator.Classify(150, 200, 50, 0));
             Assert.AreEqual(Biome.BirchForest, WorldGenerator.Classify(150, 130, 90, 0));
-            Assert.AreEqual(Biome.Desert, WorldGenerator.Classify(150, 40, 230, 0));
+            Assert.AreEqual(Biome.DesertDunes, WorldGenerator.Classify(140, 70, 230, 0));
+            Assert.AreEqual(Biome.SaltFlats, WorldGenerator.Classify(125, 30, 230, 0));
+            Assert.AreEqual(Biome.Badlands, WorldGenerator.Classify(165, 30, 230, 0));
+            Assert.AreEqual(Biome.CoralShallows, WorldGenerator.Classify(108, 128, 200, 0));
+            Assert.AreEqual(Biome.ShallowWater, WorldGenerator.Classify(108, 128, 120, 0));
+            Assert.AreEqual(Biome.Glacier, WorldGenerator.Classify(245, 128, 60, 0));  // cold peak
+            Assert.AreEqual(Biome.RockyHighland, WorldGenerator.Classify(185, 90, 128, 0));
+            Assert.AreEqual(Biome.Forest, WorldGenerator.Classify(185, 140, 128, 0)); // wet foothills stay green
             Assert.AreEqual(Biome.Savanna, WorldGenerator.Classify(150, 120, 230, 0));
             Assert.AreEqual(Biome.Jungle, WorldGenerator.Classify(150, 200, 230, 0));
         }

@@ -59,16 +59,20 @@ namespace WorldSim.Core
             {
                 case Biome.DeepWater: return 70;
                 case Biome.ShallowWater: return 102;
-                case Biome.Sand: return 115;
+                case Biome.Beach: return 115;
                 case Biome.Mountain: return 212;
                 case Biome.Snow: return 150;
                 case Biome.Lava: return 140;
                 case Biome.Swamp: return 124;
+                case Biome.CoralShallows: return 108;
+                case Biome.Glacier: return 245;
+                case Biome.RockyHighland: return 186;
+                case Biome.SaltFlats: return 125;
                 default: return 145;
             }
         }
 
-        public static bool IsWaterBiome(Biome b) => b == Biome.DeepWater || b == Biome.ShallowWater;
+        public static bool IsWaterBiome(Biome b) => Biomes.IsWater(b);
 
         /// <summary>Applies one dab; returns the touched rectangle (empty if nothing changed).</summary>
         public static TileRect Apply<TG>(ref TG grid, in WorldGenParams p, TerrainEdit e) where TG : struct, ITileGrid
@@ -112,7 +116,7 @@ namespace WorldSim.Core
                     Biome nb = WorldGenerator.Classify(t.Height, t.Moisture, t.Temperature, 0);
                     // Keep invented biomes on land when only the height moved a little.
                     Biome old = (Biome)t.BiomeId;
-                    if (old >= Biome.CrystalFields && old <= Biome.Glimmerwood && !IsWaterBiome(nb) && nb != Biome.Mountain && nb != Biome.Snow)
+                    if ((Biomes.IsAnomaly(old) || old == Biome.Lava || old == Biome.Farmland || old == Biome.IrradiatedWaste) && !IsWaterBiome(nb) && nb != Biome.Mountain && nb != Biome.Snow && nb != Biome.Glacier)
                         nb = old;
                     return Refresh(p, t, x, y, nb, keepDecorationIfValid: true);
                 }
@@ -171,17 +175,19 @@ namespace WorldSim.Core
             int pick = (int)(FixedNoise.LatticeHash(p.DecorationSeed ^ 0x5151515151515151UL, x, y) % 100);
             switch (b)
             {
-                case Biome.Taiga: case Biome.Mountain: return temperature < 50 ? Decoration.SnowPine : Decoration.PineTree;
+                case Biome.PineTaiga: case Biome.Mountain: return temperature < 50 ? Decoration.SnowPine : Decoration.PineTree;
                 case Biome.Tundra: case Biome.Snow: return Decoration.SnowPine;
                 case Biome.BirchForest: return pick < 80 ? Decoration.BirchTree : Decoration.PineTree;
                 case Biome.Jungle: return pick < 80 ? Decoration.JungleTree : Decoration.PalmTree;
                 case Biome.Savanna: return Decoration.AcaciaTree;
-                case Biome.Desert: return pick < 70 ? Decoration.Cactus : Decoration.DeadTree;
+                case Biome.DesertDunes: return pick < 70 ? Decoration.Cactus : Decoration.DeadTree;
                 case Biome.Swamp: return Decoration.SwampTree;
-                case Biome.Sand: return Decoration.PalmTree;
-                case Biome.Glimmerwood: case Biome.CrystalFields: return Decoration.GlowTree;
-                case Biome.MushroomGrove: return Decoration.GiantMushroom;
-                case Biome.EmberWastes: return Decoration.DeadTree;
+                case Biome.Beach: return Decoration.PalmTree;
+                case Biome.Glimmerwood: case Biome.CrystalCaves: return Decoration.GlowTree;
+                case Biome.FungalGrove: return Decoration.GiantMushroom;
+                case Biome.EmberWastes: case Biome.AshWaste: case Biome.Badlands: return Decoration.DeadTree;
+                case Biome.RockyHighland: return Decoration.PineTree;
+                case Biome.Glacier: case Biome.SaltFlats: case Biome.Volcanic: case Biome.IrradiatedWaste: return Decoration.None;
                 default: return pick < 85 ? Decoration.OakTree : Decoration.BirchTree;
             }
         }

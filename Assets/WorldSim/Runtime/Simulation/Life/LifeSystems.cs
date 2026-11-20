@@ -29,8 +29,9 @@ namespace WorldSim.Simulation.Life
             if (d == Decoration.BerryBush || d == Decoration.Bush || d == Decoration.TallGrass || d == Decoration.Flowers) return true;
             switch ((Biome)t.BiomeId)
             {
-                case Biome.Grass: case Biome.Forest: case Biome.Savanna: case Biome.Jungle: case Biome.BirchForest:
-                case Biome.Taiga: case Biome.Swamp: case Biome.Glimmerwood: case Biome.Tundra: case Biome.MushroomGrove:
+                case Biome.Meadow: case Biome.Forest: case Biome.Savanna: case Biome.Jungle: case Biome.BirchForest:
+                case Biome.PineTaiga: case Biome.Swamp: case Biome.Glimmerwood: case Biome.Tundra: case Biome.FungalGrove:
+                case Biome.FlowerField: case Biome.Steppe: case Biome.Farmland: case Biome.RockyHighland:
                     return true;
                 default: return false;
             }

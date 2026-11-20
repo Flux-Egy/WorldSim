@@ -8,27 +8,52 @@ namespace WorldSim.Core
     /// </summary>
     public enum Biome : byte
     {
+        // The art pack's 24 biomes + the 4 simulation biomes it lacked (art patch v3.3) + water depths.
+        // Values 0-18 keep their old numbers (renamed to the pack's names); 19+ are new.
         DeepWater = 0,
         ShallowWater = 1,
-        Sand = 2,          // beaches
-        Grass = 3,
-        Forest = 4,        // temperate broadleaf
+        Beach = 2,          // was Sand
+        Meadow = 3,         // was Grass
+        Forest = 4,         // temperate broadleaf
         Mountain = 5,
-        Snow = 6,          // ice sheets and snow peaks
-        Desert = 7,
+        Snow = 6,           // snow fields and peaks
+        DesertDunes = 7,    // was Desert
         Savanna = 8,
         Jungle = 9,
         Swamp = 10,
-        Taiga = 11,
+        PineTaiga = 11,     // was Taiga
         Tundra = 12,
         BirchForest = 13,
-        CrystalFields = 14,
-        MushroomGrove = 15,
+        CrystalCaves = 14,  // was CrystalFields
+        FungalGrove = 15,   // was MushroomGrove
         EmberWastes = 16,
         Glimmerwood = 17,
         Lava = 18,
-
+        FlowerField = 19,
+        Badlands = 20,
+        Steppe = 21,
+        Glacier = 22,
+        RockyHighland = 23,
+        Volcanic = 24,
+        AshWaste = 25,
+        SaltFlats = 26,
+        CoralShallows = 27, // warm shallow sea (water)
+        Farmland = 28,      // made by people, never generated
+        IrradiatedWaste = 29, // made by nuclear strikes, never generated
+        Count = 30,
         FirstModBiome = 128,
+    }
+
+    /// <summary>Biome groups used by generation, editing and life.</summary>
+    public static class Biomes
+    {
+        /// <summary>Open water (swimmers only): deep, shallow and coral shallows.</summary>
+        public static bool IsWater(Biome b) => b == Biome.DeepWater || b == Biome.ShallowWater || b == Biome.CoralShallows;
+
+        /// <summary>The rare, coherent "anomaly" regions (crystal, fungal, glimmer, fire family). Kept when only the height moves.</summary>
+        public static bool IsAnomaly(Biome b) =>
+            b == Biome.CrystalCaves || b == Biome.FungalGrove || b == Biome.Glimmerwood || b == Biome.EmberWastes ||
+            b == Biome.Volcanic || b == Biome.AshWaste;
     }
 
     /// <summary>
@@ -61,8 +86,13 @@ namespace WorldSim.Core
         IceRock = 21,
         SwampTree = 22,
         AcaciaTree = 23,
+        Coral = 24,         // coral shallows (in water)
+        Fern = 25,
+        CharredStump = 26,  // ember wastes, ash
+        EmberVent = 27,     // ember wastes: smoking vent
+        LavaRock = 28,      // volcanic
 
-        Count = 24,
+        Count = 29,
     }
 
     /// <summary>§4.1 <c>resourceFlags</c> bitmask. Values are persisted: only append.</summary>
@@ -91,7 +121,7 @@ namespace WorldSim.Core
 
         public Biome Biome => (Biome)BiomeId;
         public Decoration Decoration => (Decoration)DecorationId;
-        public bool IsWater => BiomeId == (byte)Core.Biome.DeepWater || BiomeId == (byte)Core.Biome.ShallowWater;
+        public bool IsWater => Biomes.IsWater((Core.Biome)BiomeId);
         public bool Has(ResourceFlags flag) => (ResourceFlags & (byte)flag) != 0;
 
         public static bool IsTree(Decoration d) =>
@@ -101,6 +131,7 @@ namespace WorldSim.Core
             d == Decoration.AcaciaTree;
 
         public static bool IsRock(Decoration d) =>
-            d == Decoration.Rock || d == Decoration.Boulder || d == Decoration.EmberRock || d == Decoration.IceRock;
+            d == Decoration.Rock || d == Decoration.Boulder || d == Decoration.EmberRock || d == Decoration.IceRock ||
+            d == Decoration.LavaRock;
     }
 }

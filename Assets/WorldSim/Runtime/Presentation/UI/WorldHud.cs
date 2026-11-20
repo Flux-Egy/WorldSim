@@ -242,7 +242,7 @@ namespace WorldSim.Presentation.UI
                 RectTransform row = BuildScrollRow(0f);
                 AddRowButton(row, GetIconSprite(Icon.Globe), "New world", () => NewWorldClicked?.Invoke());
                 _sizeLabel = AddRowButton(row, GetIconSprite(Icon.Resize), "Size", () => SizeClicked?.Invoke());
-                _landLabel = AddRowButton(row, GetSwatchSprite(Biome.Grass), "Land", () => LandClicked?.Invoke());
+                _landLabel = AddRowButton(row, GetSwatchSprite(Biome.Meadow), "Land", () => LandClicked?.Invoke());
                 _climateLabel = AddRowButton(row, GetSwatchSprite(Biome.Snow), "Climate", () => ClimateClicked?.Invoke());
                 _mountainsLabel = AddRowButton(row, GetIconSprite(Icon.Mountain), "Mountains", () => MountainsClicked?.Invoke());
                 _blankLabel = AddRowButton(row, GetSwatchSprite(Biome.DeepWater), "Generated", () => BlankClicked?.Invoke());
@@ -282,20 +282,24 @@ namespace WorldSim.Presentation.UI
 
         static readonly (TerrainTool tool, Biome biome, Icon icon, string label)[] TerrainTools =
         {
-            (TerrainTool.Raise, Biome.Grass, Icon.Raise, "Raise"),
-            (TerrainTool.Lower, Biome.Grass, Icon.Lower, "Lower"),
-            (TerrainTool.Flatten, Biome.Grass, Icon.Flatten, "Flatten"),
-            (TerrainTool.PlantTrees, Biome.Grass, Icon.Tree, "Trees"),
-            (TerrainTool.ClearDecorations, Biome.Grass, Icon.Eraser, "Clear"),
+            (TerrainTool.Raise, Biome.Meadow, Icon.Raise, "Raise"),
+            (TerrainTool.Lower, Biome.Meadow, Icon.Lower, "Lower"),
+            (TerrainTool.Flatten, Biome.Meadow, Icon.Flatten, "Flatten"),
+            (TerrainTool.PlantTrees, Biome.Meadow, Icon.Tree, "Trees"),
+            (TerrainTool.ClearDecorations, Biome.Meadow, Icon.Eraser, "Clear"),
         };
 
         static readonly (Biome biome, string label)[] PaintableBiomes =
         {
-            (Biome.DeepWater, "Ocean"), (Biome.ShallowWater, "Shallows"), (Biome.Sand, "Sand"), (Biome.Grass, "Grass"),
+            (Biome.DeepWater, "Ocean"), (Biome.ShallowWater, "Shallows"), (Biome.Beach, "Sand"), (Biome.Meadow, "Grass"),
             (Biome.Forest, "Forest"), (Biome.BirchForest, "Birch"), (Biome.Jungle, "Jungle"), (Biome.Savanna, "Savanna"),
-            (Biome.Desert, "Desert"), (Biome.Swamp, "Swamp"), (Biome.Taiga, "Taiga"), (Biome.Tundra, "Tundra"),
+            (Biome.DesertDunes, "Desert"), (Biome.Swamp, "Swamp"), (Biome.PineTaiga, "Taiga"), (Biome.Tundra, "Tundra"),
             (Biome.Snow, "Snow"), (Biome.Mountain, "Mountain"), (Biome.Lava, "Lava"), (Biome.EmberWastes, "Embers"),
-            (Biome.CrystalFields, "Crystal"), (Biome.MushroomGrove, "Mushroom"), (Biome.Glimmerwood, "Glimmer"),
+            (Biome.CrystalCaves, "Crystal"), (Biome.FungalGrove, "Fungal"), (Biome.Glimmerwood, "Glimmer"),
+            (Biome.CoralShallows, "Coral"), (Biome.FlowerField, "Flowers"), (Biome.Steppe, "Steppe"),
+            (Biome.Badlands, "Badlands"), (Biome.SaltFlats, "Salt"), (Biome.Glacier, "Glacier"),
+            (Biome.RockyHighland, "Highland"), (Biome.Volcanic, "Volcanic"), (Biome.AshWaste, "Ash"),
+            (Biome.Farmland, "Farmland"),
         };
 
         void BuildTerrainPalette()

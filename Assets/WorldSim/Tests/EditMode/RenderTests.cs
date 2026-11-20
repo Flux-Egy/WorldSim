@@ -15,7 +15,8 @@ namespace WorldSim.Tests
         {
             uint[] atlas = SpriteLibrary.Build();
             Assert.AreEqual(SpriteLibrary.AtlasLength, atlas.Length);
-            for (int d = 1; d < (int)Decoration.Count; d++)
+            // The old procedural library (removed in rebuild phase 3) only draws the original 23 decorations.
+            for (int d = 1; d <= (int)Decoration.AcaciaTree; d++)
                 for (int v = 0; v < SpriteLibrary.Variants; v++)
                 {
                     int opaque = 0, start = SpriteLibrary.CellIndex((Decoration)d, v) * SpriteLibrary.CellPixels;
