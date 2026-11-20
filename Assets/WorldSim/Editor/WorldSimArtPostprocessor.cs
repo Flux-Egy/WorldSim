@@ -13,6 +13,18 @@ namespace WorldSim.EditorTools
     {
         const string Folder = "/Resources/WorldSimArt/";
 
+        /// <summary>Atlas folders compressed with ASTC on Android: terrain (except the LOD atlas with its 16 px markers),
+        /// nature, buildings (including their disaster/collapse states) and effects.</summary>
+        public static bool UsesAstc(string path)
+        {
+            int i = path.IndexOf(Folder, System.StringComparison.Ordinal);
+            if (i < 0) return false;
+            string rel = path.Substring(i + Folder.Length);
+            if (rel.StartsWith("Terrain/lod", System.StringComparison.Ordinal)) return false;
+            return rel.StartsWith("Terrain/", System.StringComparison.Ordinal) || rel.StartsWith("Nature/", System.StringComparison.Ordinal)
+                || rel.StartsWith("Buildings/", System.StringComparison.Ordinal) || rel.StartsWith("FX/", System.StringComparison.Ordinal);
+        }
+
         void OnPreprocessTexture()
         {
             string path = assetPath.Replace('\\', '/');
@@ -32,6 +44,19 @@ namespace WorldSim.EditorTools
             ti.isReadable = false;
             ti.maxTextureSize = 4096;
             ti.textureCompression = TextureImporterCompression.Uncompressed;
+            if (!isMask && !isLut && UsesAstc(path))
+            {
+                // Owner decision (2026-11-20, after the Art Lab A/B test: 90.3% of pixels identical, 0.03% visibly
+                // different, texture memory -54%): ASTC 4x4 on Android for large, low-contrast art only. UI, icons,
+                // portraits, the font, people, animals, units and the far-zoom markers stay uncompressed, because
+                // ASTC visibly shifts colours on small high-contrast sprites. Masks and their LUT are data: never.
+                ti.SetPlatformTextureSettings(new TextureImporterPlatformSettings
+                {
+                    name = "Android", overridden = true, maxTextureSize = 4096,
+                    format = TextureImporterFormat.ASTC_4x4, textureCompression = TextureImporterCompression.CompressedHQ,
+                    compressionQuality = 100,
+                });
+            }
             if (isMask)
             {
                 // One byte per pixel: the mask is an 8-bit grey PNG of codes (Tools/ArtIndex/encode_masks.py).

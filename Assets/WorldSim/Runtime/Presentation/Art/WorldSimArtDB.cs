@@ -292,24 +292,35 @@ namespace WorldSim.Presentation.Art
 
         public int LoadedAtlasCount { get { int n = 0; foreach (var st in _atlases) if (st.AnyLoaded) n++; return n; } }
 
-        /// <summary>Bytes of the pages (RGBA32: 4 per pixel) and masks (R8: 1 per pixel) currently loaded.</summary>
+        /// <summary>Bytes of the pages and masks currently loaded, from each texture's real format (RGBA32 4 per pixel,
+        /// R8 and ASTC 4x4 1 per pixel).</summary>
         public long LoadedTextureBytes
         {
             get
             {
                 long total = 0;
-                for (int a = 0; a < _atlases.Length; a++)
+                foreach (var st in _atlases)
                 {
-                    var st = _atlases[a];
-                    for (int p = 0; p < _index.AtlasPageCount(a); p++)
-                    {
-                        var pg = _index.Page(a, p);
-                        long pixels = (long)pg.Width * pg.Height;
-                        if (st.Pages != null && st.Pages[p] != null) total += pixels * 4;
-                        if (st.Masks != null && st.Masks[p] != null) total += pixels;
-                    }
+                    if (st.Pages != null) foreach (var t in st.Pages) total += Bytes(t);
+                    if (st.Masks != null) foreach (var t in st.Masks) total += Bytes(t);
                 }
                 return total;
+            }
+        }
+
+        static long Bytes(Texture2D t)
+        {
+            if (t == null) return 0;
+            long pixels = (long)t.width * t.height;
+            switch (t.format)
+            {
+                case TextureFormat.R8:
+                case TextureFormat.Alpha8:
+                case TextureFormat.ASTC_4x4: return pixels;            // 16 bytes per 4x4 block
+                case TextureFormat.ASTC_6x6: return pixels * 16 / 36;
+                case TextureFormat.ASTC_8x8: return pixels / 4;
+                case TextureFormat.RGB24: return pixels * 3;
+                default: return pixels * 4;
             }
         }
 

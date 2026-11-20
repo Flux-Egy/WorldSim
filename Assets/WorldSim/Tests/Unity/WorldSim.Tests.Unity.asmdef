@@ -4,6 +4,7 @@
   "references": [
     "WorldSim.Render",
     "WorldSim.Presentation",
+    "WorldSim.Editor",
     "UnityEngine.TestRunner",
     "UnityEditor.TestRunner"
   ],
