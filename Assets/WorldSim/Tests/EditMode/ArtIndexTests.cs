@@ -167,9 +167,7 @@ namespace WorldSim.Tests
                         if (evs > 0)
                             foreach (var e in ev.EnumerateArray())
                             {
-                                // The builder moves events past the last frame onto it (art-pack bug, reported by the builder).
-                                int expectedFrame = Math.Min(e.GetProperty("frame").GetInt32(), fl.GetArrayLength() - 1);
-                                Assert.AreEqual(expectedFrame, ix.AnimEventFrame(id, k), name);
+                                Assert.AreEqual(e.GetProperty("frame").GetInt32(), ix.AnimEventFrame(id, k), name);
                                 Assert.AreEqual(e.GetProperty("name").GetString(), ix.AnimEventName(id, k), name);
                                 k++;
                             }

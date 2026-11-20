@@ -20,7 +20,6 @@ import sys
 ART = os.path.join("Assets", "WorldSim", "Resources", "WorldSimArt")
 OUT = os.path.join(ART, "art_index.bytes")
 MAGIC, VERSION = b"WSAI", 1
-CLAMPED = []  # events moved to their animation's last frame (reported, see main)
 FNV_OFFSET, FNV_PRIME, MASK64 = 0xCBF29CE484222325, 0x100000001B3, (1 << 64) - 1
 
 
@@ -102,13 +101,11 @@ def build(root=ART):
             if fr not in frame_id:
                 raise SystemExit(f"animation {name!r} references missing frame {fr!r}")
             anim_frames += struct.pack("<i", frame_id[fr]); nf += 1
-        last = len(a["frames"]) - 1
         for ev in a.get("events") or []:
-            frame = ev["frame"]
-            if frame > last:  # art-pack bug: event on a frame the animation doesn't have (would never fire)
-                CLAMPED.append(f"{name}: {ev['name']} @ {frame} -> {last}")
-                frame = last
-            events += struct.pack("<HI", frame, strings.id(ev["name"])); ne += 1
+            if not 0 <= ev["frame"] < len(a["frames"]):  # would never fire; fixed in the generator (pack v3.1.1)
+                raise SystemExit(f"animation {name!r}: event {ev['name']!r} on frame {ev['frame']}, "
+                                 f"but it has {len(a['frames'])} frames (fix Tools/ArtGen and re-export)")
+            events += struct.pack("<HI", ev["frame"], strings.id(ev["name"])); ne += 1
         anim_bin += struct.pack("<IfBIHIH", strings.id(name), float(a["fps"]), 1 if a.get("loop") else 0, f0, nf - f0, e0, ne - e0)
 
     out = bytearray(MAGIC + struct.pack("<I", VERSION))
@@ -124,11 +121,6 @@ def build(root=ART):
 
 def main():
     data, na, nf, nanim = build()
-    if CLAMPED:
-        print(f"WARNING: {len(CLAMPED)} animation events pointed past their animation's last frame and were moved to it "
-              "(fix in Tools/ArtGen, then rebuild). First ones:", file=sys.stderr)
-        for line in CLAMPED[:5]:
-            print("  " + line, file=sys.stderr)
     if "--check" in sys.argv:
         old = open(OUT, "rb").read() if os.path.exists(OUT) else b""
         if old != data:

@@ -99,7 +99,12 @@ class Atlas:
 
     def anim(self, name, keys, fps=8, loop=True, events=None):
         """events: list of (frame_index, event_name) e.g. (2,'hit'), (1,'spawn_projectile'), (0,'sfx:roar')"""
-        self.anims[name] = {'frames': keys, 'fps': fps, 'loop': loop, 'events': [{'frame': int(f), 'name': n} for f, n in (events or [])]}
+        # events written for longer animations are clamped to the last frame (e.g. a 2-frame attack still gets its 'hit'); duplicates dropped
+        last, ev, seen = len(keys) - 1, [], set()
+        for f, n in (events or []):
+            k = (min(int(f), last), n)
+            if k not in seen: seen.add(k); ev.append({'frame': k[0], 'name': n})
+        self.anims[name] = {'frames': keys, 'fps': fps, 'loop': loop, 'events': ev}
 
     def save(self):
         os.makedirs(self.folder, exist_ok=True)

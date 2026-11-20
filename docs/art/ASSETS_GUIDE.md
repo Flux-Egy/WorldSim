@@ -270,7 +270,7 @@ cd ../.. && python3 Tools/ArtIndex/build_art_index.py   # REQUIRED after any art
 python strategicsheet.py                 # example preview renderer (sheets / GIFs), writes PNGs next to the script
 ```
 
-- **Rebuild the index after every regeneration.** The game finds frames and animations through `Resources/WorldSimArt/art_index.bytes`, not the atlas JSON. Run `python3 Tools/ArtIndex/build_art_index.py` from the repo root and commit the result. CI runs it with `--check` and fails if the index doesn't match the atlases. It also warns about animation events placed after an animation's last frame (they are moved to the last frame; fix them in the generator).
+- **Rebuild the index after every regeneration.** The game finds frames and animations through `Resources/WorldSimArt/art_index.bytes`, not the atlas JSON. Run `python3 Tools/ArtIndex/build_art_index.py` from the repo root and commit the result. CI runs it with `--check` and fails if the index doesn't match the atlases. It also fails if an animation event sits past the animation's last frame (such an event would never fire).
 - **Adding a sprite.** Write a drawer `fn(canvas, ctx)` that reads palette regions from `ctx.v[...]`, then call `atlas.add(key, fn, W, H, pivot, regions=(...), tags=..., anchors=...)` in `export_all.py`.
 - **Alpha.** It is recovered from two passes (black and white background), so shadows and glows export as real semi-transparency.
 - **Masks.** They come from re-rendering with a probe colour for each region.
