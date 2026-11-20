@@ -10,6 +10,7 @@ WorldSim is a mobile-first pixel-art world-simulation sandbox: Unity 6000.3 LTS,
 
 ## Hard rules
 - **Never use the word "God"** anywhere: names, UI, docs, code or commits (the owner's religious reasons). Use "WorldSim", "powers", "world simulation sandbox". Beliefs in the game are fully **fictional creeds**; never use real religions, symbols or scriptures.
+  - **Exception (approved by the owner, 2026-11-20):** the supernatural beings **jinn, afreet, marid and demon**, and the **possession** mechanic, may use those names in art, data, code and UI. Nothing else changes: no real religions, symbols, scriptures or prophets, and never the word "God".
 - **Originality** (`docs/ORIGINALITY.md`): learning from others is welcome, taking is not. All art is our own, and no ready-made asset packs are shipped. Never open or use anything decompiled or ripped from another game (WorldBox included), even if renamed, edited or "found online". Credit borrowed OSS code or techniques in `CREDITS.md`.
 - **Secrets:** Unity credentials live only in GitHub secrets (`UNITY_EMAIL`, `UNITY_PASSWORD`; Codespaces secrets for the codespace). Never print, log or commit them. Don't add `UNITY_LICENSE`/`UNITY_SERIAL`. The repo is **public**: no personal data in commits or docs.
 - **Never cancel a running Unity step in Actions.** A killed job can leak a Personal license seat. Cancelling before Unity starts is fine.

@@ -46,7 +46,7 @@ Core promises:
 
 ## 4. Visual direction
 
-- Top-down pixel art with a slight front tilt; light from the top-left; 1-px dark outlines on objects; hard pixels.
+- Top-down pixel art with a slight front tilt; light from the top-left; no outlines (value contrast and a lit rim separate shapes); hard pixels.
 - **Zoom-dependent detail (owner request):** far zoom = calm, clean map (no sprites, no shimmer); mid = full detail; near = full detail **plus animation** (waves, swaying trees, glowing lava, creature animation). Animation cost only for what is visible.
 - Owner-provided art (generated to `docs/ASSET_SPEC.md`: 16 px per tile, 4-frame walks, neutral-grey clothes tinted per kingdom, 5 building eras per people) replaces procedural art file by file; anything missing stays procedural.
 

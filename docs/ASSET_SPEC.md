@@ -5,14 +5,14 @@ Give this whole file to the image model. Every asset must follow it.
 ## 0. Originality (mandatory)
 See docs/ORIGINALITY.md. Learning from references, tutorials and open-source projects is encouraged; shipping or editing someone else's art is not.
 - **Original designs only.** Do **not** imitate, trace, recolour or "loosely copy" the sprites, characters, UI or overall look of any existing game (including WorldBox). The game's identity is its own.
-- Generic genre conventions are fine: top-down pixel art, small readable characters, bright natural colours, dark outlines.
+- Generic genre conventions are fine: top-down pixel art, small readable characters, bright natural colours.
 - No text, logos, real-world symbols, flags or religious symbols in any image.
 
 ## 1. Global style
 - **Pixel art**, hard pixels: no anti-aliasing, no blur, no gradients except by dithering.
 - **Top-down with a slight front tilt** ("3/4 view"): we see the tops of trees and the fronts of creatures.
 - **Light comes from the top-left.** Lit side is 1–2 shades lighter; the bottom-right is 1–2 shades darker.
-- **1-pixel outline** in a very dark, slightly purple-tinted colour `#1C1820` around every object (not around terrain tiles).
+- **No outlines** (owner decision, 2026-11-20). Separate shapes with value contrast, a 1-px lighter top/left rim and a darker bottom/right edge (see `docs/art/STYLE_GUIDE.md`).
 - **Transparent background** (PNG with alpha) for everything except terrain tiles.
 - **Palette:** warm and saturated, but not neon. Reference colours already in the game (match them):
 
@@ -77,7 +77,7 @@ Each: **4-frame walk strip** (64×16) + **1 idle** + **1 dead/lying** frame.
 ### 4.6 Effects (strips, 8 frames)
 - fire (16×16), smoke (16×16), explosion (32×32), lightning_strike (16×48), meteor (16×16 + trail), rain_drop (4×8), snowflake (4×4), blood_hit (8×8, small, not gory), sparkle (8×8), level_up glow (16×16).
 
-### 4.7 UI icons (32×32, same outline rule, transparent)
+### 4.7 UI icons (32×32, no outline, transparent)
 globe, resize, info, mountain, people, animal, storm, spark, castle, gear, pause, play, fast, brush, eraser, tree, water, clock, raise, lower, flatten, plus one icon per species and per biome.
 
 ### 4.8 Sounds (optional; OGG, mono, short)
@@ -86,6 +86,6 @@ ui_click, ui_open, brush_paint, raise_land, lower_land, splash, footstep_grass, 
 ## 5. Quality checklist (check every file)
 - [ ] Exact size, transparent background (except terrain).
 - [ ] Hard pixels, no blur, no anti-aliasing.
-- [ ] 1-px dark outline; light from the top-left.
+- [ ] No outline (value contrast + rim); light from the top-left.
 - [ ] Anchored bottom-centre; frames aligned.
 - [ ] Original design, not resembling any specific existing game.
