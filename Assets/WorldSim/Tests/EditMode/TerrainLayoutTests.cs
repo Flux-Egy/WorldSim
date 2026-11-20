@@ -44,32 +44,62 @@ namespace WorldSim.Tests
             Assert.AreEqual(0, lay.Band[10 * N + 17], "7 cells: deep");
         }
 
-        [Test]
-        public void SubCells_OnlyBorrowFromTheSameTerrace_AndAreDeterministic()
+        static TerrainLayout Map(int n, System.Func<int, int, TileData> f, out TileData[] tiles)
         {
-            const int N = 16;
-            var tiles = new TileData[N * N];
-            for (int y = 0; y < N; y++)
-                for (int x = 0; x < N; x++)
-                    tiles[y * N + x] = x < 8 ? T(Biome.Meadow, 130) : y < 8 ? T(Biome.Forest, 132) : T(Biome.Mountain, 210);
-            var a = new TerrainLayout(tiles, N, N);
-            var b = new TerrainLayout(tiles, N, N);
-            CollectionAssert.AreEqual(a.SubCell, b.SubCell);
-            bool borrowed = false;
-            for (int s = 0; s < a.SubCell.Length; s++)
-            {
-                int sx = s % a.SubWidth, sy = s / a.SubWidth;
-                int own = (sy / TerrainLayout.SubPerCell) * N + sx / TerrainLayout.SubPerCell;
-                Assert.AreEqual(a.Level[own], a.SubLevel[s], "a sub-cell keeps its cell's terrace");
-                if (a.SubCell[s] != own)
+            tiles = new TileData[n * n];
+            for (int y = 0; y < n; y++) for (int x = 0; x < n; x++) tiles[y * n + x] = f(x, y);
+            return new TerrainLayout(tiles, n, n);
+        }
+
+        [Test]
+        public void Field_IsDeterministic_AndCellCentresShowTheirOwnCell()
+        {
+            var lay = Map(16, (x, y) => x < 8 ? T(Biome.Meadow, 130) : y < 8 ? T(Biome.Forest, 132) : T(Biome.DeepWater, 40), out var tiles);
+            var a = new TerrainField(tiles, lay);
+            var b = new TerrainField(tiles, lay);
+            for (int y = 0; y < 16 * 16; y += 3)
+                for (int x = 0; x < 16 * 16; x += 3)
                 {
-                    borrowed = true;
-                    int ox = own % N, oy = own / N, cx = a.SubCell[s] % N, cy = a.SubCell[s] / N;
-                    Assert.LessOrEqual(System.Math.Abs(ox - cx), 1);
-                    Assert.LessOrEqual(System.Math.Abs(oy - cy), 1);
+                    a.Pick(x, y, out int c1, out int l1);
+                    b.Pick(x, y, out int c2, out int l2);
+                    Assert.AreEqual(c1, c2); Assert.AreEqual(l1, l2);
+                    int own = (y >> 4) * 16 + (x >> 4);
+                    int ox = own % 16, oy = own / 16, px = c1 % 16, py = c1 / 16;
+                    Assert.LessOrEqual(System.Math.Abs(ox - px), 1, "a pixel only shows a neighbouring cell");
+                    Assert.LessOrEqual(System.Math.Abs(oy - py), 1);
                 }
-            }
-            Assert.IsTrue(borrowed, "meadow/forest border (same terrace) gets a pixel-stair wiggle");
+            for (int cy = 2; cy < 14; cy++)
+                for (int cx = 2; cx < 14; cx++)
+                {
+                    if ((cx == 7 || cx == 8) || (cy == 7 || cy == 8)) continue;   // skip the border rows
+                    a.Pick(cx * 16 + 8, cy * 16 + 8, out int c, out _);
+                    Assert.AreEqual(cy * 16 + cx, c, $"centre of cell {cx},{cy}");
+                }
+        }
+
+        [Test]
+        public void Field_RoundsALoneCell_IntoABlobSmallerThanTheCell()
+        {
+            var lay = Map(9, (x, y) => x == 4 && y == 4 ? T(Biome.Meadow, 130) : T(Biome.DeepWater, 40), out var tiles);
+            var f = new TerrainField(tiles, lay);
+            int land = 0;
+            for (int y = 0; y < 9 * 16; y++)
+                for (int x = 0; x < 9 * 16; x++)
+                {
+                    f.Pick(x, y, out int c, out int l);
+                    if (l >= TerrainLayout.WaterLevel) { land++; Assert.AreEqual(4 * 9 + 4, c); }
+                }
+            Assert.Greater(land, 40, "the island is still there");
+            Assert.Less(land, 256, "no square corners: smaller than its 16x16 cell");
+        }
+
+        [Test]
+        public void SnowTerrace_DrawsAsSnow_AndSmallTerracesMerge()
+        {
+            var lay = Map(20, (x, y) => x >= 5 && x < 15 && y >= 5 && y < 15 ? (x == 9 && y == 9 ? T(Biome.Mountain, 236) : T(Biome.Snow, 250)) : T(Biome.Mountain, 210), out _);
+            Assert.AreEqual(TerrainLayout.TopLevel, lay.Level[9 * 20 + 9], "a rock cell inside the cap joins the cap");
+            Assert.AreEqual((byte)Biome.Snow, lay.RenderBiome[9 * 20 + 9], "and is drawn as snow");
+            Assert.AreEqual((byte)Biome.Mountain, lay.RenderBiome[2 * 20 + 2]);
         }
     }
 }

@@ -268,7 +268,7 @@ namespace WorldSim.Core
                     if (roll < 13) return Decoration.SnowPine;
                     return Decoration.None;
                 case Biome.Jungle:
-                    if (roll < (292 * clump / 100)) return pick < 80 ? Decoration.JungleTree : Decoration.PalmTree;
+                    if (roll < (292 * clump / 100)) return Decoration.JungleTree;          // palms only on hot beaches and deserts
                     if (roll < (292 * clump / 100) + 60) return pick < 50 ? Decoration.Fern : Decoration.Bush;
                     if (roll < (292 * clump / 100) + 80) return Decoration.Flowers;
                     return Decoration.None;
@@ -279,6 +279,7 @@ namespace WorldSim.Core
                     if (roll < (20 * clump / 100) + 77) return Decoration.Rock;
                     return Decoration.None;
                 case Biome.DesertDunes:
+                    if (roll < 3) return Decoration.PalmTree;                         // a rare oasis palm
                     if (roll < 11) return Decoration.Cactus;
                     if (roll < 18) return Decoration.Rock;
                     if (roll < 20) return Decoration.DeadTree;

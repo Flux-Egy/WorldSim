@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using WorldSim.Core;
 using WorldSim.Render.Art;
 
@@ -17,127 +18,133 @@ namespace WorldSim.Render.Terrain
     }
 
     /// <summary>
-    /// CPU reference compositor for the new terrain look (rebuild phase 2): pack tiles on the 4 px sub-cell layout,
-    /// elevation with cliff faces, water depth bands, shore foam, then props, all drawn back to front.
-    /// The Unity renderer draws the same picture with a shader; this one is for the preview tool and tests.
-    /// Output rows are top-down, packed as <see cref="Rgba"/>.
+    /// CPU reference compositor for the new terrain look (rebuild phase 2). The Unity renderer draws the same picture
+    /// with a shader; this one feeds the preview tool and tests. Output rows are top-down, packed as <see cref="Rgba"/>.
+    /// <para>Near/mid zoom (1 art px per world px): per-pixel ground from <see cref="TerrainField"/>; every 16 px square
+    /// samples a random 16 px window of a random tile variant, flipped/rotated by hash (no visible repeat); terraces
+    /// rise <see cref="TerrainLayout.LiftPerLevel"/> px per level, with a continuous dark face under every drop, a light
+    /// lip on top, a thin outline on the sides, shadow east of higher ground and slightly lighter high ground; shore
+    /// foam; pack props drawn back to front.</para>
+    /// <para>Far zoom: the pack's 16 px (1/4) or 8 px (1/8) LOD tiles, smooth contours, no elevation lines, and trees
+    /// as small crown clusters.</para>
     /// </summary>
     public static class TerrainComposer
     {
-        const int Px = TerrainLayout.CellPixels, Sp = TerrainLayout.SubPixels, Spc = TerrainLayout.SubPerCell;
+        const int Px = TerrainLayout.CellPixels;
 
-        /// <summary>Near zoom (1 px = 1 art pixel). Renders cells [cx0, cx0+cw) x [cy0, cy0+ch); the image is
-        /// <c>cw*16</c> wide and <c>ch*16 + TerrainLayout.MaxLift</c> high (room for the lifted back row).</summary>
-        public static uint[] ComposeNear(TileData[] tiles, TerrainLayout lay, IArtPixels art, int cx0, int cy0, int cw, int ch,
-                                         bool props, out int imageW, out int imageH)
+        // ------------------------------------------------------------------------------------------------ near / mid
+        /// <summary>Renders the cell window [cx0, cx0+cw) x [cy0, cy0+ch) at 1 art pixel per pixel (cw*16 x ch*16).</summary>
+        public static uint[] ComposeNear(TileData[] tiles, TerrainLayout lay, TerrainField field, IArtPixels art,
+                                         int cx0, int cy0, int cw, int ch, bool props, out int imageW, out int imageH)
         {
-            // A window inside the map: draw extra rows above and below (lifted land reaches up to 2-3 cells), then cut.
-            const int Margin = 4;
-            int ry0 = cy0 - Margin < 0 ? 0 : cy0 - Margin, ry1 = cy0 + ch + Margin > lay.Height ? lay.Height : cy0 + ch + Margin;
-            if (ry0 != cy0 || ry1 != cy0 + ch)
-            {
-                var big = ComposeRows(tiles, lay, art, cx0, ry0, cw, ry1 - ry0, props, out int bw, out int bh);
-                int skip = (cy0 - ry0) * Px;                                         // rows above the window
-                imageW = bw; imageH = ch * Px + TerrainLayout.MaxLift;
-                var cut = new uint[imageW * imageH];
-                for (int y = 0; y < imageH; y++) System.Array.Copy(big, (y + skip) * bw, cut, y * bw, bw);
-                return cut;
-            }
-            return ComposeRows(tiles, lay, art, cx0, cy0, cw, ch, props, out imageW, out imageH);
-        }
-
-        static uint[] ComposeRows(TileData[] tiles, TerrainLayout lay, IArtPixels art, int cx0, int cy0, int cw, int ch,
-                                  bool props, out int imageW, out int imageH)
-        {
-            int W = cw * Px, top = TerrainLayout.MaxLift, H = ch * Px + top;
+            int W = cw * Px, H = ch * Px;
             imageW = W; imageH = H;
+            int X0 = cx0 * Px, Y0 = cy0 * Px;
             var img = new uint[W * H];
             var water = new bool[W * H];
             var cache = new FrameCache(art);
-            uint ocean = Pixel(art, cache.Water[0], 0, 0);
+            uint ocean = art.Pixel(cache.Water[0], 0, 0);
             for (int i = 0; i < img.Length; i++) { img[i] = ocean; water[i] = true; }
 
-            for (int cy = cy0; cy < cy0 + ch; cy++)
+            const int West = 8;                                      // columns west of the window, for shadows
+            int rowLen = W + West + 1;
+            var curCell = new int[rowLen]; var curLv = new int[rowLen];
+            var nextCell = new int[rowLen]; var nextLv = new int[rowLen];
+            int worldH = lay.Height * Px, worldW = lay.Width * Px;
+            int yStart = Y0 - TerrainLayout.MaxLift - 2, yEnd = Y0 + H + TerrainLayout.MaxLift + 48;
+            if (yStart < 0) yStart = 0;
+            if (yEnd > worldH) yEnd = worldH;
+            FillRow(field, lay, X0 - West, yStart, curCell, curLv);
+
+            var propRows = props ? CollectProps(tiles, lay, cache, cx0, cy0, cw, ch) : null;
+
+            for (int y = yStart; y < yEnd; y++)
             {
-                for (int sr = 0; sr < Spc; sr++)
+                if (y + 1 < worldH) FillRow(field, lay, X0 - West, y + 1, nextCell, nextLv);
+                else { System.Array.Copy(curCell, nextCell, rowLen); System.Array.Copy(curLv, nextLv, rowLen); }
+
+                for (int i = West; i < West + W; i++)
                 {
-                    int sy = cy * Spc + sr;
-                    for (int sx = cx0 * Spc; sx < (cx0 + cw) * Spc; sx++)
-                        DrawSubCell(tiles, lay, cache, art, img, water, W, H, cx0, cy0, top, sx, sy);
+                    int x = X0 + i - West;
+                    if (x >= worldW) break;
+                    int cell = curCell[i], L = curLv[i];
+                    bool isWater = L < TerrainLayout.WaterLevel;
+                    int lift = TerrainLayout.Lift(L);
+                    uint baseC = Ground(tiles, lay, cache, art, cell, x, y);
+                    uint c = baseC;
+                    int front = nextLv[i] < TerrainLayout.WaterLevel ? TerrainLayout.WaterLevel : nextLv[i];
+                    if (!isWater)
+                    {
+                        if (L > 4) c = Rgba.Shift(c, System.Math.Min(14, 3 * (L - 4)));          // high ground a bit lighter
+                        bool shade = false;
+                        for (int d = 1; d <= West && !shade; d++)
+                            shade = TerrainLayout.Lift(curLv[i - d]) - lift - d >= 0;           // ~45 degree light from the west
+                        if (shade) c = Rgba.Darken(c, 84);
+                        if (front < L) c = Rgba.Shift(c, 20);                                    // light lip above a drop
+                        else if (L > TerrainLayout.WaterLevel && (curLv[i - 1] < L || (i + 1 < rowLen && curLv[i + 1] < L)))
+                            c = Rgba.Darken(c, 78);                                              // thin side outline
+                    }
+                    int sy = y - lift - Y0, sx = i - West;
+                    if (sy >= 0 && sy < H) { img[sy * W + sx] = c; water[sy * W + sx] = isWater; }
+
+                    if (!isWater && front < L)
+                    {
+                        int drop = lift - TerrainLayout.Lift(front);
+                        bool snow = lay.RenderBiome[cell] == (byte)Biome.Snow;
+                        for (int k = 1; k <= drop; k++)
+                        {
+                            int fy = sy + k;
+                            if (fy < 0 || fy >= H) continue;
+                            int pct = snow ? (k == drop ? 70 : 80) : (k == drop ? 46 : 60);
+                            img[fy * W + sx] = Rgba.Darken(baseC, pct);
+                            water[fy * W + sx] = false;
+                        }
+                    }
                 }
-                if (props)
-                    for (int cx = cx0; cx < cx0 + cw; cx++) DrawProp(tiles, lay, cache, art, img, W, H, cx0, cy0, top, cx, cy);
+
+                if (propRows != null && propRows.TryGetValue(y, out var list))
+                    foreach (var p in list) DrawProp(field, art, img, W, H, X0, Y0, p);
+
+                var t1 = curCell; curCell = nextCell; nextCell = t1;
+                var t2 = curLv; curLv = nextLv; nextLv = t2;
             }
             AddFoam(img, water, W, H, cache, art);
             return img;
         }
 
-        static void DrawSubCell(TileData[] tiles, TerrainLayout lay, FrameCache cache, IArtPixels art, uint[] img, bool[] water,
-                                int W, int H, int cx0, int cy0, int top, int sx, int sy)
+        static void FillRow(TerrainField field, TerrainLayout lay, int x0, int y, int[] cells, int[] levels)
         {
-            int s = sy * lay.SubWidth + sx;
-            int cell = lay.SubCell[s];
-            int level = lay.SubLevel[s];
-            int lift = TerrainLayout.Lift(level);
-            int ox = (sx - cx0 * Spc) * Sp, oy = (sy - cy0 * Spc) * Sp + top - lift;
-            TileData t = tiles[cell];
-            bool isWater = t.IsWater;
-            int tile = GroundFrame(t, lay.Band[cell], cell, lay.Width, cache, art);
-            int wx0 = sx * Sp, wy0 = sy * Sp;
-
-            // Front neighbour (one sub-cell down): a lower one shows this sub-cell's cliff face.
-            int frontLevel = sy + 1 < lay.SubHeight ? lay.SubLevel[s + lay.SubWidth] : level;
-            if (frontLevel < TerrainLayout.WaterLevel) frontLevel = TerrainLayout.WaterLevel;
-            bool rim = level > TerrainLayout.WaterLevel && frontLevel < level;
-            // Light from the top-left: ground right of a higher sub-cell lies in its shadow.
-            // A terrace d sub-cells to the west shades this one when it is at least d levels higher (~45 degree light).
-            bool shade = false;
-            if (level >= TerrainLayout.WaterLevel)
-                for (int d = 1; d <= 3 && sx - d >= 0 && !shade; d++)
-                    shade = lay.SubLevel[s - d] >= level + d;
-            if (!shade && sx > 0 && lay.SubLevel[s - 1] > level && level >= TerrainLayout.WaterLevel) shade = true;
-            int calm = Calmness(t.Biome);
-
-            for (int y = 0; y < Sp; y++)
+            int maxX = lay.Width * Px - 1;
+            for (int i = 0; i < cells.Length; i++)
             {
-                int py = oy + y;
-                if (py < 0 || py >= H) continue;
-                for (int x = 0; x < Sp; x++)
-                {
-                    int i = py * W + ox + x;
-                    uint c = Pixel(art, tile, (wx0 + x) & 63, (wy0 + y) & 63);
-                    if (calm > 0) c = Calm(c, cache.Mean(tile), calm);
-                    if (shade) c = Rgba.Darken(c, 82);                         // in the shadow of higher ground to the west
-                    if (rim && y == Sp - 1) c = Rgba.Shift(c, 14);              // lit edge above a drop
-                    img[i] = c;
-                    water[i] = isWater;
-                }
-            }
-
-            if (!rim) return;
-            int drop = TerrainLayout.Lift(level) - TerrainLayout.Lift(frontLevel);
-            int diff = drop / TerrainLayout.LiftPerLevel;
-            int cliff = cache.Cliff(TerrainLayout.CliffMaterial(level), diff > 4 ? 4 : diff);
-            int ch = art.Height(cliff);
-            for (int k = 0; k < drop + 2; k++)
-            {
-                int py = oy + Sp + k;
-                if (py < 0 || py >= H) continue;
-                int row = k < ch ? k : 2 + (k - 2) % (ch - 2);                   // stack faces taller than 4 levels
-                for (int x = 0; x < Sp; x++)
-                {
-                    uint c = Pixel(art, cliff, (wx0 + x) & 63, row);
-                    if (Rgba.A(c) < 128) continue;
-                    int i = py * W + ox + x;
-                    img[i] = c;
-                    water[i] = false;
-                }
+                int x = x0 + i;
+                if (x < 0) x = 0; else if (x > maxX) x = maxX;
+                field.Pick(x, y, out cells[i], out levels[i]);
             }
         }
 
-        /// <summary>How much of a ground tile's detail to keep (0 = all). Big rocky areas read better calm: the
-        /// mountain's height, cliffs and shadows carry the shape, not a busy repeating texture.</summary>
-        static int Calmness(Biome b) => b == Biome.Mountain ? 55 : b == Biome.RockyHighland ? 35 : 0;
+        /// <summary>Ground colour of a world pixel: a random window of a random variant per 16 px square, flipped and
+        /// rotated by hash, so seamless tiles never show their repeat. Water keeps its horizontal ripples (no rotation).</summary>
+        static uint Ground(TileData[] tiles, TerrainLayout lay, FrameCache cache, IArtPixels art, int cell, int x, int y)
+        {
+            Biome b = (Biome)lay.RenderBiome[cell];
+            if (tiles[cell].IsWater && !(b == Biome.CoralShallows && lay.Band[cell] == 2))
+                return art.Pixel(cache.Water[lay.Band[cell] > 2 ? 2 : lay.Band[cell]], x & 63, y & 63);
+            // Patches of ~16 px with noise-warped, irregular borders; inside a patch the (wrapping, seamless) tile is
+            // sampled continuously with its own variant, offset, flip and rotation, so no grid and no visible repeat.
+            int px = x + TerrainField.Noise(x, y, 0x2F1B) * 7 / 128, py = y + TerrainField.Noise(x, y, 0x6C35) * 7 / 128;
+            uint h = TerrainLayout.Hash(px >> 4, (py >> 4) + 7919);
+            int u = x, v = y;
+            int t = (int)((h >> 2) & 7);
+            if ((t & 1) != 0) u = -u;
+            if ((t & 2) != 0) v = -v;
+            if ((t & 4) != 0) { int s = u; u = v; v = s; }
+            int f = cache.Tile(b, (int)(h & 3));
+            if (f < 0) return Rgba.Pack(255, 0, 255);
+            uint c = art.Pixel(f, (u + (int)((h >> 5) & 63)) & 63, (v + (int)((h >> 11) & 63)) & 63);
+            int calm = b == Biome.Mountain ? 50 : b == Biome.RockyHighland ? 30 : 0;
+            return calm > 0 ? Calm(c, cache.Mean(f), calm) : c;
+        }
 
         static uint Calm(uint c, uint mean, int percent)
         {
@@ -147,35 +154,44 @@ namespace WorldSim.Render.Terrain
                              Rgba.B(mean) + (Rgba.B(c) - Rgba.B(mean)) * k / 100);
         }
 
-        static int GroundFrame(TileData t, byte band, int cell, int w, FrameCache cache, IArtPixels art)
+        struct PropDraw { public int Cell, Frame, FootX, FootY; }
+
+        static Dictionary<int, List<PropDraw>> CollectProps(TileData[] tiles, TerrainLayout lay, FrameCache cache, int cx0, int cy0, int cw, int ch)
         {
-            Biome b = t.Biome;
-            int cx = cell % w, cy = cell / w;
-            // One variant per 64 px block keeps the seamless tiles seamless inside a biome.
-            int variant = (int)(TerrainLayout.Hash(cx >> 2, (cy >> 2) + 7919) & 3);
-            if (b == Biome.CoralShallows && band == 2) return cache.Tile(b, variant);
-            if (t.IsWater) return cache.Water[band > 2 ? 2 : band];
-            return cache.Tile(b, variant);
+            var rows = new Dictionary<int, List<PropDraw>>();
+            int ry0 = System.Math.Max(0, cy0 - 1), ry1 = System.Math.Min(lay.Height, cy0 + ch + 4);
+            int rx0 = System.Math.Max(0, cx0 - 2), rx1 = System.Math.Min(lay.Width, cx0 + cw + 2);
+            for (int cy = ry0; cy < ry1; cy++)
+                for (int cx = rx0; cx < rx1; cx++)
+                {
+                    int cell = cy * lay.Width + cx;
+                    TileData t = tiles[cell];
+                    if (t.DecorationId == 0 || lay.Level[cell] == TerrainLayout.TopLevel) continue;   // nothing pokes out of snow caps
+                    uint h = TerrainLayout.Hash(cx + 104729, cy);
+                    string name = BiomeArt.Prop(t.Decoration, (int)(h % 97));
+                    if (name == null || !cache.Frame(name, out int f)) continue;
+                    var p = new PropDraw
+                    {
+                        Cell = cell, Frame = f,
+                        FootX = cx * Px + Px / 2 + (int)((h >> 8) % 7) - 3,
+                        FootY = cy * Px + Px / 2 + (int)((h >> 12) % 5) - 2,
+                    };
+                    if (!rows.TryGetValue(p.FootY, out var list)) rows[p.FootY] = list = new List<PropDraw>();
+                    list.Add(p);
+                }
+            return rows;
         }
 
-        static void DrawProp(TileData[] tiles, TerrainLayout lay, FrameCache cache, IArtPixels art, uint[] img, int W, int H,
-                             int cx0, int cy0, int top, int cx, int cy)
+        static void DrawProp(TerrainField field, IArtPixels art, uint[] img, int W, int H, int X0, int Y0, PropDraw p)
         {
-            TileData t = tiles[cy * lay.Width + cx];
-            if (t.DecorationId == 0) return;
-            uint h = TerrainLayout.Hash(cx + 104729, cy);
-            string name = BiomeArt.Prop(t.Decoration, (int)(h % 97));
-            if (name == null || !cache.Frame(name, out int f)) return;
-            int fw = art.Width(f), fh = art.Height(f);
-            int lift = TerrainLayout.Lift(lay.Level[cy * lay.Width + cx]);
-            // Foot point: cell centre, nudged a little so props don't sit on a visible grid.
-            int footX = (cx - cx0) * Px + Px / 2 + (int)((h >> 8) % 7) - 3;
-            int footY = (cy - cy0) * Px + Px / 2 + (int)((h >> 12) % 5) - 2 + top - lift;
-            int left = footX - (int)(art.PivotX(f) * fw);
-            int topY = footY - (int)((1f - art.PivotY(f)) * fh);
+            field.Pick(p.FootX, p.FootY, out int footCell, out int level);
+            if (footCell != p.Cell) return;                          // its ground was rounded away at a border
+            int f = p.Frame, fw = art.Width(f), fh = art.Height(f);
+            int left = p.FootX - X0 - (int)(art.PivotX(f) * fw);
+            int top = p.FootY - TerrainLayout.Lift(level) - Y0 - (int)((1f - art.PivotY(f)) * fh);
             for (int y = 0; y < fh; y++)
             {
-                int py = topY + y;
+                int py = top + y;
                 if (py < 0 || py >= H) continue;
                 for (int x = 0; x < fw; x++)
                 {
@@ -193,70 +209,101 @@ namespace WorldSim.Render.Terrain
         static void AddFoam(uint[] img, bool[] water, int W, int H, FrameCache cache, IArtPixels art)
         {
             var dist = new byte[img.Length];
-            for (int y = 0; y < H; y++)
-                for (int x = 0; x < W; x++)
-                {
-                    int i = y * W + x;
-                    if (!water[i]) continue;
-                    if (Land(water, W, H, x - 1, y) || Land(water, W, H, x + 1, y) || Land(water, W, H, x, y - 1) || Land(water, W, H, x, y + 1)) dist[i] = 1;
-                }
-            for (int y = 0; y < H; y++)
-                for (int x = 0; x < W; x++)
-                {
-                    int i = y * W + x;
-                    if (!water[i] || dist[i] != 0) continue;
-                    if (One(dist, W, H, x - 1, y) || One(dist, W, H, x + 1, y) || One(dist, W, H, x, y - 1) || One(dist, W, H, x, y + 1)) dist[i] = 2;
-                }
+            for (int pass = 1; pass <= 2; pass++)
+                for (int y = 0; y < H; y++)
+                    for (int x = 0; x < W; x++)
+                    {
+                        int i = y * W + x;
+                        if (!water[i] || dist[i] != 0) continue;
+                        bool near = pass == 1
+                            ? Land(water, W, H, x - 1, y) || Land(water, W, H, x + 1, y) || Land(water, W, H, x, y - 1) || Land(water, W, H, x, y + 1)
+                            : Is(dist, W, H, x - 1, y, 1) || Is(dist, W, H, x + 1, y, 1) || Is(dist, W, H, x, y - 1, 1) || Is(dist, W, H, x, y + 1, 1);
+                        if (near) dist[i] = (byte)pass;
+                    }
             int foam = cache.Foam;
-            for (int y = 0; y < H; y++)
-                for (int x = 0; x < W; x++)
-                {
-                    int i = y * W + x;
-                    if (dist[i] == 0) continue;
-                    uint c = foam >= 0 ? art.Pixel(foam, x & 63, dist[i] - 1) : Rgba.Pack(230, 240, 245);
-                    int a = Rgba.A(c);
-                    if (a > 0) img[i] = Rgba.Mix(img[i], c, dist[i] == 1 ? a : a / 2);
-                }
+            for (int i = 0; i < img.Length; i++)
+            {
+                if (dist[i] == 0) continue;
+                uint c = foam >= 0 ? art.Pixel(foam, (i % W) & 63, dist[i] - 1) : Rgba.Pack(230, 240, 245);
+                int a = Rgba.A(c);
+                if (a > 0) img[i] = Rgba.Mix(img[i], c, dist[i] == 1 ? a : a / 2);
+            }
         }
 
         static bool Land(bool[] water, int W, int H, int x, int y) => x >= 0 && y >= 0 && x < W && y < H && !water[y * W + x];
-        static bool One(byte[] d, int W, int H, int x, int y) => x >= 0 && y >= 0 && x < W && y < H && d[y * W + x] == 1;
+        static bool Is(byte[] d, int W, int H, int x, int y, int v) => x >= 0 && y >= 0 && x < W && y < H && d[y * W + x] == v;
 
-        static uint Pixel(IArtPixels art, int f, int x, int y) => f < 0 ? Rgba.Pack(255, 0, 255) : art.Pixel(f, x, y);
-
-        /// <summary>Far zoom: one cell = 4 px from the 16 px LOD tiles (zoom 1/4); water in its band colour.</summary>
-        public static uint[] ComposeFar(TileData[] tiles, TerrainLayout lay, IArtPixels art)
+        // ------------------------------------------------------------------------------------------------ far
+        /// <summary>Far zoom: <paramref name="pixelsPerCell"/> 4 (zoom 1/4, lod16 tiles) or 2 (zoom 1/8, lod8 tiles).
+        /// Smooth contours from the same field, a random LOD window per cell, no elevation lines, trees as crown clusters.</summary>
+        public static uint[] ComposeFar(TileData[] tiles, TerrainLayout lay, TerrainField field, IArtPixels art, int pixelsPerCell)
         {
-            int W = lay.Width * 4, H = lay.Height * 4;
+            int ppc = pixelsPerCell >= 4 ? 4 : 2, lodPx = ppc * 4, step = Px / ppc;
+            int W = lay.Width * ppc, H = lay.Height * ppc;
             var img = new uint[W * H];
             var cache = new FrameCache(art);
             for (int y = 0; y < H; y++)
                 for (int x = 0; x < W; x++)
                 {
-                    int cell = (y >> 2) * lay.Width + (x >> 2);
-                    TileData t = tiles[cell];
-                    int variant = (int)(TerrainLayout.Hash((x >> 2) >> 2, ((y >> 2) >> 2) + 7919) & 3);
-                    int f = t.IsWater ? cache.Water[lay.Band[cell] > 2 ? 2 : lay.Band[cell]] : cache.Lod(t.Biome, variant);
-                    uint c = t.IsWater ? art.Pixel(f, (x * 4) & 63, (y * 4) & 63) : Pixel(art, f, x & 15, y & 15);
-                    if (!t.IsWater)
+                    field.Pick(x * step + step / 2, y * step + step / 2, out int cell, out _);
+                    Biome b = (Biome)lay.RenderBiome[cell];
+                    uint c;
+                    if (tiles[cell].IsWater && !(b == Biome.CoralShallows && lay.Band[cell] == 2))
+                        c = art.Pixel(cache.Water[lay.Band[cell] > 2 ? 2 : lay.Band[cell]], (x * step) & 63, (y * step) & 63);
+                    else
                     {
-                        int lv = lay.Level[cell], cx = x >> 2, cy = y >> 2;
-                        int west = cx > 0 ? lay.Level[cell - 1] : lv;
-                        int front = cy + 1 < lay.Height ? lay.Level[cell + lay.Width] : lv;
-                        if (west > lv) c = Rgba.Darken(c, 82);                        // shadow east of higher ground
-                        if (front < lv && lv >= 7 && (y & 3) == 3)
-                            c = Rgba.Darken(c, lv >= 9 ? 62 : 72);                    // a cliff line at the drop
+                        // Same idea as near zoom: irregular patches, continuous wrapped sampling, random variant,
+                        // offset, flip and rotation; big rocky areas calmed.
+                        int wx = x + TerrainField.Noise(x * 3, y * 3, 0x2F1B) * 3 / 128, wy = y + TerrainField.Noise(x * 3, y * 3, 0x6C35) * 3 / 128;
+                        uint h = TerrainLayout.Hash(wx >> 3, (wy >> 3) + 7919);
+                        int u = x, v = y, t = (int)((h >> 2) & 7), m = lodPx - 1;
+                        if ((t & 1) != 0) u = -u;
+                        if ((t & 2) != 0) v = -v;
+                        if ((t & 4) != 0) { int sw = u; u = v; v = sw; }
+                        int f = cache.Lod(b, (int)(h & 3), lodPx);
+                        c = f < 0 ? Rgba.Pack(255, 0, 255) : art.Pixel(f, (u + (int)((h >> 5) & 63)) & m, (v + (int)((h >> 11) & 63)) & m);
+                        int calm = b == Biome.Mountain ? 55 : b == Biome.RockyHighland || b == Biome.Snow ? 35 : 0;
+                        if (calm > 0 && f >= 0) c = Calm(c, cache.Mean(f), calm);
                     }
                     img[y * W + x] = c;
                 }
+            if (ppc == 4) DrawTreeClusters(tiles, lay, field, art, cache, img, W, H);
             return img;
         }
 
-        /// <summary>Frame ids looked up once per name.</summary>
+        /// <summary>Trees at zoom 1/4: a 2x2 crown (light top-left, dark bottom-right) in the prop's own colours.</summary>
+        static void DrawTreeClusters(TileData[] tiles, TerrainLayout lay, TerrainField field, IArtPixels art, FrameCache cache, uint[] img, int W, int H)
+        {
+            for (int cy = 0; cy < lay.Height; cy++)
+                for (int cx = 0; cx < lay.Width; cx++)
+                {
+                    int cell = cy * lay.Width + cx;
+                    TileData t = tiles[cell];
+                    if (!TileData.IsTree(t.Decoration) || lay.Level[cell] == TerrainLayout.TopLevel) continue;
+                    field.Pick(cx * Px + 8, cy * Px + 8, out int at, out _);
+                    if (at != cell) continue;
+                    uint h = TerrainLayout.Hash(cx + 104729, cy);
+                    string name = BiomeArt.Prop(t.Decoration, (int)(h % 97));
+                    if (name == null || !cache.Frame(name, out int f)) continue;
+                    cache.Crown(f, out uint light, out uint mid, out uint dark);
+                    // A small round crown:  . L .  /  L M D  /  . D .  with a shadow pixel below-right.
+                    int x0 = cx * 4 + (int)((h >> 8) & 1), y0 = cy * 4 + (int)((h >> 9) & 1);
+                    if (y0 + 3 < H && x0 + 2 < W) img[(y0 + 3) * W + x0 + 2] = Rgba.Darken(img[(y0 + 3) * W + x0 + 2], 72);
+                    Put(img, W, H, x0 + 1, y0, light);
+                    Put(img, W, H, x0, y0 + 1, light); Put(img, W, H, x0 + 1, y0 + 1, mid); Put(img, W, H, x0 + 2, y0 + 1, dark);
+                    Put(img, W, H, x0 + 1, y0 + 2, dark);
+                }
+        }
+
+        static void Put(uint[] img, int W, int H, int x, int y, uint c) { if (x >= 0 && y >= 0 && x < W && y < H) img[y * W + x] = c; }
+
+        // ------------------------------------------------------------------------------------------------ frames
         sealed class FrameCache
         {
             readonly IArtPixels _art;
-            readonly System.Collections.Generic.Dictionary<string, int> _ids = new System.Collections.Generic.Dictionary<string, int>();
+            readonly Dictionary<string, int> _ids = new Dictionary<string, int>();
+            readonly Dictionary<int, uint> _means = new Dictionary<int, uint>();
+            readonly Dictionary<int, (uint, uint, uint)> _crowns = new Dictionary<int, (uint, uint, uint)>();
             public readonly int[] Water = new int[3];
             public readonly int Foam;
 
@@ -277,24 +324,43 @@ namespace WorldSim.Render.Terrain
             }
 
             public bool Frame(string name, out int id) { id = Id(name); return id >= 0; }
+            public int Tile(Biome b, int v) => Id(BiomeArt.Tile(b, v));
+            public int Lod(Biome b, int v, int px) => Id(BiomeArt.LodTile(b, v, px));
 
-            readonly System.Collections.Generic.Dictionary<int, uint> _means = new System.Collections.Generic.Dictionary<int, uint>();
-
-            /// <summary>Average colour of a 64 px tile.</summary>
+            /// <summary>Average colour of a frame's opaque pixels.</summary>
             public uint Mean(int f)
             {
-                if (f < 0) return 0;
                 if (_means.TryGetValue(f, out uint m)) return m;
-                long r = 0, g = 0, b = 0;
-                for (int y = 0; y < 64; y++)
-                    for (int x = 0; x < 64; x++) { uint c = _art.Pixel(f, x, y); r += Rgba.R(c); g += Rgba.G(c); b += Rgba.B(c); }
-                m = Rgba.Pack((int)(r / 4096), (int)(g / 4096), (int)(b / 4096));
+                m = Average(f, _art.Height(f));
                 _means[f] = m;
                 return m;
             }
-            public int Tile(Biome b, int v) => Id(BiomeArt.Tile(b, v));
-            public int Lod(Biome b, int v) => Id(BiomeArt.LodTile(b, v, 16));
-            public int Cliff(string mat, int diff) => Id("cliff_" + mat + "_" + (diff < 1 ? 1 : diff));
+
+            /// <summary>Crown colours of a tree prop: the mean of its upper two thirds, lightened and darkened.</summary>
+            public void Crown(int f, out uint light, out uint mid, out uint dark)
+            {
+                if (!_crowns.TryGetValue(f, out var v))
+                {
+                    uint m = Average(f, _art.Height(f) * 2 / 3);
+                    if (m == 0) m = Rgba.Pack(60, 110, 50);
+                    v = (Rgba.Shift(m, 34), m, Rgba.Darken(m, 58));
+                    _crowns[f] = v;
+                }
+                light = v.Item1; mid = v.Item2; dark = v.Item3;
+            }
+
+            uint Average(int f, int rows)
+            {
+                long r = 0, g = 0, bl = 0, n = 0;
+                for (int y = 0; y < rows; y++)
+                    for (int x = 0; x < _art.Width(f); x++)
+                    {
+                        uint c = _art.Pixel(f, x, y);
+                        if (Rgba.A(c) < 128) continue;
+                        r += Rgba.R(c); g += Rgba.G(c); bl += Rgba.B(c); n++;
+                    }
+                return n == 0 ? 0 : Rgba.Pack((int)(r / n), (int)(g / n), (int)(bl / n));
+            }
         }
     }
 }

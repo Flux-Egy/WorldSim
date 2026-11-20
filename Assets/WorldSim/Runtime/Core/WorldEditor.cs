@@ -178,11 +178,11 @@ namespace WorldSim.Core
                 case Biome.PineTaiga: case Biome.Mountain: return temperature < 50 ? Decoration.SnowPine : Decoration.PineTree;
                 case Biome.Tundra: case Biome.Snow: return Decoration.SnowPine;
                 case Biome.BirchForest: return pick < 80 ? Decoration.BirchTree : Decoration.PineTree;
-                case Biome.Jungle: return pick < 80 ? Decoration.JungleTree : Decoration.PalmTree;
+                case Biome.Jungle: return Decoration.JungleTree;
                 case Biome.Savanna: return Decoration.AcaciaTree;
                 case Biome.DesertDunes: return pick < 70 ? Decoration.Cactus : Decoration.DeadTree;
                 case Biome.Swamp: return Decoration.SwampTree;
-                case Biome.Beach: return Decoration.PalmTree;
+                case Biome.Beach: return temperature > 150 ? Decoration.PalmTree : Decoration.None;
                 case Biome.Glimmerwood: case Biome.CrystalCaves: return Decoration.GlowTree;
                 case Biome.FungalGrove: return Decoration.GiantMushroom;
                 case Biome.EmberWastes: case Biome.AshWaste: case Biome.Badlands: return Decoration.DeadTree;

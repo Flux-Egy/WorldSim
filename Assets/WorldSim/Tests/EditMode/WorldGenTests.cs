@@ -22,10 +22,10 @@ namespace WorldSim.Tests
         }
 
         // Regenerated 2026-11-21 (rebuild, owner-approved): pack biomes, larger coherent climate regions, snow only on
-        // peaks, rarer/smaller anomaly patches, about half the decorations.
-        [TestCase(0x5EEDUL, 0x9D90CDC3E9A0725DUL)]
-        [TestCase(0xC0FFEEUL, 0xE150A7D56104EF58UL)]
-        [TestCase(0x1UL, 0x5E57E2FDFF2D72B9UL)]
+        // peaks, rarer/smaller anomaly patches, about half the decorations, palms only on hot beaches/deserts.
+        [TestCase(0x5EEDUL, 0xEE24C3566000329EUL)]
+        [TestCase(0xC0FFEEUL, 0x1E12B369C926612CUL)]
+        [TestCase(0x1UL, 0x6CD884C2955E0B31UL)]
         public void GoldenHash_IsStableAcrossPlatforms(ulong seed, ulong expected)
         {
             ulong hash = WorldHash.Compute(seed, Size, Size, Generate(seed));

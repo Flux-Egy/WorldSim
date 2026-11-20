@@ -3,38 +3,27 @@ using WorldSim.Core;
 namespace WorldSim.Render.Terrain
 {
     /// <summary>
-    /// The new terrain look (rebuild phase 2), as data both renderers share (the CPU reference/preview compositor and
-    /// the Unity shader renderer):
-    /// <list type="bullet">
-    /// <item>A 4 px sub-cell grid (4 x 4 per 16 px cell). Each sub-cell takes the tile of a neighbouring cell picked by
-    /// a deterministic +-1 sub-cell displacement, so biome borders, coasts and terraces become crisp 4 px pixel stairs
-    /// instead of 16 px squares or blurred blends.</item>
-    /// <item>Terraces (<see cref="LevelOf"/>): 0-2 water, 3 beach (= water surface), 4-12 land.
-    /// The top face rises 6 px per level above the beach; a lower sub-cell in front shows a cliff face.</item>
-    /// <item>Water depth bands by distance to land: shallows (1-2 cells), ocean (3-5), deep beyond.</item>
-    /// </list>
-    /// Pure C#, deterministic, no allocations except the result arrays.
+    /// Per-cell data of the new terrain look (rebuild phase 2), shared by the CPU reference compositor and the Unity
+    /// renderer: terraces (<see cref="LevelOf"/>: 0-2 water, 3 beach = water surface, 4-12 land; the top face rises
+    /// <see cref="LiftPerLevel"/> px per level), water depth rings by distance to land, and the biome each cell is drawn
+    /// with (<see cref="RenderBiome"/>: everything on the snow terrace is snow). Per-pixel borders come from
+    /// <see cref="TerrainField"/>. Pure C#, deterministic.
     /// </summary>
     public sealed class TerrainLayout
     {
         public const int CellPixels = 16;
-        public const int SubPixels = 4;
-        public const int SubPerCell = CellPixels / SubPixels;
-        public const int LiftPerLevel = 6;
+        public const int LiftPerLevel = 3;
         public const int WaterLevel = 3;
         public const int TopLevel = 12;
         public const int MaxLift = (TopLevel - WaterLevel) * LiftPerLevel;
 
         public readonly int Width, Height;          // cells
-        public readonly int SubWidth, SubHeight;    // sub-cells
-        /// <summary>Per sub-cell: index of the cell whose tile it shows.</summary>
-        public readonly int[] SubCell;
-        /// <summary>Per sub-cell: elevation level 0..9 of that cell.</summary>
-        public readonly byte[] SubLevel;
-        /// <summary>Per cell: elevation level 0..9.</summary>
+        /// <summary>Per cell: terrace 0..12.</summary>
         public readonly byte[] Level;
         /// <summary>Per cell: water band 0 deep, 1 ocean, 2 shallows; 255 for land.</summary>
         public readonly byte[] Band;
+        /// <summary>Per cell: the biome whose tile is drawn (the simulation biome, except snow on the snow terrace).</summary>
+        public readonly byte[] RenderBiome;
 
         public static int Lift(int level) => level > WaterLevel ? (level - WaterLevel) * LiftPerLevel : 0;
 
@@ -90,7 +79,47 @@ namespace WorldSim.Render.Terrain
                     lv[i] = l;
                 }
             for (int pass = 0; pass < 2; pass++) lv = Majority(lv, w, h);
+            MergeSmallTerraces(lv, w, h, 12);
             return lv;
+        }
+
+        /// <summary>Terrace patches smaller than <paramref name="minCells"/> join their most common neighbour terrace,
+        /// so cliffs only outline real plateaus (no scattered cliff fragments).</summary>
+        static void MergeSmallTerraces(byte[] lv, int w, int h, int minCells)
+        {
+            var comp = new int[lv.Length];
+            for (int i = 0; i < comp.Length; i++) comp[i] = -1;
+            var stack = new int[lv.Length];
+            var members = new int[lv.Length];
+            var votes = new int[TopLevel + 1];
+            int id = 0;
+            for (int start = 0; start < lv.Length; start++)
+            {
+                if (comp[start] >= 0 || lv[start] <= WaterLevel) continue;
+                int sp = 0, n = 0;
+                stack[sp++] = start; comp[start] = id;
+                System.Array.Clear(votes, 0, votes.Length);
+                while (sp > 0)
+                {
+                    int c = stack[--sp];
+                    members[n++] = c;
+                    int cx = c % w, cy = c / w;
+                    for (int k = 0; k < 4; k++)
+                    {
+                        int nx = cx + (k == 0 ? 1 : k == 1 ? -1 : 0), ny = cy + (k == 2 ? 1 : k == 3 ? -1 : 0);
+                        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                        int o = ny * w + nx;
+                        if (lv[o] == lv[start]) { if (comp[o] < 0) { comp[o] = id; stack[sp++] = o; } }
+                        else if (lv[o] > WaterLevel) votes[lv[o]]++;
+                    }
+                }
+                id++;
+                if (n >= minCells) continue;
+                int best = -1;
+                for (int l = WaterLevel + 1; l <= TopLevel; l++) if (votes[l] > 0 && (best < 0 || votes[l] > votes[best])) best = l;
+                if (best < 0) continue;                                   // an island: keep it
+                for (int m = 0; m < n; m++) lv[members[m]] = (byte)best;
+            }
         }
 
         static byte[] Majority(byte[] lv, int w, int h)
@@ -120,36 +149,11 @@ namespace WorldSim.Render.Terrain
         public TerrainLayout(TileData[] tiles, int width, int height)
         {
             Width = width; Height = height;
-            SubWidth = width * SubPerCell; SubHeight = height * SubPerCell;
             Level = SmoothLevels(tiles, width, height);
             Band = WaterBands(tiles, width, height);
-
-            SubCell = new int[SubWidth * SubHeight];
-            SubLevel = new byte[SubCell.Length];
-            for (int sy = 0; sy < SubHeight; sy++)
-                for (int sx = 0; sx < SubWidth; sx++)
-                {
-                    int own = (sy / SubPerCell) * width + sx / SubPerCell;
-                    Displace(sx, sy, out int dx, out int dy);
-                    int nx = Clamp((sx + dx) / SubPerCell, width), ny = Clamp((sy + dy) / SubPerCell, height);
-                    int cell = ny * width + nx;
-                    // Displace only within one terrace: cliff lines stay straight, continuous 16 px steps.
-                    if (Level[cell] != Level[own]) cell = own;
-                    int s = sy * SubWidth + sx;
-                    SubCell[s] = cell;
-                    SubLevel[s] = Level[cell];
-                }
-        }
-
-        static int Clamp(int v, int n) => v < 0 ? 0 : v >= n ? n - 1 : v;
-
-        /// <summary>Deterministic +-1 sub-cell offset; only sub-cells on a cell's rim move, so the result is a border wiggle.</summary>
-        public static void Displace(int sx, int sy, out int dx, out int dy)
-        {
-            uint h = Hash(sx, sy);
-            int lx = sx % SubPerCell, ly = sy % SubPerCell;
-            dx = lx == 0 ? -(int)(h & 1) : lx == SubPerCell - 1 ? (int)(h & 1) : 0;
-            dy = ly == 0 ? -(int)((h >> 1) & 1) : ly == SubPerCell - 1 ? (int)((h >> 1) & 1) : 0;
+            RenderBiome = new byte[tiles.Length];
+            for (int i = 0; i < tiles.Length; i++)
+                RenderBiome[i] = Level[i] == TopLevel ? (byte)Biome.Snow : tiles[i].BiomeId;
         }
 
         public static uint Hash(int x, int y)
