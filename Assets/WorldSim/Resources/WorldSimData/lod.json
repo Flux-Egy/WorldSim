@@ -1,0 +1,41 @@
+{
+ "map_colors": {
+  "meadow": "#77a855",
+  "flower_field": "#7bad58",
+  "forest": "#55913f",
+  "pine_taiga": "#46713f",
+  "jungle": "#36743a",
+  "swamp": "#52643a",
+  "savanna": "#c5b56c",
+  "desert_dunes": "#d4bb86",
+  "badlands": "#b6673b",
+  "steppe": "#abaa6a",
+  "tundra": "#93a282",
+  "snow": "#e3ebef",
+  "glacier": "#c2ddea",
+  "beach": "#e4cf9b",
+  "rocky_highland": "#818777",
+  "mountain": "#7e7b72",
+  "volcanic": "#3e352f",
+  "ash_waste": "#625e58",
+  "salt_flats": "#eae6de",
+  "fungal_grove": "#4f3f63",
+  "coral_shallows": "#4f99c3",
+  "farmland": "#a18144",
+  "crystal_caves": "#404059",
+  "irradiated_waste": "#617240",
+  "birch_forest": "#76a255",
+  "glimmerwood": "#375965",
+  "ember_wastes": "#42352e",
+  "lava": "#aa4f21",
+  "water_depth_0": "#1e4b82",
+  "water_depth_1": "#265d98",
+  "water_depth_2": "#3377b0"
+ },
+ "zoom_levels": {
+  "near": "full sprites + animation (zoom stations x2..x4)",
+  "mid": "full sprites, animation at half rate, hide decals/particles, people as sprites (zoom x1)",
+  "far": "terrain t_*_lodN (16 px at 1/4, 8 px at 1/8); hide people/animals/props; show mk_* markers at constant screen size; kingdom territory = TEAM colour overlay ~35% + border_<colour> strips",
+  "map": "flat map_colors per cell + territory overlay + mk_city/capital/army/monster/event markers"
+ }
+}

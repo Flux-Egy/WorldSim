@@ -603,6 +603,10 @@ def ex_disasters():
     DS.annotate(OUT, ['Buildings/buildings_eras', 'Buildings/houses_culture_kit', 'Buildings/world_structures',
                       'Buildings/Disaster/disaster_buildings_eras', 'Buildings/Disaster/disaster_houses', 'Buildings/Disaster/disaster_structures'])
 CATS['disasters'] = ex_disasters
+import biomes_extra as BX
+CATS['biomes_extra'] = lambda: BX.export(OUT, done)
+import lod as LOD
+CATS['lod'] = lambda: LOD.export(OUT, os.path.join(os.path.dirname(OUT), 'WorldSimData'), done)
 
 if __name__ == '__main__':
     todo = sys.argv[1:] or list(CATS)
