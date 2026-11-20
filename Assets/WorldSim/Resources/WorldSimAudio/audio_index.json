@@ -1,0 +1,998 @@
+{
+ "sfx": {
+  "ui_click": {
+   "seconds": 0.05,
+   "rms": 0.079
+  },
+  "ui_hover": {
+   "seconds": 0.03,
+   "rms": 0.079
+  },
+  "ui_confirm": {
+   "seconds": 0.19,
+   "rms": 0.079
+  },
+  "ui_cancel": {
+   "seconds": 0.19,
+   "rms": 0.079
+  },
+  "ui_error": {
+   "seconds": 0.29,
+   "rms": 0.079
+  },
+  "ui_open_panel": {
+   "seconds": 0.2,
+   "rms": 0.079
+  },
+  "ui_close_panel": {
+   "seconds": 0.2,
+   "rms": 0.079
+  },
+  "ui_notify": {
+   "seconds": 0.69,
+   "rms": 0.079
+  },
+  "ui_level_up": {
+   "seconds": 0.38,
+   "rms": 0.079
+  },
+  "ui_coin": {
+   "seconds": 0.25,
+   "rms": 0.079
+  },
+  "ui_power_select": {
+   "seconds": 0.3,
+   "rms": 0.079
+  },
+  "ui_power_cast": {
+   "seconds": 1.05,
+   "rms": 0.079
+  },
+  "combat_sword_swing": {
+   "seconds": 0.25,
+   "rms": 0.126
+  },
+  "combat_sword_hit": {
+   "seconds": 0.4,
+   "rms": 0.087
+  },
+  "combat_club_hit": {
+   "seconds": 0.3,
+   "rms": 0.107
+  },
+  "combat_arrow_shoot": {
+   "seconds": 0.3,
+   "rms": 0.126
+  },
+  "combat_arrow_hit": {
+   "seconds": 0.15,
+   "rms": 0.106
+  },
+  "combat_spear_throw": {
+   "seconds": 0.45,
+   "rms": 0.126
+  },
+  "combat_sling": {
+   "seconds": 0.35,
+   "rms": 0.126
+  },
+  "combat_shield_block": {
+   "seconds": 0.4,
+   "rms": 0.103
+  },
+  "combat_musket_shot": {
+   "seconds": 1.32,
+   "rms": 0.024
+  },
+  "combat_rifle_shot": {
+   "seconds": 1.02,
+   "rms": 0.033
+  },
+  "combat_mg_burst": {
+   "seconds": 1.23,
+   "rms": 0.043
+  },
+  "combat_cannon": {
+   "seconds": 1.5,
+   "rms": 0.11
+  },
+  "combat_explosion_small": {
+   "seconds": 1.2,
+   "rms": 0.072
+  },
+  "combat_explosion_big": {
+   "seconds": 2.5,
+   "rms": 0.096
+  },
+  "combat_flamethrower": {
+   "seconds": 1.5,
+   "rms": 0.126
+  },
+  "combat_laser": {
+   "seconds": 0.3,
+   "rms": 0.126
+  },
+  "combat_ricochet": {
+   "seconds": 0.4,
+   "rms": 0.126
+  },
+  "combat_armour_hit": {
+   "seconds": 0.5,
+   "rms": 0.077
+  },
+  "body_hurt_m": {
+   "seconds": 0.25,
+   "rms": 0.126
+  },
+  "body_hurt_f": {
+   "seconds": 0.25,
+   "rms": 0.126
+  },
+  "body_scream": {
+   "seconds": 1.0,
+   "rms": 0.126
+  },
+  "body_death": {
+   "seconds": 0.8,
+   "rms": 0.126
+  },
+  "body_burn": {
+   "seconds": 2.0,
+   "rms": 0.059
+  },
+  "body_freeze": {
+   "seconds": 0.6,
+   "rms": 0.114
+  },
+  "body_shatter": {
+   "seconds": 0.45,
+   "rms": 0.11
+  },
+  "body_electrocute": {
+   "seconds": 1.2,
+   "rms": 0.04
+  },
+  "body_cough": {
+   "seconds": 0.75,
+   "rms": 0.079
+  },
+  "body_bubbles": {
+   "seconds": 2.0,
+   "rms": 0.092
+  },
+  "body_crush": {
+   "seconds": 0.6,
+   "rms": 0.074
+  },
+  "body_cheer": {
+   "seconds": 2.5,
+   "rms": 0.126
+  },
+  "body_panic": {
+   "seconds": 3.0,
+   "rms": 0.126
+  },
+  "body_irradiated": {
+   "seconds": 2.0,
+   "rms": 0.054
+  },
+  "body_dissolve": {
+   "seconds": 1.48,
+   "rms": 0.112
+  },
+  "creature_howl": {
+   "seconds": 2.2,
+   "rms": 0.126
+  },
+  "creature_roar": {
+   "seconds": 1.4,
+   "rms": 0.126
+  },
+  "creature_growl": {
+   "seconds": 1.0,
+   "rms": 0.126
+  },
+  "creature_bark": {
+   "seconds": 0.31,
+   "rms": 0.126
+  },
+  "creature_moo": {
+   "seconds": 1.3,
+   "rms": 0.126
+  },
+  "creature_baa": {
+   "seconds": 0.8,
+   "rms": 0.126
+  },
+  "creature_oink": {
+   "seconds": 0.44,
+   "rms": 0.124
+  },
+  "creature_neigh": {
+   "seconds": 1.2,
+   "rms": 0.126
+  },
+  "creature_cluck": {
+   "seconds": 0.39,
+   "rms": 0.104
+  },
+  "creature_quack": {
+   "seconds": 0.37,
+   "rms": 0.126
+  },
+  "creature_chirp": {
+   "seconds": 0.47,
+   "rms": 0.126
+  },
+  "creature_caw": {
+   "seconds": 0.68,
+   "rms": 0.126
+  },
+  "creature_screech": {
+   "seconds": 0.9,
+   "rms": 0.112
+  },
+  "creature_hoot": {
+   "seconds": 0.75,
+   "rms": 0.126
+  },
+  "creature_croak": {
+   "seconds": 0.62,
+   "rms": 0.107
+  },
+  "creature_buzz": {
+   "seconds": 1.2,
+   "rms": 0.126
+  },
+  "creature_hiss": {
+   "seconds": 1.0,
+   "rms": 0.126
+  },
+  "creature_trumpet": {
+   "seconds": 1.4,
+   "rms": 0.126
+  },
+  "creature_whale": {
+   "seconds": 3.66,
+   "rms": 0.126
+  },
+  "creature_monster": {
+   "seconds": 2.0,
+   "rms": 0.126
+  },
+  "creature_titan": {
+   "seconds": 3.8,
+   "rms": 0.126
+  },
+  "creature_step_big": {
+   "seconds": 1.68,
+   "rms": 0.096
+  },
+  "creature_flap": {
+   "seconds": 0.48,
+   "rms": 0.104
+  },
+  "creature_chomp": {
+   "seconds": 0.36,
+   "rms": 0.126
+  },
+  "creature_wail": {
+   "seconds": 3.16,
+   "rms": 0.126
+  },
+  "creature_rattle": {
+   "seconds": 0.63,
+   "rms": 0.065
+  },
+  "creature_moan": {
+   "seconds": 1.8,
+   "rms": 0.126
+  },
+  "creature_laugh": {
+   "seconds": 1.52,
+   "rms": 0.125
+  },
+  "creature_whoosh_magic": {
+   "seconds": 1.0,
+   "rms": 0.126
+  },
+  "creature_dragon_breath": {
+   "seconds": 2.0,
+   "rms": 0.126
+  },
+  "creature_tentacle": {
+   "seconds": 1.5,
+   "rms": 0.111
+  },
+  "creature_burrow": {
+   "seconds": 2.0,
+   "rms": 0.126
+  },
+  "magic_charge": {
+   "seconds": 1.0,
+   "rms": 0.126
+  },
+  "magic_fire_launch": {
+   "seconds": 0.6,
+   "rms": 0.126
+  },
+  "magic_fire_impact": {
+   "seconds": 1.0,
+   "rms": 0.096
+  },
+  "magic_ice": {
+   "seconds": 0.52,
+   "rms": 0.11
+  },
+  "magic_nova": {
+   "seconds": 1.74,
+   "rms": 0.126
+  },
+  "magic_zap": {
+   "seconds": 0.5,
+   "rms": 0.056
+  },
+  "magic_thunder": {
+   "seconds": 3.0,
+   "rms": 0.126
+  },
+  "magic_heal": {
+   "seconds": 2.1,
+   "rms": 0.126
+  },
+  "magic_curse": {
+   "seconds": 2.6,
+   "rms": 0.12
+  },
+  "magic_portal": {
+   "seconds": 2.86,
+   "rms": 0.126
+  },
+  "magic_teleport": {
+   "seconds": 0.65,
+   "rms": 0.126
+  },
+  "magic_shield": {
+   "seconds": 1.22,
+   "rms": 0.126
+  },
+  "magic_whisper": {
+   "seconds": 2.6,
+   "rms": 0.126
+  },
+  "world_chop": {
+   "seconds": 0.3,
+   "rms": 0.095
+  },
+  "world_mine": {
+   "seconds": 0.5,
+   "rms": 0.1
+  },
+  "world_hammer": {
+   "seconds": 0.4,
+   "rms": 0.089
+  },
+  "world_saw": {
+   "seconds": 0.79,
+   "rms": 0.126
+  },
+  "world_hoe": {
+   "seconds": 0.3,
+   "rms": 0.063
+  },
+  "world_harvest": {
+   "seconds": 0.43,
+   "rms": 0.089
+  },
+  "world_splash": {
+   "seconds": 0.6,
+   "rms": 0.126
+  },
+  "world_splash_big": {
+   "seconds": 1.5,
+   "rms": 0.121
+  },
+  "world_complete": {
+   "seconds": 1.2,
+   "rms": 0.126
+  },
+  "world_tree_fall": {
+   "seconds": 2.2,
+   "rms": 0.067
+  },
+  "world_rock_break": {
+   "seconds": 0.5,
+   "rms": 0.07
+  },
+  "world_door": {
+   "seconds": 0.75,
+   "rms": 0.065
+  },
+  "world_bell_civic": {
+   "seconds": 3.6,
+   "rms": 0.091
+  },
+  "world_step_grass": {
+   "seconds": 0.36,
+   "rms": 0.063
+  },
+  "world_step_stone": {
+   "seconds": 0.36,
+   "rms": 0.065
+  },
+  "world_step_snow": {
+   "seconds": 0.36,
+   "rms": 0.1
+  },
+  "world_step_sand": {
+   "seconds": 0.36,
+   "rms": 0.065
+  },
+  "world_cart": {
+   "seconds": 2.0,
+   "rms": 0.126
+  },
+  "world_ship_horn": {
+   "seconds": 3.16,
+   "rms": 0.126
+  },
+  "world_creak": {
+   "seconds": 1.5,
+   "rms": 0.075
+  },
+  "world_train": {
+   "seconds": 3.0,
+   "rms": 0.111
+  },
+  "world_engine": {
+   "seconds": 2.0,
+   "rms": 0.126
+  },
+  "world_tracks": {
+   "seconds": 2.0,
+   "rms": 0.126
+  },
+  "world_jet": {
+   "seconds": 2.5,
+   "rms": 0.126
+  },
+  "world_heli": {
+   "seconds": 2.0,
+   "rms": 0.126
+  },
+  "world_missile_launch": {
+   "seconds": 2.5,
+   "rms": 0.112
+  },
+  "world_missile_whistle": {
+   "seconds": 2.0,
+   "rms": 0.126
+  },
+  "world_siren": {
+   "seconds": 4.0,
+   "rms": 0.126
+  },
+  "world_nuke": {
+   "seconds": 6.66,
+   "rms": 0.126
+  },
+  "world_geiger": {
+   "seconds": 2.0,
+   "rms": 0.04
+  },
+  "world_market": {
+   "seconds": 4.0,
+   "rms": 0.126
+  },
+  "disaster_quake": {
+   "seconds": 4.0,
+   "rms": 0.126
+  },
+  "disaster_volcano": {
+   "seconds": 4.0,
+   "rms": 0.116
+  },
+  "disaster_tsunami": {
+   "seconds": 4.0,
+   "rms": 0.126
+  },
+  "disaster_meteor": {
+   "seconds": 3.4,
+   "rms": 0.097
+  },
+  "disaster_fireworks": {
+   "seconds": 1.6,
+   "rms": 0.096
+  },
+  "disaster_thunder_far": {
+   "seconds": 3.0,
+   "rms": 0.126
+  },
+  "disaster_tornado_hit": {
+   "seconds": 3.0,
+   "rms": 0.126
+  },
+  "building_house_fire": {
+   "seconds": 4.0,
+   "rms": 0.126
+  },
+  "building_fire_small": {
+   "seconds": 2.0,
+   "rms": 0.088
+  },
+  "building_crack": {
+   "seconds": 1.0,
+   "rms": 0.075
+  },
+  "building_collapse": {
+   "seconds": 2.6,
+   "rms": 0.126
+  },
+  "building_collapse_wood": {
+   "seconds": 1.7,
+   "rms": 0.118
+  },
+  "building_glass_break": {
+   "seconds": 0.5,
+   "rms": 0.06
+  },
+  "building_metal_crash": {
+   "seconds": 1.2,
+   "rms": 0.105
+  },
+  "building_debris_rain": {
+   "seconds": 1.51,
+   "rms": 0.106
+  },
+  "building_flood_rush": {
+   "seconds": 4.0,
+   "rms": 0.126
+  },
+  "building_freeze_creak": {
+   "seconds": 1.2,
+   "rms": 0.061
+  },
+  "building_construct_loop": {
+   "seconds": 2.0,
+   "rms": 0.092
+  },
+  "extra_blast_near": {
+   "seconds": 2.5,
+   "rms": 0.106
+  },
+  "extra_blast_mid": {
+   "seconds": 3.12,
+   "rms": 0.083
+  },
+  "extra_blast_far": {
+   "seconds": 3.54,
+   "rms": 0.097
+  },
+  "extra_nuke_near": {
+   "seconds": 6.66,
+   "rms": 0.121
+  },
+  "extra_nuke_far": {
+   "seconds": 7.71,
+   "rms": 0.113
+  },
+  "extra_shockwave_pass": {
+   "seconds": 1.6,
+   "rms": 0.126
+  },
+  "extra_ear_ring": {
+   "seconds": 3.5,
+   "rms": 0.126
+  },
+  "extra_bomb_whistle": {
+   "seconds": 2.0,
+   "rms": 0.126
+  },
+  "extra_bullet_whiz": {
+   "seconds": 0.25,
+   "rms": 0.126
+  },
+  "extra_reload": {
+   "seconds": 0.33,
+   "rms": 0.092
+  },
+  "extra_tank_shot": {
+   "seconds": 1.4,
+   "rms": 0.096
+  },
+  "extra_artillery_far": {
+   "seconds": 2.64,
+   "rms": 0.094
+  },
+  "extra_drone_buzz": {
+   "seconds": 3.0,
+   "rms": 0.126
+  },
+  "extra_plane_dive": {
+   "seconds": 2.5,
+   "rms": 0.126
+  },
+  "extra_war_horn": {
+   "seconds": 3.16,
+   "rms": 0.126
+  },
+  "extra_war_drums": {
+   "seconds": 4.4,
+   "rms": 0.126
+  },
+  "extra_battle_clash": {
+   "seconds": 4.0,
+   "rms": 0.09
+  },
+  "extra_bow_volley": {
+   "seconds": 1.4,
+   "rms": 0.126
+  },
+  "extra_gunfire_distant": {
+   "seconds": 5.35,
+   "rms": 0.11
+  },
+  "extra_marching": {
+   "seconds": 7.87,
+   "rms": 0.042
+  },
+  "extra_cavalry_charge": {
+   "seconds": 4.0,
+   "rms": 0.126
+  },
+  "extra_horse_gallop": {
+   "seconds": 2.51,
+   "rms": 0.061
+  },
+  "extra_siege_impact": {
+   "seconds": 1.5,
+   "rms": 0.115
+  },
+  "extra_catapult_launch": {
+   "seconds": 1.5,
+   "rms": 0.088
+  },
+  "extra_crowd_scream": {
+   "seconds": 3.0,
+   "rms": 0.126
+  },
+  "extra_crowd_murmur": {
+   "seconds": 3.09,
+   "rms": 0.117
+  },
+  "extra_crowd_cheer_big": {
+   "seconds": 2.8,
+   "rms": 0.115
+  },
+  "extra_crowd_angry": {
+   "seconds": 2.92,
+   "rms": 0.11
+  },
+  "extra_wind_gust": {
+   "seconds": 2.5,
+   "rms": 0.126
+  },
+  "extra_tree_rustle": {
+   "seconds": 2.0,
+   "rms": 0.109
+  },
+  "extra_birds_flock": {
+   "seconds": 1.7,
+   "rms": 0.124
+  },
+  "extra_lava_bubble": {
+   "seconds": 3.0,
+   "rms": 0.126
+  },
+  "extra_geyser": {
+   "seconds": 3.0,
+   "rms": 0.108
+  },
+  "extra_avalanche": {
+   "seconds": 4.0,
+   "rms": 0.126
+  },
+  "extra_ice_crack": {
+   "seconds": 0.4,
+   "rms": 0.043
+  },
+  "extra_hail": {
+   "seconds": 3.0,
+   "rms": 0.079
+  },
+  "extra_water_drop": {
+   "seconds": 0.07,
+   "rms": 0.126
+  },
+  "extra_dragon_roar": {
+   "seconds": 3.9,
+   "rms": 0.126
+  },
+  "extra_phoenix_cry": {
+   "seconds": 1.0,
+   "rms": 0.115
+  },
+  "extra_golem_step": {
+   "seconds": 1.68,
+   "rms": 0.093
+  },
+  "extra_imp_cackle": {
+   "seconds": 1.52,
+   "rms": 0.126
+  },
+  "extra_jinn_echo_laugh": {
+   "seconds": 2.22,
+   "rms": 0.126
+  },
+  "extra_ghost_wail": {
+   "seconds": 3.16,
+   "rms": 0.126
+  },
+  "extra_swarm": {
+   "seconds": 1.56,
+   "rms": 0.126
+  },
+  "extra_meow": {
+   "seconds": 0.6,
+   "rms": 0.126
+  },
+  "extra_snort": {
+   "seconds": 0.4,
+   "rms": 0.126
+  },
+  "extra_bat_squeak": {
+   "seconds": 0.31,
+   "rms": 0.126
+  },
+  "extra_monkey_chatter": {
+   "seconds": 0.94,
+   "rms": 0.101
+  },
+  "extra_dolphin_click": {
+   "seconds": 0.58,
+   "rms": 0.11
+  },
+  "extra_seal_bark": {
+   "seconds": 0.8,
+   "rms": 0.126
+  },
+  "extra_skitter": {
+   "seconds": 0.96,
+   "rms": 0.125
+  },
+  "event_kingdom_founded": {
+   "seconds": 2.46,
+   "rms": 0.112
+  },
+  "event_kingdom_fallen": {
+   "seconds": 2.51,
+   "rms": 0.112
+  },
+  "event_war_declared": {
+   "seconds": 5.2,
+   "rms": 0.112
+  },
+  "event_peace": {
+   "seconds": 2.85,
+   "rms": 0.112
+  },
+  "event_era_advance": {
+   "seconds": 3.24,
+   "rms": 0.112
+  },
+  "event_birth": {
+   "seconds": 0.92,
+   "rms": 0.112
+  },
+  "event_wedding": {
+   "seconds": 1.99,
+   "rms": 0.112
+  },
+  "event_plague": {
+   "seconds": 3.15,
+   "rms": 0.067
+  },
+  "event_achievement": {
+   "seconds": 0.52,
+   "rms": 0.112
+  },
+  "sting_victory": {
+   "seconds": 2.59,
+   "rms": 0.112
+  },
+  "sting_defeat": {
+   "seconds": 3.36,
+   "rms": 0.112
+  }
+ },
+ "ambient": {
+  "forest_day": {
+   "seconds": 12.0,
+   "rms": 0.063,
+   "loop": true
+  },
+  "night_crickets": {
+   "seconds": 12.0,
+   "rms": 0.063,
+   "loop": true
+  },
+  "ocean": {
+   "seconds": 12.0,
+   "rms": 0.063,
+   "loop": true
+  },
+  "river": {
+   "seconds": 12.0,
+   "rms": 0.063,
+   "loop": true
+  },
+  "desert_wind": {
+   "seconds": 12.0,
+   "rms": 0.063,
+   "loop": true
+  },
+  "snow_wind": {
+   "seconds": 12.0,
+   "rms": 0.063,
+   "loop": true
+  },
+  "swamp": {
+   "seconds": 12.0,
+   "rms": 0.063,
+   "loop": true
+  },
+  "jungle": {
+   "seconds": 12.0,
+   "rms": 0.063,
+   "loop": true
+  },
+  "cave_drip": {
+   "seconds": 12.0,
+   "rms": 0.063,
+   "loop": true
+  },
+  "city_bustle": {
+   "seconds": 12.0,
+   "rms": 0.063,
+   "loop": true
+  },
+  "battle_distant": {
+   "seconds": 12.0,
+   "rms": 0.063,
+   "loop": true
+  },
+  "volcanic": {
+   "seconds": 12.0,
+   "rms": 0.063,
+   "loop": true
+  },
+  "rain": {
+   "seconds": 12.0,
+   "rms": 0.063,
+   "loop": true
+  },
+  "thunderstorm": {
+   "seconds": 12.0,
+   "rms": 0.063,
+   "loop": true
+  },
+  "blizzard": {
+   "seconds": 12.0,
+   "rms": 0.063,
+   "loop": true
+  },
+  "sandstorm": {
+   "seconds": 12.0,
+   "rms": 0.063,
+   "loop": true
+  },
+  "burning_city": {
+   "seconds": 12.0,
+   "rms": 0.063,
+   "loop": true
+  },
+  "battle_close": {
+   "seconds": 11.5,
+   "rms": 0.063,
+   "loop": true
+  },
+  "underwater": {
+   "seconds": 12.0,
+   "rms": 0.063,
+   "loop": true
+  },
+  "night_city": {
+   "seconds": 12.0,
+   "rms": 0.063,
+   "loop": true
+  },
+  "farm_day": {
+   "seconds": 12.0,
+   "rms": 0.063,
+   "loop": true
+  },
+  "harbor": {
+   "seconds": 12.0,
+   "rms": 0.063,
+   "loop": true
+  },
+  "wildfire": {
+   "seconds": 12.0,
+   "rms": 0.063,
+   "loop": true
+  },
+  "wasteland": {
+   "seconds": 12.0,
+   "rms": 0.063,
+   "loop": true
+  }
+ },
+ "music": {
+  "war": {
+   "seconds": 31.7,
+   "rms": 0.1,
+   "loop": true,
+   "style": "industrial"
+  },
+  "peace": {
+   "seconds": 45.41,
+   "rms": 0.1,
+   "loop": true,
+   "style": "medieval"
+  },
+  "apocalypse": {
+   "seconds": 53.03,
+   "rms": 0.1,
+   "loop": true,
+   "style": "modern"
+  },
+  "title": {
+   "seconds": 42.37,
+   "rms": 0.069,
+   "loop": true,
+   "style": "ancient"
+  },
+  "exploration": {
+   "seconds": 39.7,
+   "rms": 0.1,
+   "loop": true,
+   "style": "stone"
+  },
+  "magic": {
+   "seconds": 38.1,
+   "rms": 0.1,
+   "loop": true,
+   "style": "future"
+  },
+  "stone": {
+   "seconds": 45.71,
+   "rms": 0.1,
+   "loop": true
+  },
+  "ancient": {
+   "seconds": 41.74,
+   "rms": 0.069,
+   "loop": true
+  },
+  "medieval": {
+   "seconds": 38.4,
+   "rms": 0.1,
+   "loop": true
+  },
+  "industrial": {
+   "seconds": 35.56,
+   "rms": 0.1,
+   "loop": true
+  },
+  "modern": {
+   "seconds": 40.0,
+   "rms": 0.1,
+   "loop": true
+  },
+  "future": {
+   "seconds": 34.29,
+   "rms": 0.1,
+   "loop": true
+  }
+ }
+}

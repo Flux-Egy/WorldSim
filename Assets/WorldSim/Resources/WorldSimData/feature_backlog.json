@@ -1,0 +1,146 @@
+[
+ {
+  "feature": "KINGDOM WALLS & CASTLES",
+  "source": "TOP REQUEST",
+  "comments": 97,
+  "what": "walls with gates & towers; cannons breach them; castles hold sieges"
+ },
+ {
+  "feature": "SHIPS, PIRATES & NAVAL WAR",
+  "source": "TOP REQUEST",
+  "comments": 85,
+  "what": "fleets, sea battles, pirate raids, wrecks you can find later"
+ },
+ {
+  "feature": "CAVALRY & MOUNTS",
+  "source": "TOP REQUEST",
+  "comments": 81,
+  "what": "horses, camels & beasts for travel and battle (already drawn)"
+ },
+ {
+  "feature": "BRIDGES",
+  "source": "TOP REQUEST",
+  "comments": 62,
+  "what": "nations build bridges over rivers & straits to reach new land"
+ },
+ {
+  "feature": "HEROES & ROYAL GUARDS",
+  "source": "TOP REQUEST",
+  "comments": 59,
+  "what": "legends with abilities; elite guards protect the ruler"
+ },
+ {
+  "feature": "FORMATIONS & WAR GOALS",
+  "source": "REQUESTED",
+  "comments": 35,
+  "what": "blocks & lines, banners, officers; wars fought for a target"
+ },
+ {
+  "feature": "PEACE DEALS & VASSALS",
+  "source": "REQUESTED",
+  "comments": 14,
+  "what": "treaties split land; losers become vassals or puppet states"
+ },
+ {
+  "feature": "BIGGER MAPS",
+  "source": "REQUESTED",
+  "comments": 56,
+  "what": "chunked worlds stream in pieces, phone keeps 30 fps"
+ },
+ {
+  "feature": "FARM ANIMALS",
+  "source": "REQUESTED",
+  "comments": 26,
+  "what": "pens, milk, eggs & wool; herders move flocks"
+ },
+ {
+  "feature": "REBELLIONS & CRIME",
+  "source": "REQUESTED",
+  "comments": 22,
+  "what": "mobs with torches, thieves, rebel towns switch sides"
+ },
+ {
+  "feature": "NOMADS & TRADE ROUTES",
+  "source": "REQUESTED",
+  "comments": 19,
+  "what": "caravans walk real roads; trade spreads ideas & disease"
+ },
+ {
+  "feature": "GOVERNMENTS & LAWS",
+  "source": "REQUESTED",
+  "comments": 26,
+  "what": "monarchy, republic, junta...; laws change daily life"
+ },
+ {
+  "feature": "PROFESSIONS CHANGE LOOKS",
+  "source": "REQUESTED",
+  "comments": 10,
+  "what": "smith, fisher, farmer, merchant, scholar each look different"
+ },
+ {
+  "feature": "FESTIVALS & FIREWORKS",
+  "source": "REQUESTED",
+  "comments": 6,
+  "what": "every culture invents its own holidays & lanterns"
+ },
+ {
+  "feature": "MODERN ERA",
+  "source": "NOT PLANNED THERE",
+  "comments": 69,
+  "what": "their most-wanted \"no\": we ship modern + future eras"
+ },
+ {
+  "feature": "FOG OF WAR & EXPLORERS",
+  "source": "REQUESTED",
+  "comments": 11,
+  "what": "nations only know what they explored; no wars on strangers"
+ },
+ {
+  "feature": "WORLD EDITOR + UNDO",
+  "source": "REQUESTED",
+  "comments": 23,
+  "what": "paint height & biomes with brushes; undo any mistake"
+ },
+ {
+  "feature": "SHARE WORLDS & CULTURES",
+  "source": "REQUESTED",
+  "comments": 17,
+  "what": "export a world or a culture as a code; play friends' worlds"
+ },
+ {
+  "feature": "SEASONS & WEATHER",
+  "source": "LIKELY NEXT ASK",
+  "comments": 0,
+  "what": "spring bloom, rain, autumn leaves, snow winters & famine"
+ },
+ {
+  "feature": "VOLCANOES & TSUNAMIS",
+  "source": "LIKELY NEXT ASK",
+  "comments": 0,
+  "what": "natural disasters with warnings nations can learn to read"
+ },
+ {
+  "feature": "TITANS & SEA SERPENTS",
+  "source": "REQUESTED",
+  "comments": 43,
+  "what": "rare giant beasts that grow, hunt and become legends"
+ },
+ {
+  "feature": "TIMELAPSE REPLAY & GRAPHS",
+  "source": "LIKELY NEXT ASK",
+  "comments": 0,
+  "what": "rewind centuries, compare nations, export a clip"
+ },
+ {
+  "feature": "PREHISTORIC BIOME",
+  "source": "REQUESTED",
+  "comments": 16,
+  "what": "fern jungles & giant grazers before the stone age"
+ },
+ {
+  "feature": "MIGRATION & REFUGEES",
+  "source": "LIKELY NEXT ASK",
+  "comments": 0,
+  "what": "war & famine push families to walk to safer lands"
+ }
+]

@@ -1,0 +1,72 @@
+{
+ "disease_template": {
+  "name": "generated from culture namer",
+  "vectors": [
+   "AIR",
+   "RATS",
+   "WATER",
+   "ANIMALS"
+  ],
+  "stages": [
+   "HEALTHY",
+   "INFECTED (no symptoms)",
+   "SICK",
+   "SEVERE",
+   "IMMUNE or DEAD"
+  ],
+  "cures_by_era": {
+   "ANCIENT": "herbs (slows)",
+   "MEDIEVAL": "quarantine",
+   "MODERN": "vaccine"
+  },
+  "visuals": "shader _Sick on SKIN, status bubbles, cough cloud, flies, sweat overlay"
+ },
+ "combat_feedback": [
+  "hit flash (_Flash=1 then fades)",
+  "damage numbers (3x5 font, red)",
+  "hp bar 12x3",
+  "animals die legs-up (a_*_dead)",
+  "people lie down (rotate 90)",
+  "grave sprite"
+ ],
+ "powers": {
+  "NATURE": [
+   "rain",
+   "drought",
+   "lightning",
+   "quake",
+   "meteor",
+   "wildfire"
+  ],
+  "LIFE": [
+   "humans",
+   "animals",
+   "forest"
+  ],
+  "FATE": [
+   "bless",
+   "plague",
+   "inspire"
+  ],
+  "NATIONS": [
+   "war",
+   "peace",
+   "take control"
+  ],
+  "STRIKES": [
+   "missile strike",
+   "nuclear strike"
+  ]
+ },
+ "radiation_sickness": {
+  "cause": "fallout zone or irradiated waste",
+  "contagious": false,
+  "stages": [
+   "EXPOSED",
+   "SICK",
+   "SEVERE",
+   "RECOVERED or DEAD"
+  ],
+  "visuals": "same _Sick skin tint + status_sick bubble + radiation_glow under the person"
+ }
+}

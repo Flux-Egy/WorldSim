@@ -1,0 +1,138 @@
+{
+ "buildings_eras": {
+  "sprites": 476,
+  "pages": 1
+ },
+ "houses_culture_kit": {
+  "sprites": 2300,
+  "pages": 2
+ },
+ "people": {
+  "sprites": 1350,
+  "pages": 1
+ },
+ "animals": {
+  "sprites": 190,
+  "pages": 1
+ },
+ "army": {
+  "sprites": 111,
+  "pages": 1
+ },
+ "aircraft": {
+  "sprites": 96,
+  "pages": 1
+ },
+ "air_defence": {
+  "sprites": 15,
+  "pages": 1
+ },
+ "fx": {
+  "sprites": 76,
+  "pages": 1
+ },
+ "nature_props": {
+  "sprites": 53,
+  "pages": 1
+ },
+ "terrain_tiles": {
+  "sprites": 113,
+  "pages": 1
+ },
+ "ui_kit": {
+  "sprites": 125,
+  "pages": 1
+ },
+ "font_5x7": {
+  "sprites": 57,
+  "pages": 1
+ },
+ "strategic": {
+  "sprites": 197,
+  "pages": 1
+ },
+ "fauna_land": {
+  "sprites": 3212,
+  "pages": 1
+ },
+ "fauna_critters": {
+  "sprites": 1032,
+  "pages": 1
+ },
+ "fauna_sea": {
+  "sprites": 550,
+  "pages": 1
+ },
+ "beings": {
+  "sprites": 518,
+  "pages": 1
+ },
+ "titans": {
+  "sprites": 273,
+  "pages": 1
+ },
+ "spells": {
+  "sprites": 914,
+  "pages": 1
+ },
+ "soldiers_actions": {
+  "sprites": 5124,
+  "pages": 1
+ },
+ "people_actions": {
+  "sprites": 4392,
+  "pages": 1
+ },
+ "nature_seasonal": {
+  "sprites": 427,
+  "pages": 1
+ },
+ "terrain_seasonal": {
+  "sprites": 140,
+  "pages": 1
+ },
+ "world_structures": {
+  "sprites": 736,
+  "pages": 1
+ },
+ "farms_roads": {
+  "sprites": 144,
+  "pages": 1
+ },
+ "ships_vehicles": {
+  "sprites": 376,
+  "pages": 1
+ },
+ "kingdom_colours": {
+  "sprites": 672,
+  "pages": 1
+ },
+ "icons": {
+  "sprites": 698,
+  "pages": 1
+ },
+ "weather_fx": {
+  "sprites": 104,
+  "pages": 1
+ },
+ "disaster_buildings_eras": {
+  "sprites": 476,
+  "pages": 1
+ },
+ "disaster_houses": {
+  "sprites": 2300,
+  "pages": 2
+ },
+ "disaster_structures": {
+  "sprites": 676,
+  "pages": 1
+ },
+ "decals_particles": {
+  "sprites": 100,
+  "pages": 1
+ },
+ "building_overlays": {
+  "sprites": 24,
+  "pages": 1
+ }
+}

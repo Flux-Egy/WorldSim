@@ -1,0 +1,353 @@
+{
+ "biomes": [
+  {
+   "name": "MEADOW",
+   "ground": [
+    "#6c9e4c",
+    "#74a753",
+    "#7cb05a"
+   ],
+   "props": "tree:3,bush:6",
+   "speckle": "#e4d27a,#d98a8a"
+  },
+  {
+   "name": "FLOWER FIELD",
+   "ground": [
+    "#74a753",
+    "#7cb05a",
+    "#84b860"
+   ],
+   "props": "bush:3",
+   "speckle": "#e8c84a,#d5452d,#f0efe2,#c45aa8"
+  },
+  {
+   "name": "FOREST",
+   "ground": [
+    "#4e8a3c",
+    "#56923f",
+    "#5e9a46"
+   ],
+   "props": "tree:14",
+   "speckle": null
+  },
+  {
+   "name": "PINE TAIGA",
+   "ground": [
+    "#3f6a3c",
+    "#46723f",
+    "#4e7a46"
+   ],
+   "props": "pine:16",
+   "speckle": null
+  },
+  {
+   "name": "JUNGLE",
+   "ground": [
+    "#2f6a34",
+    "#36743a",
+    "#3e7e40"
+   ],
+   "props": "palm:6,tree:8,fern:10",
+   "speckle": null
+  },
+  {
+   "name": "SWAMP",
+   "ground": [
+    "#4a5a34",
+    "#52643a",
+    "#5a6c40"
+   ],
+   "props": "water:5,reeds:10,deadtree:3",
+   "speckle": null
+  },
+  {
+   "name": "SAVANNA",
+   "ground": [
+    "#b8a860",
+    "#c4b46a",
+    "#ccbc72"
+   ],
+   "props": "tree:2,bush:5",
+   "speckle": "#a89850"
+  },
+  {
+   "name": "DESERT DUNES",
+   "ground": [
+    "#d9c08a",
+    "#e2cc96",
+    "#c9ad78"
+   ],
+   "props": "cactus:4,rock:3",
+   "speckle": "#e8d6a6"
+  },
+  {
+   "name": "BADLANDS",
+   "ground": [
+    "#b0603a",
+    "#c07040",
+    "#a0502e"
+   ],
+   "props": "rock:6,deadtree:2",
+   "speckle": "#d8905a"
+  },
+  {
+   "name": "STEPPE",
+   "ground": [
+    "#a8a868",
+    "#b4b070",
+    "#9c9c60"
+   ],
+   "props": "bush:4,rock:2",
+   "speckle": "#c8c080"
+  },
+  {
+   "name": "TUNDRA",
+   "ground": [
+    "#8a9a7a",
+    "#9aa888",
+    "#7a8a6c"
+   ],
+   "props": "rock:5,pine:2",
+   "speckle": "#d8dde0"
+  },
+  {
+   "name": "SNOW",
+   "ground": [
+    "#e8eef2",
+    "#dfe8ec",
+    "#f4f8fa"
+   ],
+   "props": "snowpine:6,rock:2",
+   "speckle": "#c8d4dc"
+  },
+  {
+   "name": "GLACIER",
+   "ground": [
+    "#b8d8e8",
+    "#cfe6f0",
+    "#a8c8dc"
+   ],
+   "props": "ice:8",
+   "speckle": "#ffffff"
+  },
+  {
+   "name": "BEACH",
+   "ground": [
+    "#e2cc96",
+    "#ead6a4",
+    "#d8c08a"
+   ],
+   "props": "palm:3,shell:6",
+   "speckle": "#f4ecd8"
+  },
+  {
+   "name": "ROCKY HIGHLAND",
+   "ground": [
+    "#7a8070",
+    "#8a9080",
+    "#6a7062"
+   ],
+   "props": "rock:10,bush:3",
+   "speckle": "#a8aca0"
+  },
+  {
+   "name": "MOUNTAIN",
+   "ground": [
+    "#6d6a63",
+    "#87837a",
+    "#5a5852"
+   ],
+   "props": "rock:12",
+   "speckle": "#bdb8ad"
+  },
+  {
+   "name": "VOLCANIC",
+   "ground": [
+    "#2a2420",
+    "#3a3430",
+    "#4a4038"
+   ],
+   "props": "lava:3,rock:4",
+   "speckle": "#d5452d"
+  },
+  {
+   "name": "ASH WASTE",
+   "ground": [
+    "#5a5650",
+    "#6a6660",
+    "#4a4640"
+   ],
+   "props": "deadtree:5,rock:3",
+   "speckle": "#8a8680"
+  },
+  {
+   "name": "SALT FLATS",
+   "ground": [
+    "#e8e4dc",
+    "#f0ece4",
+    "#dcd8d0"
+   ],
+   "props": "crack:14",
+   "speckle": "#c8c4bc"
+  },
+  {
+   "name": "FUNGAL GROVE",
+   "ground": [
+    "#4a3a5a",
+    "#54446a",
+    "#3e3050"
+   ],
+   "props": "mushroom:10",
+   "speckle": "#8a6aa8"
+  },
+  {
+   "name": "CORAL SHALLOWS",
+   "ground": [
+    "#3a8ab0",
+    "#4b95c2",
+    "#5aa4c8"
+   ],
+   "props": "coral:10",
+   "speckle": "#8ad0e0"
+  },
+  {
+   "name": "FARMLAND",
+   "ground": [
+    "#7cb05a",
+    "#74a753",
+    "#6c9e4c"
+   ],
+   "props": "farm:1",
+   "speckle": null
+  },
+  {
+   "name": "CRYSTAL CAVES",
+   "ground": [
+    "#3a3a52",
+    "#44445e",
+    "#32324a"
+   ],
+   "props": "crystal:8,rock:4",
+   "speckle": "#6a6a8a"
+  },
+  {
+   "name": "IRRADIATED WASTE",
+   "ground": [
+    "#5a6a3a",
+    "#647444",
+    "#4e5e32"
+   ],
+   "props": "deadtree:4,glow:5",
+   "speckle": "#9ae04a"
+  }
+ ],
+ "elevation_levels": [
+  {
+   "level": 0,
+   "name": "DEEP OCEAN",
+   "color": "#1d4a82"
+  },
+  {
+   "level": 1,
+   "name": "OCEAN",
+   "color": "#255c98"
+  },
+  {
+   "level": 2,
+   "name": "SHALLOWS",
+   "color": "#3277b0"
+  },
+  {
+   "level": 3,
+   "name": "BEACH",
+   "color": "#dcc896"
+  },
+  {
+   "level": 4,
+   "name": "LOWLAND",
+   "color": "#74a753"
+  },
+  {
+   "level": 5,
+   "name": "PLAINS / FOREST",
+   "color": "#5e9a46"
+  },
+  {
+   "level": 6,
+   "name": "HILLS",
+   "color": "#7a9a52"
+  },
+  {
+   "level": 7,
+   "name": "HIGHLAND",
+   "color": "#8a8a6a"
+  },
+  {
+   "level": 8,
+   "name": "MOUNTAIN",
+   "color": "#87837a"
+  },
+  {
+   "level": 9,
+   "name": "PEAK",
+   "color": "#f2f4f6"
+  }
+ ],
+ "elevation_render": "draw rows back->front; top face at y - level*6 px (fine grid); if the cell in front is lower draw cliff_<mat>_<diff> below; water surface = level 3",
+ "building_categories": [
+  "poor",
+  "rich",
+  "seat",
+  "commerce",
+  "industry",
+  "mine",
+  "research",
+  "energy",
+  "military",
+  "defense"
+ ],
+ "category_names": {
+  "poor": "HOMES",
+  "rich": "RICH HOMES",
+  "seat": "SEAT OF RULE",
+  "commerce": "TRADE",
+  "industry": "CRAFT/INDUSTRY",
+  "mine": "MINES",
+  "research": "KNOWLEDGE",
+  "energy": "ENERGY",
+  "military": "MILITARY",
+  "defense": "DEFENSE"
+ },
+ "house_tiers": [
+  "slum",
+  "poor",
+  "middle",
+  "rich",
+  "palace"
+ ],
+ "day_night": {
+  "tint": {
+   "stone": [
+    0.2,
+    0.23,
+    0.4
+   ],
+   "medieval": [
+    0.25,
+    0.28,
+    0.47
+   ],
+   "modern": [
+    0.3,
+    0.33,
+    0.52
+   ],
+   "future": [
+    0.26,
+    0.28,
+    0.5
+   ]
+  },
+  "lights": "pixels with lit/fire/cyan colours keep full brightness + additive glow (radius 3 & 9 px); street lights per era: torch stakes, torch poles, gas lamps, sodium, holo pylons"
+ }
+}

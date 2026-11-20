@@ -1,0 +1,500 @@
+{
+ "eras": [
+  "STONE AGE",
+  "ANCIENT",
+  "MEDIEVAL",
+  "INDUSTRIAL",
+  "MODERN",
+  "FUTURE"
+ ],
+ "roles": [
+  "INFANTRY",
+  "RANGED",
+  "RANGED 2",
+  "MOUNTED / BEAST",
+  "SIEGE / FIRE",
+  "ELITE / SPECIAL"
+ ],
+ "units": [
+  {
+   "era": 0,
+   "era_name": "STONE AGE",
+   "name": "CLUB WARBAND",
+   "needs": [
+    "WOOD"
+   ]
+  },
+  {
+   "era": 0,
+   "era_name": "STONE AGE",
+   "name": "SPEAR THROWER",
+   "needs": [
+    "WOOD"
+   ]
+  },
+  {
+   "era": 0,
+   "era_name": "STONE AGE",
+   "name": "SLINGER",
+   "needs": [
+    "STONE"
+   ]
+  },
+  {
+   "era": 0,
+   "era_name": "STONE AGE",
+   "name": "WAR DOGS",
+   "needs": [
+    "TAMED DOGS"
+   ]
+  },
+  {
+   "era": 0,
+   "era_name": "STONE AGE",
+   "name": "TORCH RAIDERS",
+   "needs": [
+    "FIRE"
+   ]
+  },
+  {
+   "era": 0,
+   "era_name": "STONE AGE",
+   "name": "CHIEFTAIN",
+   "needs": [
+    "TRIBE 50",
+    ""
+   ]
+  },
+  {
+   "era": 1,
+   "era_name": "ANCIENT",
+   "name": "BRONZE PHALANX",
+   "needs": [
+    "COPPER",
+    "TIN"
+   ]
+  },
+  {
+   "era": 1,
+   "era_name": "ANCIENT",
+   "name": "ARCHER",
+   "needs": [
+    "WOOD"
+   ]
+  },
+  {
+   "era": 1,
+   "era_name": "ANCIENT",
+   "name": "JAVELINEER",
+   "needs": [
+    "COPPER"
+   ]
+  },
+  {
+   "era": 1,
+   "era_name": "ANCIENT",
+   "name": "CAMEL LANCER",
+   "needs": [
+    "CAMELS"
+   ]
+  },
+  {
+   "era": 1,
+   "era_name": "ANCIENT",
+   "name": "BATTERING RAM",
+   "needs": [
+    "WOOD",
+    "HIDE"
+   ]
+  },
+  {
+   "era": 1,
+   "era_name": "ANCIENT",
+   "name": "WAR KING",
+   "needs": [
+    "GOLD"
+   ]
+  },
+  {
+   "era": 2,
+   "era_name": "MEDIEVAL",
+   "name": "PIKEMEN",
+   "needs": [
+    "IRON"
+   ]
+  },
+  {
+   "era": 2,
+   "era_name": "MEDIEVAL",
+   "name": "LONGBOWMAN",
+   "needs": [
+    "YEW WOOD"
+   ]
+  },
+  {
+   "era": 2,
+   "era_name": "MEDIEVAL",
+   "name": "CROSSBOWMAN",
+   "needs": [
+    "IRON"
+   ]
+  },
+  {
+   "era": 2,
+   "era_name": "MEDIEVAL",
+   "name": "KNIGHT LANCER",
+   "needs": [
+    "IRON",
+    "HORSES"
+   ]
+  },
+  {
+   "era": 2,
+   "era_name": "MEDIEVAL",
+   "name": "CATAPULT",
+   "needs": [
+    "WOOD",
+    "STONE"
+   ]
+  },
+  {
+   "era": 2,
+   "era_name": "MEDIEVAL",
+   "name": "TREBUCHET",
+   "needs": [
+    "WOOD",
+    "ENGINEERS"
+   ]
+  },
+  {
+   "era": 3,
+   "era_name": "INDUSTRIAL",
+   "name": "MUSKET LINE",
+   "needs": [
+    "IRON",
+    "SALTPETER"
+   ]
+  },
+  {
+   "era": 3,
+   "era_name": "INDUSTRIAL",
+   "name": "GRENADIER",
+   "needs": [
+    "GUNPOWDER"
+   ]
+  },
+  {
+   "era": 3,
+   "era_name": "INDUSTRIAL",
+   "name": "FIELD CANNON",
+   "needs": [
+    "IRON",
+    "COAL"
+   ]
+  },
+  {
+   "era": 3,
+   "era_name": "INDUSTRIAL",
+   "name": "HUSSARS",
+   "needs": [
+    "HORSES",
+    "IRON"
+   ]
+  },
+  {
+   "era": 3,
+   "era_name": "INDUSTRIAL",
+   "name": "GATLING GUN",
+   "needs": [
+    "STEEL"
+   ]
+  },
+  {
+   "era": 3,
+   "era_name": "INDUSTRIAL",
+   "name": "ZEPPELIN",
+   "needs": [
+    "HYDROGEN",
+    "STEEL"
+   ]
+  },
+  {
+   "era": 4,
+   "era_name": "MODERN",
+   "name": "RIFLEMAN",
+   "needs": [
+    "STEEL"
+   ]
+  },
+  {
+   "era": 4,
+   "era_name": "MODERN",
+   "name": "SNIPER",
+   "needs": [
+    "STEEL",
+    "OPTICS"
+   ]
+  },
+  {
+   "era": 4,
+   "era_name": "MODERN",
+   "name": "FLAMETHROWER",
+   "needs": [
+    "OIL"
+   ]
+  },
+  {
+   "era": 4,
+   "era_name": "MODERN",
+   "name": "TANK",
+   "needs": [
+    "STEEL",
+    "OIL"
+   ]
+  },
+  {
+   "era": 4,
+   "era_name": "MODERN",
+   "name": "GUNSHIP",
+   "needs": [
+    "OIL",
+    "ALUMINIUM"
+   ]
+  },
+  {
+   "era": 4,
+   "era_name": "MODERN",
+   "name": "FIELD MEDIC",
+   "needs": [
+    "MEDICINE"
+   ]
+  },
+  {
+   "era": 5,
+   "era_name": "FUTURE",
+   "name": "LASER TROOPER",
+   "needs": [
+    "ENERGY CELLS"
+   ]
+  },
+  {
+   "era": 5,
+   "era_name": "FUTURE",
+   "name": "SHIELD BEARER",
+   "needs": [
+    "ENERGY CELLS"
+   ]
+  },
+  {
+   "era": 5,
+   "era_name": "FUTURE",
+   "name": "STRIKE DRONES",
+   "needs": [
+    "SILICON"
+   ]
+  },
+  {
+   "era": 5,
+   "era_name": "FUTURE",
+   "name": "HOVER TANK",
+   "needs": [
+    "FUSION"
+   ]
+  },
+  {
+   "era": 5,
+   "era_name": "FUTURE",
+   "name": "DRONE SWARM + EMP",
+   "needs": [
+    "SILICON",
+    "AI"
+   ]
+  },
+  {
+   "era": 5,
+   "era_name": "FUTURE",
+   "name": "EXO-MECH",
+   "needs": [
+    "FUSION",
+    "ALLOYS"
+   ]
+  }
+ ],
+ "aircraft": [
+  {
+   "id": "fighter",
+   "name": "MULTIROLE FIGHTER",
+   "era": "MODERN",
+   "needs": [
+    "OIL",
+    "ALUMINIUM"
+   ]
+  },
+  {
+   "id": "stealth",
+   "name": "STEALTH FIGHTER",
+   "era": "MODERN+",
+   "needs": [
+    "COMPOSITES"
+   ]
+  },
+  {
+   "id": "interceptor",
+   "name": "INTERCEPTOR",
+   "era": "FUTURE",
+   "needs": [
+    "FUSION"
+   ]
+  },
+  {
+   "id": "bomber",
+   "name": "HEAVY BOMBER",
+   "era": "MODERN",
+   "needs": [
+    "OIL",
+    "STEEL"
+   ]
+  },
+  {
+   "id": "wing",
+   "name": "STEALTH BOMBER",
+   "era": "MODERN+",
+   "needs": [
+    "COMPOSITES"
+   ]
+  },
+  {
+   "id": "transport",
+   "name": "TRANSPORT / PARATROOPS",
+   "era": "MODERN",
+   "needs": [
+    "OIL",
+    "ALUMINIUM"
+   ]
+  },
+  {
+   "id": "recon",
+   "name": "RECON DRONE",
+   "era": "MODERN",
+   "needs": [
+    "SILICON"
+   ]
+  },
+  {
+   "id": "loiter",
+   "name": "LOITERING DRONE",
+   "era": "MODERN",
+   "needs": [
+    "SILICON",
+    "EXPLOSIVE"
+   ]
+  }
+ ],
+ "air_defence": [
+  "sam",
+  "radar",
+  "flak",
+  "ciws",
+  "laser_ad"
+ ],
+ "sprite_keys": "Units/army.json: u_<kind>_<frame>, m_<mounted>_<frame>, x_<machine>; Units/aircraft.json: air_<type>_<angle>, air_heli_<angle>_<frame>",
+ "strategic": {
+  "units": [
+   {
+    "id": "srbm",
+    "name": "TACTICAL BALLISTIC MISSILE",
+    "era": 4,
+    "needs": [
+     "STEEL",
+     "FUEL",
+     "ROCKETRY"
+    ],
+    "launch_from": [
+     "tel"
+    ],
+    "range_tiles": 300,
+    "warhead": "conventional (explosion_2 x3)"
+   },
+   {
+    "id": "cruise",
+    "name": "CRUISE MISSILE",
+    "era": 4,
+    "needs": [
+     "STEEL",
+     "FUEL",
+     "GUIDANCE"
+    ],
+    "launch_from": [
+     "tel",
+     "ship",
+     "bomber"
+    ],
+    "range_tiles": 220,
+    "flies_low": true
+   },
+   {
+    "id": "icbm",
+    "name": "NUCLEAR ICBM",
+    "era": 4,
+    "needs": [
+     "URANIUM",
+     "ENRICHMENT",
+     "ROCKETRY"
+    ],
+    "launch_from": [
+     "silo",
+     "tel"
+    ],
+    "range_tiles": "whole map",
+    "warhead": "nuclear"
+   },
+   {
+    "id": "abm",
+    "name": "INTERCEPTOR (ABM)",
+    "era": 4,
+    "needs": [
+     "STEEL",
+     "RADAR",
+     "GUIDANCE"
+    ],
+    "launch_from": [
+     "abm_battery"
+    ],
+    "intercept_chance": {
+     "srbm": 0.6,
+     "cruise": 0.5,
+     "icbm": 0.3,
+     "hgv": 0.1
+    }
+   },
+   {
+    "id": "hgv",
+    "name": "HYPERSONIC GLIDER",
+    "era": 5,
+    "needs": [
+     "FUSION",
+     "COMPOSITES"
+    ],
+    "launch_from": [
+     "silo"
+    ],
+    "range_tiles": "whole map",
+    "intercept_only_by": "laser_ad / future ABM"
+   }
+  ],
+  "flight": "boost: missile_flight sprites pointing up (270) with exhaust -> arc across the map (pick the nearest of 16 directions every frame) -> re-entry sprite over the target -> impact. Show a dotted arc + LAUNCH DETECTED alert to every nation with radar.",
+  "nuclear_detonation": {
+   "sequence": "nuke_0..12 at 5 fps (flash frames also flash the screen white), shockwave decal 4 frames, then crater_nuclear + fallout overlay + radiation_glow + hazard_marker props",
+   "effects": {
+    "blast_radius_tiles": 12,
+    "fire_radius_tiles": 20,
+    "buildings": "ruined inside blast, damaged inside fire radius",
+    "people": "die inside blast; RADIATION SICKNESS (disease stages, no contagion) inside fallout",
+    "terrain": "cells inside blast become IRRADIATED WASTE biome for 50-200 years",
+    "fallout": "drifts with wind for 2-5 years"
+   },
+   "politics": "every nation remembers: relations -60 with the user, allies may leave, AI uses deterrence (a nation with nukes is rarely attacked by another nuclear nation). 5+ detonations in 10 years -> nuclear winter (global cold, famine)."
+  },
+  "sprite_keys": "Units/strategic.json: st_tel_<0-5>, st_silo_<0-3>, st_abm_battery_<0-1>, st_<srbm|cruise|icbm|abm|hgv>_<angle x10>_<frame>, st_reentry_<0-1>, nuke_<0-12>, shockwave_<0-3>, crater_nuclear, fallout_<0-1>, radiation_glow, hazard_marker, grave_marker"
+ }
+}
