@@ -46,6 +46,10 @@ jobs:
         run: python3 ci/make_meta.py --check
       - name: Art index matches the art pack (rebuild with Tools/ArtIndex/build_art_index.py)
         run: python3 Tools/ArtIndex/build_art_index.py --check
+      - name: Recolour masks are one-byte codes with an up-to-date lookup table (Tools/ArtIndex/encode_masks.py)
+        run: |
+          python3 -m pip install --quiet pillow numpy
+          python3 Tools/ArtIndex/encode_masks.py --check
       - name: Core unit tests
         run: dotnet test Tools/CoreTests --logger "console;verbosity=normal" --logger "trx;LogFileName=core-tests.trx"
       - uses: actions/upload-artifact@v7
