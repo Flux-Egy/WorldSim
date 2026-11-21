@@ -107,5 +107,5 @@ The APK is signed with the committed **test** key `ci/worldsim-test.keystore`, s
 ## 5. Not yet covered (deliberately)
 
 - **Release signing.** In v6, unity-builder's `androidKeystore*` inputs are passed to the new game-ci CLI. I couldn't confirm how they reach a *custom* `buildMethod`, so the workflow doesn't use them yet. Until then `WorldSimBuild` signs with the committed test key, which is fine for sideloading and testing but not for the Play Store. This gets added and verified before any store release.
-- **Modder build.** It waits on Decision A (the mod loader) in `docs/IMPLEMENTATION_PLAN.md`. `WorldSimBuild.BuildModderCI` already exists. Adding it is one more builder step.
+- **Modder build.** It waits on Decision A (the mod loader) in `docs/archive/IMPLEMENTATION_PLAN.md`. `WorldSimBuild.BuildModderCI` already exists. Adding it is one more builder step.
 - **`cliVersion`.** Pinned to `v0.1.76` (the version every successful build so far used). `latest` makes an unauthenticated GitHub API call that hit HTTP 403 in run 44271009767. Bump it deliberately and re-test.

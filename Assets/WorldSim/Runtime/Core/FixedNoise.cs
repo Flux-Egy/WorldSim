@@ -8,7 +8,7 @@ namespace WorldSim.Core
     /// Deviation from §4.2 ("SimplexNoise or OpenSimplex2"): both reference implementations are
     /// floating point, and float results are not guaranteed identical across CPUs. Gradient
     /// noise with a quintic fade has the same visual role (smooth, band-limited octaves) and is
-    /// exact in integers. Recorded in docs/IMPLEMENTATION_PLAN.md.
+    /// exact in integers. Recorded in docs/archive/IMPLEMENTATION_PLAN.md.
     /// </summary>
     public static class FixedNoise
     {

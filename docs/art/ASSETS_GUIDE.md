@@ -12,7 +12,7 @@ The pack contains every generated sprite WorldSim needs for the first full build
 
 It mirrors the repo layout. Unzip it at the repo root and the files land where they belong.
 
-This file supersedes the art parts of `docs/ASSET_SPEC.md` for generated art. That spec was written for an external image model. See §9 for the two decisions that differ.
+This file supersedes the art parts of `docs/archive/ASSET_SPEC.md` for generated art. That spec was written for an external image model. See §9 for the two decisions that differ.
 
 ---
 
@@ -296,7 +296,7 @@ python strategicsheet.py                 # example preview renderer (sheets / GI
 - **Secrets.** No credentials in files or chat.
 
 ## 9. Owner decisions to confirm
-1. **Outlines.** `docs/ASSET_SPEC.md` and `GAME_VISION_PROMPT.md §4` say 1-px dark outlines. The approved previews and this pack use **no outlines**: value contrast, a lit top-left rim and darker bottom-right edges. If the owner wants outlines, add a 1-px `#1C1820` outline pass in `xcore.render`, then re-export.
+1. **Outlines.** `docs/archive/ASSET_SPEC.md` and `GAME_VISION_PROMPT.md §4` say 1-px dark outlines. The approved previews and this pack use **no outlines**: value contrast, a lit top-left rim and darker bottom-right edges. If the owner wants outlines, add a 1-px `#1C1820` outline pass in `xcore.render`, then re-export.
 2. **Tinting.** `ASSET_SPEC` asks for neutral-grey clothes tinted per kingdom. This pack bakes default colours and adds **recolour masks** instead, which tint per region (kingdom, culture, person).
 
 ## 10. Library v3 additions (creatures, interactions, disasters, audio)
@@ -357,7 +357,7 @@ python strategicsheet.py                 # example preview renderer (sheets / GI
 ### Owner decisions after the review (2026-11-20)
 | Topic | Decision |
 |---|---|
-| Outlines | **None.** The owner left it to us; the reviewer and the art side both recommend no outline. `docs/ASSET_SPEC.md` now says so (repo commit 1bccc8c). |
+| Outlines | **None.** The owner left it to us; the reviewer and the art side both recommend no outline. `docs/archive/ASSET_SPEC.md` now says so (repo commit 1bccc8c). |
 | Building disaster states | Shader + overlays; only the collapse stays baked. |
 | Children's deaths | Fade + grave stone only. |
 | Wonders that resemble real landmarks (colonnaded library, ziggurat, stepped pyramid, torch-bearing colossus) | **Keep as they are** (owner). |

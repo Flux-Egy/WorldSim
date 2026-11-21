@@ -2,7 +2,7 @@
 
 A mobile-first pixel-art world-simulation sandbox built on Unity 6.3 LTS with DOTS. This is original work inspired by the genre and contains no WorldBox code or assets. We learn from others but never take from them: see [docs/ORIGINALITY.md](docs/ORIGINALITY.md) and [CREDITS.md](CREDITS.md).
 
-- Plan, section map and flagged requirements: [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md)
+- Plan, section map and flagged requirements: [docs/archive/IMPLEMENTATION_PLAN.md](docs/archive/IMPLEMENTATION_PLAN.md)
 - Stage reports: [docs/stage-reports/](docs/stage-reports/)
 - CI and Unity license setup: [GITHUB_ACTIONS.md](GITHUB_ACTIONS.md)
 

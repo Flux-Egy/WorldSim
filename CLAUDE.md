@@ -1,6 +1,6 @@
 # CLAUDE.md: working on WorldSim
 
-WorldSim is a mobile-first pixel-art world-simulation sandbox: Unity 6000.3 LTS, URP 2D, DOTS (Entities/Jobs/Burst), Android IL2CPP ARM64. The vision and all owner decisions are in `docs/GAME_VISION_PROMPT.md`, Beta scope in `docs/BETA_PLAN.md`, and design history in `docs/IMPLEMENTATION_PLAN.md`.
+WorldSim is a mobile-first pixel-art world-simulation sandbox: Unity 6000.3 LTS, URP 2D, DOTS (Entities/Jobs/Burst), Android IL2CPP ARM64. Current plan and progress: `PROGRESS.md` (Playable Alpha). All owner decisions: `docs/DECISIONS.md`. Project status snapshot: `docs/STATUS_REPORT.md` (branch `status/report`). Older vision/plan docs are in `docs/archive/` (history only).
 
 ## Talking to the owner
 - **Explain everything in Arabic** (Egyptian is fine). Code, commands, paths, logs and commit messages stay in English.
@@ -11,10 +11,19 @@ WorldSim is a mobile-first pixel-art world-simulation sandbox: Unity 6000.3 LTS,
 ## Hard rules
 - **Never use the word "God"** anywhere: names, UI, docs, code or commits (the owner's religious reasons). Use "WorldSim", "powers", "world simulation sandbox". Beliefs in the game are fully **fictional creeds**; never use real religions, symbols or scriptures.
   - **Exception (approved by the owner, 2026-11-20):** the supernatural beings **jinn, afreet, marid and demon**, and the **possession** mechanic, may use those names in art, data, code and UI. Nothing else changes: no real religions, symbols, scriptures or prophets, and never the word "God".
-- **Originality** (`docs/ORIGINALITY.md`): learning from others is welcome, taking is not. All art is our own, and no ready-made asset packs are shipped. Never open or use anything decompiled or ripped from another game (WorldBox included), even if renamed, edited or "found online". Credit borrowed OSS code or techniques in `CREDITS.md`.
+- **Originality** (`docs/ORIGINALITY.md`, updated 2026-11-21): style, ideas and mechanics from any game (WorldBox included) may be imitated. Ready-made assets/code/audio are allowed **only** with a licence that permits it (CC0, CC-BY, MIT, OGA-BY...): check the licence first, keep its text in the repo, add a row to `CREDITS.md` (name, author, source, link, licence, where used), show credits in game, never claim it as ours. Never rip or decompile any commercial game (WorldBox included) and no unpaid paid assets; a credit is not a permission. Our pack (WorldSimArt) stays the base. Reference images/videos stay outside the repo.
 - **Secrets:** Unity credentials live only in GitHub secrets (`UNITY_EMAIL`, `UNITY_PASSWORD`; Codespaces secrets for the codespace). Never print, log or commit them. Don't add `UNITY_LICENSE`/`UNITY_SERIAL`. The repo is **public**: no personal data in commits or docs.
 - **Never cancel a running Unity step in Actions.** A killed job can leak a Personal license seat. Cancelling before Unity starts is fine.
 - **Verify before using.** Check package versions, action inputs and APIs against the primary source (registry, `action.yml`, release source) before relying on them. Pin versions.
+
+## How to work (owner, 2026-11-21)
+- Work autonomously; stop for the owner only at the review points (⛳) in `PROGRESS.md`.
+- Small, frequent commits, pushed often. Nothing stays uncommitted at the end of a session.
+- Reports to the owner: Egyptian Arabic, short: ✔️ done / ❌ not yet / ⏳ in progress, **with pictures from the phone itself**, not from the preview tool (preview pictures only for design choices, labelled as such).
+- Before sending any picture, look at it as a player. If it looks flat, washed out or unreadable, fix it first.
+- Every decision goes into `docs/DECISIONS.md`.
+- No merge into `main` without the owner's approval.
+- Before using the owner's phone for a capture (install, launch, screenshot), ask the owner to leave it untouched and wait for "تم"; abort if another app is in front, and never keep a screenshot of anything but the game.
 
 ## Where work happens (three workshops)
 | Workshop | Use it for | Feedback time |
@@ -64,4 +73,4 @@ The device check (owner's rooted phone, from the chroot) is `pm install -r <apk>
 - `Runtime/Simulation`: ECS (fixed 10 Hz `SimulationTickGroup`). `Runtime/Presentation`: views, camera, input, HUD (uGUI built in code). `Editor/`: CI bootstrap and build (`WorldSimCI`, `WorldSimBuild`).
 - Tests: `Assets/WorldSim/Tests/EditMode` run in both `Tools/CoreTests` (.NET) and Unity (CI `unity-tests`). Add tests with every Core/Render change.
 - CI: `.github/workflows/build.yml` and `GITHUB_ACTIONS.md`. The Unity version comes from `ProjectSettings/ProjectVersion.txt`. game-ci CLI is pinned to `v0.1.76`. The codespace installs the Editor from `ProjectVersion.txt` too (`Tools/Unity/install-editor.sh`), so upgrading Unity there is enough.
-- Commits: on `main` unless asked otherwise, with a clear English message.
+- Commits: on the working branch (now `rebuild/pack-foundation`), small and often, with a clear English message; `main` only after the owner approves a merge.

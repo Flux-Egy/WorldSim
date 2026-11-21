@@ -11,7 +11,7 @@ namespace WorldSim.EditorTools
     /// Build profiles (§15.4, §18.1).
     ///   Release: IL2CPP, ARM64, stripping High, non-development.
     ///   Modder:  development build, WORLDSIM_MODDER + WORLDSIM_MODLOADER_VERBOSE.
-    ///            Its scripting backend depends on open Decision A (see docs/IMPLEMENTATION_PLAN.md).
+    ///            Its scripting backend depends on open Decision A (see docs/archive/IMPLEMENTATION_PLAN.md).
     ///            Until that is decided it uses IL2CPP ARM64 too, so it runs on 64-bit-only phones.
     ///
     /// Command-line use:
