@@ -4,28 +4,35 @@ namespace WorldSim.Render.Terrain
 {
     /// <summary>
     /// Per-cell data of the new terrain look (rebuild phase 2), shared by the CPU reference compositor and the Unity
-    /// renderer: terraces (<see cref="LevelOf"/>: 0-2 water, 3 beach = water surface, 4-12 land; the top face rises
-    /// <see cref="LiftPerLevel"/> px per level), water depth rings by distance to land, and the biome each cell is drawn
+    /// renderer: elevation classes (<see cref="LevelOf"/>: 0-2 water, 3 beach = water surface, 4-12 land; owner decision
+    /// 2026-11-21: no drawn terraces, land just sits <see cref="CoastLift"/> px above the water so only coasts show a
+    /// cliff, and height reads through smooth hillshade from <see cref="SmoothHeight"/>), water distance to land for
+    /// depth bands, and the biome each cell is drawn
     /// with (<see cref="RenderBiome"/>: everything on the snow terrace is snow). Per-pixel borders come from
     /// <see cref="TerrainField"/>. Pure C#, deterministic.
     /// </summary>
     public sealed class TerrainLayout
     {
         public const int CellPixels = 16;
-        public const int LiftPerLevel = 3;
+        public const int CoastLift = 3;
         public const int WaterLevel = 3;
         public const int TopLevel = 12;
-        public const int MaxLift = (TopLevel - WaterLevel) * LiftPerLevel;
+        public const int MaxLift = CoastLift;
 
         public readonly int Width, Height;          // cells
         /// <summary>Per cell: terrace 0..12.</summary>
         public readonly byte[] Level;
         /// <summary>Per cell: water band 0 deep, 1 ocean, 2 shallows; 255 for land.</summary>
         public readonly byte[] Band;
+        /// <summary>Per cell: distance to the nearest land cell (0 on land, capped at 255).</summary>
+        public readonly byte[] Dist;
+        /// <summary>Per cell: height blurred twice over 3x3 (water counts as beach height), for smooth hillshade.</summary>
+        public readonly byte[] SmoothHeight;
         /// <summary>Per cell: the biome whose tile is drawn (the simulation biome, except snow on the snow terrace).</summary>
         public readonly byte[] RenderBiome;
 
-        public static int Lift(int level) => level > WaterLevel ? (level - WaterLevel) * LiftPerLevel : 0;
+        /// <summary>Land above the beach is drawn <see cref="CoastLift"/> px up, so the coast shows a cliff face; nothing else does.</summary>
+        public static int Lift(int level) => level > WaterLevel ? CoastLift : 0;
 
         /// <summary>
         /// Height byte -> render terrace (water by biome so coral shallows and edits stay consistent). The art pack's
@@ -150,7 +157,10 @@ namespace WorldSim.Render.Terrain
         {
             Width = width; Height = height;
             Level = SmoothLevels(tiles, width, height);
-            Band = WaterBands(tiles, width, height);
+            Dist = WaterDistance(tiles, width, height);
+            Band = new byte[tiles.Length];
+            for (int i = 0; i < Band.Length; i++) Band[i] = BandOf(Dist[i]);
+            SmoothHeight = Blur(Blur(HeightsForShade(tiles), width, height), width, height);
             RenderBiome = new byte[tiles.Length];
             for (int i = 0; i < tiles.Length; i++)
                 RenderBiome[i] = Level[i] == TopLevel ? (byte)Biome.Snow : tiles[i].BiomeId;
@@ -162,7 +172,35 @@ namespace WorldSim.Render.Terrain
         }
 
         /// <summary>Distance-to-land rings (8-neighbour BFS): 1-2 shallows, 3-5 ocean, deeper beyond.</summary>
-        static byte[] WaterBands(TileData[] tiles, int w, int h)
+        public static byte BandOf(int dist) => dist == 0 ? (byte)255 : dist <= 2 ? (byte)2 : dist <= 5 ? (byte)1 : (byte)0;
+
+        static byte[] HeightsForShade(TileData[] tiles)
+        {
+            var h = new byte[tiles.Length];
+            for (int i = 0; i < h.Length; i++) h[i] = tiles[i].IsWater ? WorldGenerator.BeachBelow : tiles[i].Height;
+            return h;
+        }
+
+        static byte[] Blur(byte[] src, int w, int h)
+        {
+            var dst = new byte[src.Length];
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                {
+                    int sum = 0, n = 0;
+                    for (int dy = -1; dy <= 1; dy++)
+                        for (int dx = -1; dx <= 1; dx++)
+                        {
+                            int nx = x + dx, ny = y + dy;
+                            if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                            sum += src[ny * w + nx]; n++;
+                        }
+                    dst[y * w + x] = (byte)(sum / n);
+                }
+            return dst;
+        }
+
+        static byte[] WaterDistance(TileData[] tiles, int w, int h)
         {
             var dist = new int[tiles.Length];
             var queue = new int[tiles.Length];
@@ -186,7 +224,7 @@ namespace WorldSim.Render.Terrain
             }
             var band = new byte[tiles.Length];
             for (int i = 0; i < band.Length; i++)
-                band[i] = dist[i] == 0 ? (byte)255 : dist[i] <= 2 ? (byte)2 : dist[i] <= 5 ? (byte)1 : (byte)0;
+                band[i] = (byte)(dist[i] > 255 ? 255 : dist[i]);
             return band;
         }
     }

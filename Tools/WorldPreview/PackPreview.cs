@@ -6,6 +6,7 @@
 // (cellX cellY cells) place: near (x2), mid (x1, twice the area) and the same area at zoom 1/4 enlarged x4.
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.IO;
 using WorldSim.Core;
 using WorldSim.Render;
@@ -29,6 +30,33 @@ sealed class PackArt : IArtPixels
     public int Height(int id) => _ix.Frame(id).H;
     public float PivotX(int id) => _ix.Frame(id).PivotX;
     public float PivotY(int id) => _ix.Frame(id).PivotY;
+
+    readonly Dictionary<int, (byte[] codes, int w, int h)> _masks = new Dictionary<int, (byte[], int, int)>();
+    uint[] _lut;
+
+    public bool Mask(int id, int x, int y, out int region, out int step)
+    {
+        region = 0; step = 0;
+        var f = _ix.Frame(id);
+        var pg = _ix.Page(f.Atlas, f.Page);
+        if (pg.MaskId < 0) return false;
+        int key = f.Atlas * 64 + f.Page;
+        if (!_masks.TryGetValue(key, out var m))
+        {
+            var px = PngDecoder.Decode(File.ReadAllBytes(Path.Combine(_root, _ix.GetString(pg.MaskId) + ".png")), out int w, out int h);
+            var codes = new byte[px.Length];
+            for (int i = 0; i < px.Length; i++) codes[i] = (byte)Rgba.R(px[i]);
+            m = (codes, w, h);
+            _masks[key] = m;
+        }
+        if (_lut == null) _lut = PngDecoder.Decode(File.ReadAllBytes(Path.Combine(_root, "mask_lut.png")), out _, out _);
+        int code = m.codes[(m.h - 1 - (f.Y + y)) * m.w + f.X + x];
+        uint e = _lut[code];
+        if (code == 0 || Rgba.A(e) == 0) return false;
+        region = Rgba.R(e) / 36;
+        step = (Rgba.G(e) - 40 + 22) / 44;                          // greys 40, 84, 128, 172, 216 -> 0..4
+        return region > 0;
+    }
 
     public uint Pixel(int id, int x, int y)
     {
@@ -64,8 +92,10 @@ static class PackPreview
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var lay = new TerrainLayout(tiles, size, size);
         var field = new TerrainField(tiles, lay);
-        var far = TerrainComposer.ComposeFar(tiles, lay, field, art, 4);
-        var map = TerrainComposer.ComposeFar(tiles, lay, field, art, 2);
+        var demo = DemoKingdoms(tiles, lay, size, root, out var demoPlaces);
+        var far = TerrainComposer.ComposeFar(tiles, lay, field, art, 4, demo);
+        var map = TerrainComposer.ComposeFar(tiles, lay, field, art, 2, demo);
+        foreach (var (dx, dy) in demoPlaces) Console.WriteLine($"demo kingdom capital at cell {dx},{dy}");
         Save(Path.Combine(outDir, "far_quarter.png"), far, size * 4, size * 4, 1);
         Save(Path.Combine(outDir, "far_eighth.png"), map, size * 2, size * 2, 1);
         Console.WriteLine($"far in {sw.ElapsedMilliseconds} ms");
@@ -86,6 +116,107 @@ static class PackPreview
         }
         Console.WriteLine($"done in {sw.ElapsedMilliseconds} ms");
         return 0;
+    }
+
+    /// <summary>
+    /// DEMO data only (the simulation has no kingdoms until milestone B4): three kingdoms on open lowland far apart,
+    /// each a capital, a town and villages linked by roads over land, farms around them, plus an army between two
+    /// kingdoms, a monster in the mountains and a fire. Deterministic from the world.
+    /// </summary>
+    static FarOverlay DemoKingdoms(TileData[] tiles, TerrainLayout lay, int size, string artRoot, out List<(int, int)> capitals)
+    {
+        var o = new FarOverlay();
+        capitals = new List<(int, int)>();
+        string json = File.ReadAllText(Path.Combine(artRoot, "..", "WorldSimData", "kingdom_palettes.json"));
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+        foreach (string name in new[] { "scarlet", "azure", "gold" })
+            foreach (var p in doc.RootElement.GetProperty("palettes").EnumerateArray())
+                if (p.GetProperty("name").GetString() == name)
+                {
+                    var ramp = new uint[5];
+                    int k = 0;
+                    foreach (var c in p.GetProperty("team").EnumerateArray())
+                    {
+                        string h = c.GetString();
+                        ramp[k++] = Rgba.Pack(Convert.ToInt32(h.Substring(1, 2), 16), Convert.ToInt32(h.Substring(3, 2), 16), Convert.ToInt32(h.Substring(5, 2), 16));
+                    }
+                    o.TeamRamps.Add(ramp);
+                }
+
+        bool Open(int x, int y)
+        {
+            if (x < 2 || y < 2 || x >= size - 2 || y >= size - 2) return false;
+            var t = tiles[y * size + x];
+            return !t.IsWater && lay.Level[y * size + x] <= 5 &&
+                   (t.Biome == Biome.Meadow || t.Biome == Biome.FlowerField || t.Biome == Biome.Savanna || t.Biome == Biome.Steppe || t.Biome == Biome.Forest);
+        }
+        bool LandLine(int x0, int y0, int x1, int y1)
+        {
+            int n = Math.Max(Math.Abs(x1 - x0), Math.Abs(y1 - y0));
+            for (int i = 0; i <= n; i++)
+            {
+                int x = x0 + (x1 - x0) * i / Math.Max(1, n), y = y0 + (y1 - y0) * i / Math.Max(1, n);
+                if (tiles[y * size + x].IsWater || lay.Level[y * size + x] >= 9) return false;
+            }
+            return true;
+        }
+
+        var used = new List<(int x, int y)>();
+        for (int k = 0; k < 3; k++)
+        {
+            (int x, int y) best = (-1, -1); int bestScore = -1;
+            for (int y = 6; y < size - 6; y += 3)
+                for (int x = 6; x < size - 6; x += 3)
+                {
+                    if (!Open(x, y)) continue;
+                    int open = 0;
+                    for (int dy = -4; dy <= 4; dy++) for (int dx = -4; dx <= 4; dx++) if (Open(x + dx, y + dy)) open++;
+                    int far = int.MaxValue;
+                    foreach (var u in used) far = Math.Min(far, Math.Abs(u.x - x) + Math.Abs(u.y - y));
+                    if (used.Count > 0 && far < 70) continue;
+                    int score = open * 4 + (used.Count > 0 ? Math.Min(far, 120) : 0) + (int)(TerrainLayout.Hash(x, y) & 15);
+                    if (score > bestScore) { bestScore = score; best = (x, y); }
+                }
+            if (best.x < 0) break;
+            used.Add(best);
+            capitals.Add(best);
+            o.Markers.Add(new FarOverlay.Marker { Frame = "mk_capital", CellX = best.x, CellY = best.y, Kingdom = k });
+            int placed = 0;
+            for (int a = 0; a < 16 && placed < 4; a++)
+            {
+                double ang = a * 2.399 + k;
+                int r = 9 + (a % 3) * 4;
+                int vx = best.x + (int)(Math.Cos(ang) * r), vy = best.y + (int)(Math.Sin(ang) * r);
+                if (!Open(vx, vy) || !LandLine(best.x, best.y, vx, vy)) continue;
+                o.Markers.Add(new FarOverlay.Marker { Frame = placed == 0 ? "mk_town" : "mk_village", CellX = vx, CellY = vy, Kingdom = k });
+                o.Roads.Add(new[] { best.x, best.y, vx, vy });
+                for (int fy = -2; fy <= 2; fy++)
+                    for (int fx = -2; fx <= 2; fx++)
+                        if ((Math.Abs(fx) + Math.Abs(fy)) >= 2 && (TerrainLayout.Hash(vx + fx, vy + fy) & 3) == 0 && Open(vx + fx, vy + fy))
+                            o.Farms.Add(new FarOverlay.Farm { CellX = vx + fx, CellY = vy + fy });
+                placed++;
+            }
+        }
+        if (used.Count >= 2)
+        {
+            // An army marching out of the first capital towards the second: the last land cell 10-16 cells along.
+            int ax = -1, ay = -1;
+            for (int d = 10; d <= 16; d++)
+            {
+                double len = Math.Sqrt(Math.Pow(used[1].x - used[0].x, 2) + Math.Pow(used[1].y - used[0].y, 2));
+                int x = used[0].x + (int)((used[1].x - used[0].x) * d / len), y = used[0].y + (int)((used[1].y - used[0].y) * d / len);
+                if (x < 0 || y < 0 || x >= size || y >= size || tiles[y * size + x].IsWater) break;
+                ax = x; ay = y;
+            }
+            if (ax >= 0) o.Markers.Add(new FarOverlay.Marker { Frame = "mk_army", CellX = ax, CellY = ay, Kingdom = 0 });
+        }
+        for (int y = 4; y < size - 4; y += 7)
+            for (int x = 4; x < size - 4; x += 7)
+                if (lay.Level[y * size + x] == 10 && !o.Markers.Exists(m => m.Frame == "mk_monster"))
+                    o.Markers.Add(new FarOverlay.Marker { Frame = "mk_monster", CellX = x, CellY = y, Kingdom = -1 });
+        if (used.Count >= 3)
+            o.Markers.Add(new FarOverlay.Marker { Frame = "mk_fire", CellX = used[2].x + 6, CellY = used[2].y - 5, Kingdom = -1 });
+        return o;
     }
 
     static string FindArt()

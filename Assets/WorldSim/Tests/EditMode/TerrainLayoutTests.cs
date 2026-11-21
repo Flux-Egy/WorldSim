@@ -23,7 +23,8 @@ namespace WorldSim.Tests
             Assert.AreEqual(TerrainLayout.TopLevel, TerrainLayout.LevelOf(T(Biome.Snow, 250)));
             Assert.AreEqual(0, TerrainLayout.Lift(2));
             Assert.AreEqual(0, TerrainLayout.Lift(3));
-            Assert.AreEqual(TerrainLayout.LiftPerLevel, TerrainLayout.Lift(4));
+            Assert.AreEqual(TerrainLayout.CoastLift, TerrainLayout.Lift(4));
+            Assert.AreEqual(TerrainLayout.CoastLift, TerrainLayout.Lift(11), "no terraces: all land sits at the same lift");
             Assert.AreEqual("earth", TerrainLayout.CliffMaterial(5));
             Assert.AreEqual("stone", TerrainLayout.CliffMaterial(10));
             Assert.AreEqual("snow", TerrainLayout.CliffMaterial(TerrainLayout.TopLevel));
