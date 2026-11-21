@@ -177,7 +177,7 @@ From CLAUDE.md, `docs/ORIGINALITY.md`, `docs/art/*` and the owner's messages:
 | Date | Decision |
 |---|---|
 | 2026-11-17/18 | Unity 6000.3.28f1, URP 2D, DOTS, Android IL2CPP ARM64; GitHub Actions is the only build server (game-ci v6, CLI v0.1.76); Unity Personal via `UNITY_EMAIL`/`UNITY_PASSWORD` secrets only; never cancel a running Unity step |
-| 2026-11-18 | Renamed to WorldSim; **never the word "God"**; beliefs fully fictional (procedural creeds); fiction notice on first launch |
+| 2026-11-18 | Renamed to WorldSim; **the forbidden-word rule (CLAUDE.md hard rules)**; beliefs fully fictional (procedural creeds); fiction notice on first launch |
 | 2026-11-18 | Deterministic simulation (integer/fixed point); golden hashes guard generation |
 | 2026-11-18 | Open-ended eras (Stone to beyond), deep editable traits, time control up to 50x, map sizes up to 4096 (plan A1-A5); Beta scope B1-B9 |
 | 2026-11-19 | **Originality:** learn from others, never take; no ready-made asset packs; nothing decompiled or ripped (WorldBox included); reference-video frames stay out of the repo |
