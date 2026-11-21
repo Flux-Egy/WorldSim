@@ -140,13 +140,27 @@ CI (`.github/workflows/build.yml`): jobs `core-tests` (meta check, art index `--
 
 ## 6. Performance
 
+Measured on the owner's phone (display 1280x2772 @ 120 Hz) on 2026-11-21, with the latest `rebuild/pack-foundation` APK (run 44836083623, `af635c8`). The game booted its default world: Large 1024x1024, seed `0xC8A7F889`, old painter, population 0.
+
+| Measure | Value | How |
+|---|---|---|
+| FPS, far zoom, idle | 60.1 avg; median frame 16.65 ms; p95 16.65 ms; worst 25.0 ms | SurfaceFlinger `--latency` on the game layer (127 frames) |
+| FPS, far zoom, panning | 60.1 avg; p95 16.65 ms; worst 16.7 ms | same, during a 1.8 s pan |
+| FPS, max zoom, idle and panning | 60.1 avg; p95 16.65 ms; worst 16.7 ms | same |
+| Memory | TOTAL PSS 364 MiB (372,860 KiB); TOTAL RSS 484 MiB; Graphics 49 MiB; EGL mtrack 27 MiB; native heap 26 MiB | `dumpsys meminfo` |
+| Draw calls | **Not measured.** Needs a development build with the profiler, or an in-game counter | n/a |
+
+Notes:
+- The frame rate sits at 60 FPS: the frame cap holds, though the display can do 120. This is with **no creatures alive** (population 0) and the old painter.
+- There is **no measurement yet** with the new renderer, with thousands of agents, or with pack sprites in the world.
+
+Earlier measurements:
+
 | Measure | Value | Evidence |
 |---|---|---|
-| FPS | **Not measured** (no FPS counter or log exists) | n/a |
-| Draw calls | **Not measured** | n/a |
-| Art memory, Art test scene (house + walking person x3) | 0 MiB at boot, 25 MiB shown (with R8 masks; 40 MiB before), back to 0 after Release; process RSS 233 -> 256 MiB | device logcat, 2026-11-20 |
-| All textures, Art Lab (102 frames from 34 atlases) | 233 MiB uncompressed vs 106 MiB all-ASTC (the owner then chose **partial** ASTC; its memory on device is **not verified**) | device logcat, ASTC A/B |
-| New C# reference renderer | ~2-4 s to compose a whole 256 map on the phone CPU (preview tool). Not representative of the planned shader | preview tool timing |
+| Art memory, Art test scene | 0 MiB at boot, 25 MiB shown (R8 masks; 40 MiB before), back to 0 after Release; process RSS 233 -> 256 MiB | device logcat, 2026-11-20 |
+| All textures, Art Lab (102 frames from 34 atlases) | 233 MiB uncompressed vs 106 MiB all-ASTC. The **partial** ASTC rule's memory on device is **not verified** | device logcat, ASTC A/B |
+| New C# reference renderer | ~2-4 s to compose a whole 256 map on the phone CPU (preview tool); not representative of the planned shader | preview tool timing |
 
 ## 7. Known problems
 
@@ -195,14 +209,25 @@ From CLAUDE.md, `docs/ORIGINALITY.md`, `docs/art/*` and the owner's messages:
 
 ## 9. Screenshots
 
-- **In-game screenshot: not captured.**
-  - Downloading the latest rebuild APK (run 44836083623, 52 MB) failed twice: a timeout, then a network abort.
-  - The phone was in use, so no capture was taken from the installed build either.
-  - The in-game world still uses the old painter (section 3), so an in-game picture would show the rejected look. For a picture of it, see the earlier device screenshots in the CI/device test history.
-- **C# reference renderer v3** (uncommitted code), seed `0x3660A6F1`. These are **not** in-game pictures; the game does not use this renderer yet.
-  - Near zoom (x2): `docs/status/reference_v3_near.png`
+**In-game, on the owner's phone** (latest `rebuild/pack-foundation` APK, 2026-11-21). Phone overlays at the screen edges are cropped out. The world is drawn by the **old painter**.
 
-    ![near](status/reference_v3_near.png)
-  - Far zoom (1/4, whole map, with DEMO kingdoms, roads, farms and markers): `docs/status/reference_v3_far.png`
+- Far (default view, whole Large 1024 map): `docs/status/device_far.png`
 
-    ![far](status/reference_v3_far.png)
+  ![device far](status/device_far.png)
+- Near (maximum zoom, reached with an emulated two-finger pinch): `docs/status/device_near.png`. Each tile is a flat 8 px block scaled up: this is the rejected look.
+
+  ![device near](status/device_near.png)
+
+Also visible in these shots:
+- The HUD debug line (seed, size, hash, population).
+- The bottom tabs (World, Terrain, Life, Nations, Powers, Settings): Nations and Powers have no features behind them yet.
+- **Population 0:** no creatures are spawned in a new world by default. Whether the Life tab spawns them on device is **not verified**.
+
+**C# reference renderer v3** (uncommitted code), seed `0x3660A6F1`. These are **not** in-game pictures; the game does not use this renderer yet.
+
+- Near zoom (x2): `docs/status/reference_v3_near.png`
+
+  ![near](status/reference_v3_near.png)
+- Far zoom (1/4, whole map, with **DEMO** kingdoms, roads, farms and markers): `docs/status/reference_v3_far.png`
+
+  ![far](status/reference_v3_far.png)
