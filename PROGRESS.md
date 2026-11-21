@@ -28,7 +28,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started · ⛳ owner review
 
 ## Step 1: lock the art style (most important)
 Problem today: the look is dull and washed out, and details don't change with zoom (the same drawing just shrinks).
-- [ ] Compare 2-3 terrain options for the same place:
+- [~] Compare 2-3 terrain options for the same place (images sent 2026-11-22, waiting for the owner):
   1. our pack, improved (brighter, calmer texture);
   2. a bright, flat WorldBox-like style;
   3. an open-licence top-down pack (Kenney or OpenGameArt; licence checked and credited).
@@ -90,3 +90,4 @@ Problem today: the look is dull and washed out, and details don't change with zo
 
 ## Log
 - 2026-11-21: plan written; Step 0 done.
+- 2026-11-22: Step 1 ⛳ sent: styles A/B/C for the same place (`cccbae2`). Mountain relief now uses stepped, dithered hillshade.
