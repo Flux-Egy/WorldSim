@@ -160,7 +160,7 @@ namespace WorldSim.Render.Terrain
             Dist = WaterDistance(tiles, width, height);
             Band = new byte[tiles.Length];
             for (int i = 0; i < Band.Length; i++) Band[i] = BandOf(Dist[i]);
-            SmoothHeight = Blur(Blur(HeightsForShade(tiles), width, height), width, height);
+            SmoothHeight = Blur(HeightsForShade(tiles), width, height);
             RenderBiome = new byte[tiles.Length];
             for (int i = 0; i < tiles.Length; i++)
                 RenderBiome[i] = Level[i] == TopLevel ? (byte)Biome.Snow : tiles[i].BiomeId;

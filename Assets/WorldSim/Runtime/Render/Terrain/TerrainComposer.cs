@@ -38,7 +38,8 @@ namespace WorldSim.Render.Terrain
         // ------------------------------------------------------------------------------------------------ near / mid
         /// <summary>Renders the cell window [cx0, cx0+cw) x [cy0, cy0+ch) at 1 art pixel per pixel (cw*16 x ch*16).</summary>
         public static uint[] ComposeNear(TileData[] tiles, TerrainLayout lay, TerrainField field, IArtPixels art,
-                                         int cx0, int cy0, int cw, int ch, bool props, out int imageW, out int imageH)
+                                         int cx0, int cy0, int cw, int ch, bool props, out int imageW, out int imageH,
+                                         TerrainStyle style = null)
         {
             int W = cw * Px, H = ch * Px;
             imageW = W; imageH = H;
@@ -75,12 +76,12 @@ namespace WorldSim.Render.Terrain
                     bool isWater = L < TerrainLayout.WaterLevel;
                     bool isSnow = lay.RenderBiome[cell] == (byte)Biome.Snow;
                     int lift = TerrainLayout.Lift(L);
-                    uint baseC = Ground(tiles, lay, field, cache, art, cell, x, y);
+                    uint baseC = Ground(tiles, lay, field, cache, art, cell, x, y, style);
                     uint c = baseC;
                     bool coastDrop = !isWater && lift > TerrainLayout.Lift(nextLv[i]);
                     if (!isWater)
                     {
-                        c = Hillshade(c, field, x, y);
+                        c = Hillshade(c, field, x, y, IsRock((Biome)lay.RenderBiome[cell]) ? 26 : 12);
                         if (!isSnow && snowAbove[i] > 0)                                        // soft blue-grey shadow south of snow
                             c = Rgba.Mix(c, snowShadow, snowAbove[i] == 1 ? 130 : snowAbove[i] == 2 ? 86 : 44);
                         if (coastDrop) c = Rgba.Shift(c, 16);                                   // light lip above the coast cliff
@@ -124,12 +125,22 @@ namespace WorldSim.Render.Terrain
 
         /// <summary>Ground colour of a world pixel: a random window of a random variant per 16 px square, flipped and
         /// rotated by hash, so seamless tiles never show their repeat. Water keeps its horizontal ripples (no rotation).</summary>
-        static uint Ground(TileData[] tiles, TerrainLayout lay, TerrainField field, FrameCache cache, IArtPixels art, int cell, int x, int y)
+        static uint Ground(TileData[] tiles, TerrainLayout lay, TerrainField field, FrameCache cache, IArtPixels art, int cell, int x, int y,
+                           TerrainStyle style)
+        {
+            uint c = GroundRaw(tiles, lay, field, cache, art, cell, x, y, style);
+            return style == null ? c : style.Grade(c);
+        }
+
+        static uint GroundRaw(TileData[] tiles, TerrainLayout lay, TerrainField field, FrameCache cache, IArtPixels art, int cell, int x, int y,
+                              TerrainStyle style)
         {
             Biome b = (Biome)lay.RenderBiome[cell];
+            int wband = tiles[cell].IsWater ? field.WaterBand(x, y) : -1;
+            if (style?.Ground != null) return Rock(style.Ground(b, wband, x, y), b, field.Height(x, y), style.Ground(b, wband, x & ~63, y & ~63));
             if (tiles[cell].IsWater)
             {
-                int band = field.WaterBand(x, y);
+                int band = wband;
                 if (!(b == Biome.CoralShallows && band == 2)) return art.Pixel(cache.Water[band], x & 63, y & 63);
             }
             // Patches of ~16 px with noise-warped, irregular borders; inside a patch the (wrapping, seamless) tile is
@@ -144,6 +155,7 @@ namespace WorldSim.Render.Terrain
             int f = cache.Tile(b, (int)(h & 3));
             if (f < 0) return Rgba.Pack(255, 0, 255);
             uint c = art.Pixel(f, (u + (int)((h >> 5) & 63)) & 63, (v + (int)((h >> 11) & 63)) & 63);
+            if (style != null && style.Calm > 0) c = Calm(c, cache.Mean(f), style.Calm);
             return Rock(c, b, field.Height(x, y), cache.Mean(f));
         }
 
@@ -154,19 +166,32 @@ namespace WorldSim.Render.Terrain
             int t = (height16 / 16 - 188) * 100 / 52;                   // 0 at the foothills .. 100 near the snow line
             if (t < 0) t = 0; else if (t > 100) t = 100;
             c = Calm(c, mean, 55 - t * 55 / 100);
-            return Rgba.Darken(c, 100 - t * 20 / 100);
+            return Rgba.Darken(c, 100 - t * 10 / 100);
         }
 
         /// <summary>Soft hillshade, light from the top-left: slopes facing it a little lighter, the others a little
         /// darker (at most about 14%), from the smoothed height, so there are no edges.</summary>
-        static uint Hillshade(uint c, TerrainField field, int x, int y)
+        static uint Hillshade(uint c, TerrainField field, int x, int y, int maxPct = 12)
         {
-            int gx = field.Height(x + 12, y) - field.Height(x - 12, y);
-            int gy = field.Height(x, y + 12) - field.Height(x, y - 12);
-            int pct = (gx + gy) / 10;
-            if (pct > 14) pct = 14; else if (pct < -14) pct = -14;
+            int gx = field.Height(x + 8, y) - field.Height(x - 8, y);
+            int gy = field.Height(x, y + 8) - field.Height(x, y - 8);
+            // Pixel-art shading: three steps each way, ordered-dithered between steps (crisp, no smoky gradient).
+            int step = maxPct / 3 < 1 ? 1 : maxPct / 3;
+            int v16 = (gx + gy) * maxPct * 16 / 70;                    // percent x16
+            int lim = maxPct * 16;
+            if (v16 > lim) v16 = lim; else if (v16 < -lim) v16 = -lim;
+            int s16 = step * 16;
+            int q = v16 >= 0 ? v16 / s16 : -((-v16 + s16 - 1) / s16);   // floor
+            int frac = v16 - q * s16;                                    // 0..s16-1
+            if (frac * 16 / s16 > Bayer4[(y & 3) * 4 + (x & 3)]) q++;
+            int pct = q * step;
             return pct == 0 ? c : Scale(c, 100 + pct);
         }
+
+        static readonly int[] Bayer4 = { 0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5 };
+
+        /// <summary>Mountains get about twice the hillshade of other land, so they stand out as relief.</summary>
+        static bool IsRock(Biome b) => b == Biome.Mountain || b == Biome.RockyHighland || b == Biome.Snow || b == Biome.Glacier || b == Biome.Volcanic;
 
         static uint Scale(uint c, int pct) => Rgba.Pack(Rgba.R(c) * pct / 100, Rgba.G(c) * pct / 100, Rgba.B(c) * pct / 100);
 
@@ -298,7 +323,7 @@ namespace WorldSim.Render.Terrain
                         }
                         if (!water)
                         {
-                            c = Hillshade(c, field, wx0, wy0);
+                            c = Hillshade(c, field, wx0, wy0, IsRock(b) ? 26 : 12);
                             if (density[cell] > 0) c = Rgba.Darken(c, 100 - density[cell]);          // forests read darker
                         }
                     }

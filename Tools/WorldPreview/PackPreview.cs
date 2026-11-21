@@ -219,6 +219,124 @@ static class PackPreview
         return o;
     }
 
+    /// <summary>
+    /// Art-style candidates for the same place (Playable Alpha step 1): writes style_A/B/C.png (near, x2) and
+    /// styles_compare.png (all three stacked, labelled).
+    ///   A = our pack, improved (brighter, more saturated, calmer texture)
+    ///   B = flat bright palette (WorldBox-like: clean colour, 3 soft tones, sparse speckles)
+    ///   C = Kenney "Roguelike pack" ground tiles (CC0), tinted per biome
+    /// </summary>
+    public static int Styles(string[] a)
+    {
+        ulong seed = Convert.ToUInt64(a[1].Replace("0x", ""), 16);
+        int size = int.Parse(a[2]); string outDir = a[3]; string kenneySheet = a[4];
+        int cx = int.Parse(a[5]), cy = int.Parse(a[6]), n = int.Parse(a[7]);
+        Directory.CreateDirectory(outDir);
+        var p = WorldGenParams.Create(new WorldSeed(seed), size, size);
+        var tiles = new TileData[size * size];
+        WorldGenerator.Generate(p, tiles);
+        string root = FindArt();
+        var art = new PackArt(root);
+        var lay = new TerrainLayout(tiles, size, size);
+        var field = new TerrainField(tiles, lay);
+
+        var map = MapColors(root);
+        var styles = new (string tag, string label, TerrainStyle style)[]
+        {
+            ("A", "A: our pack, improved", new TerrainStyle { Saturation = 135, Brightness = 8, Calm = 45 }),
+            ("B", "B: flat bright palette", new TerrainStyle { Ground = FlatGround(map) }),
+            ("C", "C: Kenney Roguelike pack (CC0), tinted", new TerrainStyle { Ground = KenneyGround(kenneySheet, map) }),
+        };
+        var panels = new List<(string, uint[], int, int)>();
+        foreach (var (tag, label, style) in styles)
+        {
+            var img = TerrainComposer.ComposeNear(tiles, lay, field, art, cx, cy, n, n, true, out int w, out int h, style);
+            Save(Path.Combine(outDir, $"style_{tag}.png"), img, w, h, 2);
+            panels.Add((label, img, w, h));
+        }
+        // Stack the three, labelled, for the phone (portrait).
+        int pw = panels[0].Item3, ph = panels[0].Item4, gap = 14;
+        int W = pw, H = (ph + gap) * panels.Count;
+        var all = new uint[W * H];
+        for (int i = 0; i < all.Length; i++) all[i] = Rgba.Pack(18, 20, 28);
+        for (int k = 0; k < panels.Count; k++)
+            Array.Copy(panels[k].Item2, 0, all, (k * (ph + gap) + gap) * W, pw * ph);
+        Save(Path.Combine(outDir, "styles_compare.png"), all, W, H, 2);
+        Console.WriteLine("labels top to bottom: " + string.Join(" | ", panels.ConvertAll(x => x.Item1)));
+        return 0;
+    }
+
+    static Dictionary<string, uint> MapColors(string root)
+    {
+        var d = new Dictionary<string, uint>();
+        using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "..", "WorldSimData", "lod.json")));
+        foreach (var e in doc.RootElement.GetProperty("map_colors").EnumerateObject())
+        {
+            string h = e.Value.GetString();
+            d[e.Name] = Rgba.Pack(Convert.ToInt32(h.Substring(1, 2), 16), Convert.ToInt32(h.Substring(3, 2), 16), Convert.ToInt32(h.Substring(5, 2), 16));
+        }
+        return d;
+    }
+
+    static uint Vivid(uint c, int sat, int bright)
+    {
+        int r = Rgba.R(c), g = Rgba.G(c), b = Rgba.B(c), l = (r * 30 + g * 59 + b * 11) / 100;
+        return Rgba.Pack(l + (r - l) * sat / 100 + bright, l + (g - l) * sat / 100 + bright, l + (b - l) * sat / 100 + bright);
+    }
+
+    static uint MapColor(Dictionary<string, uint> map, Biome b, int band)
+    {
+        string key = band >= 0 && !(b == Biome.CoralShallows && band == 2) ? "water_depth_" + Math.Min(2, band) : BiomeArt.MapColorKey(b);
+        return key != null && map.TryGetValue(key, out uint c) ? c : Rgba.Pack(255, 0, 255);
+    }
+
+    /// <summary>B: one clean, vivid colour per biome; three soft tones in ~12 px blobs; rare 1 px light speckles.</summary>
+    static Func<Biome, int, int, int, uint> FlatGround(Dictionary<string, uint> map) => (b, band, x, y) =>
+    {
+        uint basec = Vivid(MapColor(map, b, band), 150, 10);
+        int n = TerrainField.Noise(x * 2 / 3, y * 2 / 3, 0x4455);
+        int tone = n > 40 ? 7 : n < -40 ? -7 : 0;
+        uint c = Rgba.Shift(basec, tone);
+        uint hsh = TerrainLayout.Hash(x * 7 + 3, y * 13 + 5);
+        if (band < 0 && (hsh & 255) < 3) c = Rgba.Shift(basec, 22);                                  // sparse speckle
+        if (band >= 0 && (hsh & 511) < 2) c = Rgba.Shift(basec, 40);                                 // water glints
+        return c;
+    };
+
+    /// <summary>C: Kenney Roguelike pack ground tiles (16 px, 1 px margin), tinted towards each biome's colour.</summary>
+    static Func<Biome, int, int, int, uint> KenneyGround(string sheetPath, Dictionary<string, uint> map)
+    {
+        var px = PngDecoder.Decode(File.ReadAllBytes(sheetPath), out int sw, out int sh);
+        uint At(int tx, int ty, int x, int y) => px[(sh - 1 - (ty * 17 + y)) * sw + tx * 17 + x];
+        (int, int) TileFor(Biome b, int band)
+        {
+            if (band >= 0 && !(b == Biome.CoralShallows && band == 2)) return (0, 0);                   // water
+            switch (b)
+            {
+                case Biome.Beach: case Biome.DesertDunes: case Biome.SaltFlats: case Biome.Savanna: return (8, 0);   // sand
+                case Biome.Mountain: case Biome.RockyHighland: case Biome.Volcanic: case Biome.AshWaste: return (7, 0); // stone
+                case Biome.Snow: case Biome.Glacier: return (8, 0);
+                case Biome.Badlands: case Biome.Farmland: case Biome.EmberWastes: return (6, 0);                   // dirt
+                default: return (5, 0);                                                                          // grass
+            }
+        }
+        var means = new Dictionary<(int, int), uint>();
+        uint Mean((int, int) t)
+        {
+            if (means.TryGetValue(t, out uint m)) return m;
+            long r = 0, g = 0, bl = 0;
+            for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) { uint c = At(t.Item1, t.Item2, x, y); r += Rgba.R(c); g += Rgba.G(c); bl += Rgba.B(c); }
+            return means[t] = Rgba.Pack((int)(r / 256), (int)(g / 256), (int)(bl / 256));
+        }
+        return (b, band, x, y) =>
+        {
+            var t = TileFor(b, band);
+            uint c = At(t.Item1, t.Item2, x & 15, y & 15), mean = Mean(t), target = Vivid(MapColor(map, b, band), 140, 12);
+            // keep the tile's light/dark detail, move its average to the biome colour
+            return Rgba.Pack(Rgba.R(target) + Rgba.R(c) - Rgba.R(mean), Rgba.G(target) + Rgba.G(c) - Rgba.G(mean), Rgba.B(target) + Rgba.B(c) - Rgba.B(mean));
+        };
+    }
+
     static string FindArt()
     {
         for (var d = new DirectoryInfo(AppContext.BaseDirectory); d != null; d = d.Parent)
