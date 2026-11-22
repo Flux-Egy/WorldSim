@@ -50,6 +50,8 @@ jobs:
         run: |
           python3 -m pip install --quiet pillow numpy
           python3 Tools/ArtIndex/encode_masks.py --check
+      - name: Raw art copies for the runtime terrain baker are up to date (Tools/ArtIndex/export_raw.py)
+        run: python3 Tools/ArtIndex/export_raw.py --check
       - name: Core unit tests
         run: dotnet test Tools/CoreTests --logger "console;verbosity=normal" --logger "trx;LogFileName=core-tests.trx"
       - uses: actions/upload-artifact@v7
