@@ -195,9 +195,10 @@ namespace WorldSim.Presentation.Terrain
             NearAlpha = near;
 
             // Opaque bottom layer, each layer above fades in; layers fully covered are switched off.
+            // The mid layer stays under the near chunks, so a chunk still baking never shows a hole.
             SetLayer(_mapLayer, 1f, far < 1f);
             SetLayer(_far, far, far > 0f && mid < 1f);
-            SetLayer(_mid, mid, mid > 0f && near < 1f);
+            SetLayer(_mid, mid, mid > 0f);
             TickNear(cam, time, near);
         }
 

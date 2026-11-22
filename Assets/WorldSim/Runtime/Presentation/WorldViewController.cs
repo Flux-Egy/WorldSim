@@ -166,9 +166,19 @@ namespace WorldSim.Presentation
             _terrainView?.Dispose();
         }
 
+        readonly System.Diagnostics.Stopwatch _frameWatch = new System.Diagnostics.Stopwatch();
+
         void Update()
         {
             if (!_ready) return;
+            _frameWatch.Restart();
+            UpdateWorldView();
+            _stats.ControllerMs = _frameWatch.Elapsed.TotalMilliseconds;
+            _stats.Tick(Time.unscaledTime, Time.unscaledDeltaTime, _terrainView);
+        }
+
+        void UpdateWorldView()
+        {
             _hud.Tick();
             RefreshWorldIfChanged();
             if (_map.Version == 0) return;
@@ -206,7 +216,6 @@ namespace WorldSim.Presentation
             _terrainView.Tick(_cam, Time.unscaledTime);
             uint simTick = _clockQuery.IsEmpty ? 0u : (uint)_clockQuery.GetSingleton<WorldSim.Simulation.SimulationClock>().Tick;
             _creatureView.Tick(_em, _cam, _terrainView, simTick, Time.unscaledTime, Time.unscaledDeltaTime);
-            _stats.Tick(Time.unscaledTime, Time.unscaledDeltaTime, _terrainView);
             if (Time.unscaledTime >= _nextUiRefresh) { _nextUiRefresh = Time.unscaledTime + 0.25f; RefreshLifeUi(); } // §12.4: <=4 Hz
         }
 

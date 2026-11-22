@@ -16,6 +16,10 @@ namespace WorldSim.Presentation
         int _frames;
         float _windowStart, _nextLog;
         public float Fps { get; private set; }
+        /// <summary>Milliseconds spent in WorldViewController.Update this frame (set by the controller).</summary>
+        public double ControllerMs;
+        double _controllerSum;
+        readonly FrameTiming[] _timings = new FrameTiming[1];
         public string Line { get; private set; } = "";
 
         public void Tick(float time, float dt, PackTerrainView terrain)
@@ -29,7 +33,14 @@ namespace WorldSim.Presentation
                 _nextLog = time + 5f;
             }
             _frames++;
+            _controllerSum += ControllerMs;
+            FrameTimingManager.CaptureFrameTimings();
             if (time - _windowStart < 0.5f) return;
+            double ctrl = _controllerSum / System.Math.Max(1, _frames);
+            _controllerSum = 0;
+            string timing = FrameTimingManager.GetLatestTimings(1, _timings) > 0
+                ? $"cpu {_timings[0].cpuMainThreadFrameTime:0.0} render {_timings[0].cpuRenderThreadFrameTime:0.0} gpu {_timings[0].gpuFrameTime:0.0} ms"
+                : "frame timing n/a";
             Fps = _frames / (time - _windowStart);
             _frames = 0;
             _windowStart = time;
@@ -39,11 +50,11 @@ namespace WorldSim.Presentation
             string batches = _batches.Valid && _batches.LastValue > 0 ? _batches.LastValue.ToString() : "n/a";
             int chunks = terrain != null ? terrain.NearChunksLoaded : 0;
             float ppt = terrain != null ? terrain.PixelsPerTile : 0f;
-            Line = $"fps {Fps:0}   mem {rssMb} MB   draws {draws}   batches {batches}   chunks {chunks}   zoom {ppt:0.0}px/tile";
+            Line = $"fps {Fps:0}   mem {rssMb} MB   draws {draws}   chunks {chunks}   zoom {ppt:0.0}px/tile\n{timing}   ctrl {ctrl:0.0} ms";
             if (time >= _nextLog)
             {
                 _nextLog = time + 5f;
-                Debug.Log("[WorldSim] Stats " + Line);
+                Debug.Log("[WorldSim] Stats " + Line.Replace("\n", "   ") + $"   batches {batches}   refresh {Screen.currentResolution.refreshRateRatio.value:0} Hz");
             }
         }
 

@@ -30,7 +30,7 @@ namespace WorldSim.Presentation
             float fitHeight = height * 0.5f;
             // Zoom out well past the whole map so the far and map layers are reachable (owner, Alpha step 2).
             _maxSize = Mathf.Max(fitWidth, fitHeight) * 4f;
-            _minSize = 5f;
+            _minSize = Mathf.Max(5f, Screen.height / (2f * 48f));   // closest zoom ~48 screen px per tile
             _cam.orthographicSize = Mathf.Clamp(fitWidth, _minSize, _maxSize);
             _cam.transform.position = new Vector3(width * 0.5f, height * 0.5f, -10f);
             _glideTarget = null;

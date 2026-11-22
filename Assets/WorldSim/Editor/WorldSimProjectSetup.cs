@@ -41,6 +41,7 @@ namespace WorldSim.EditorTools
             PlayerSettings.SetApiCompatibilityLevel(android, ApiCompatibilityLevel.NET_Standard);
             PlayerSettings.SetIl2CppCompilerConfiguration(android, Il2CppCompilerConfiguration.Release);
             PlayerSettings.Android.optimizedFramePacing = true;
+            PlayerSettings.enableFrameTimingStats = true;   // FrameTimingManager: CPU/GPU frame times in the dev HUD
 
             // App identity. The application id is permanent once a build is distributed:
             // Android treats a different id as a different app, so updates would not install.
