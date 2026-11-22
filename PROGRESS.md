@@ -43,11 +43,11 @@ Problem today: the look is dull and washed out, and details don't change with zo
   ⛳ One picture with the same place at all four zooms side by side.
 
 ## Step 2: the new look inside the game
-- [ ] Runtime baker: `TerrainComposer` bakes 32x32-cell chunks on a background thread into Texture2D. Only edited chunks re-bake. One layer per zoom, with a cache and release of far chunks.
-- [ ] Creatures drawn with pack sprites (`CreatureArt`) with animation and animation events; the old procedural creature art is removed.
-- [ ] A new world starts with animals and people automatically.
-- [ ] Default world size 256x256 until bigger maps are measured.
-- [ ] HUD developer counters: FPS, memory, draw calls.
+- [~] Runtime baker: `TerrainComposer` bakes 32x32-cell chunks on a background thread into Texture2D. Only edited chunks re-bake. One layer per zoom, with a cache and release of far chunks. Written (`PackTerrainView`, `513fe95`); waiting for the Unity build and the phone check.
+- [~] Creatures drawn with pack sprites (`CreatureArt`) with animation (written; animation events/sounds come with step 3); the old procedural creature art is no longer used.
+- [~] A new world starts with animals and people automatically (`StartingLife`, tested in .NET).
+- [~] Default world size 256x256 until bigger maps are measured.
+- [~] HUD developer counters: FPS, memory, draw calls (`DevStats`).
   ⛳ Phone pictures (Near/Mid/Far) + FPS + memory + draw calls.
 
 ## Step 3: the game becomes playable (the heart of the Alpha)
@@ -92,3 +92,4 @@ Problem today: the look is dull and washed out, and details don't change with zo
 - 2026-11-21: plan written; Step 0 done.
 - 2026-11-22: Step 1 ⛳ sent: styles A/B/C for the same place (`cccbae2`).
 - 2026-11-22: Owner chose v2 + B colours. Zoom layers (near/mid/far/map), comfort tuning, mountains 14 % of land. ⛳ four-zoom images sent.
+- 2026-11-22: four zooms approved. Touches: no cracks on flat land, lighter mid territory with house clusters, stray snow spot gone. Step 2 runtime code pushed (`513fe95`); CI running.
