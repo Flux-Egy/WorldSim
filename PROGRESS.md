@@ -93,3 +93,4 @@ Problem today: the look is dull and washed out, and details don't change with zo
 - 2026-11-22: Step 1 ⛳ sent: styles A/B/C for the same place (`cccbae2`).
 - 2026-11-22: Owner chose v2 + B colours. Zoom layers (near/mid/far/map), comfort tuning, mountains 14 % of land. ⛳ four-zoom images sent.
 - 2026-11-22: four zooms approved. Touches: no cracks on flat land, lighter mid territory with house clusters, stray snow spot gone. Step 2 runtime code pushed (`513fe95`); CI running.
+- 2026-11-22: Owner: pause the measuring, build a full demo. Pushed: everything moves (`7e6cb43`: animated water/lava/foam shader, swaying trees and props as live sprites) and interactions + new UI (`13772d0`: 13 powers with FX, sound, camera shake, crater/scorch/fallout/rain/quake/forest, creature damage by blast zone; pack UI kit frames, icons, Powers tab, time bar x1-x10; biome ambience and music). CI building; FPS (30 on the phone) still to investigate.
