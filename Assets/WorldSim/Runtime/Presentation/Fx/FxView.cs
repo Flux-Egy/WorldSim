@@ -37,6 +37,9 @@ namespace WorldSim.Presentation.Fx
 
         public float PixelsPerTile { get; set; } = 8f;
 
+        /// <summary>Effects grow when the camera is far out, so a strike still reads at mid and far zoom.</summary>
+        float ZoomBoost => Mathf.Clamp(12f / Mathf.Max(1f, PixelsPerTile), 1f, 5f);
+
         public FxView(Camera cam)
         {
             _cam = cam;
@@ -98,7 +101,7 @@ namespace WorldSim.Presentation.Fx
                 End = _now + (loopSeconds > 0f ? loopSeconds : a.frames.Length / a.fps + holdLast),
             };
             fx.R.transform.localPosition = pos;
-            fx.R.transform.localScale = new Vector3(scale, scale, 1f);
+            fx.R.transform.localScale = new Vector3(scale * ZoomBoost, scale * ZoomBoost, 1f);
             fx.R.sortingOrder = order;
             fx.R.sprite = a.frames[0];
             _active.Add(fx);
@@ -114,7 +117,7 @@ namespace WorldSim.Presentation.Fx
                 R = Get(), Frames = a.frames, Fps = a.fps, Start = _now, End = _now + seconds, Loop = true,
                 From = from, To = to, Flying = true, OnEnd = onArrive,
             };
-            fx.R.transform.localScale = new Vector3(scale, scale, 1f);
+            fx.R.transform.localScale = new Vector3(scale * ZoomBoost, scale * ZoomBoost, 1f);
             fx.R.sortingOrder = 31500;
             fx.R.sprite = a.frames[0];
             Vector3 d = to - from;

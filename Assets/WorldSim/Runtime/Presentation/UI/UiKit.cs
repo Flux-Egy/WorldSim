@@ -50,16 +50,18 @@ namespace WorldSim.Presentation.UI
             return img;
         }
 
-        public static Image Panel(RectTransform rt, float brightness = 0.55f, float alpha = 0.96f) =>
-            Skin(rt, "frame_9slice", 8f, new Color(brightness, brightness, brightness * 1.08f, alpha));
+        /// <summary>The gold-edged frame (dark inside); brightness is kept for callers but the frame keeps its colours.</summary>
+        public static Image Panel(RectTransform rt, float brightness = 1f, float alpha = 0.96f) =>
+            Skin(rt, "frame_9slice", 8f, new Color(1f, 1f, 1f, alpha));
 
-        public static Image Button(RectTransform rt) => Skin(rt, "button_primary", 5f, Color.white);
+        /// <summary>Calm dark-slate button; the selected one turns green (button_on).</summary>
+        public static Image Button(RectTransform rt) => Skin(rt, "button_ghost", 5f, Color.white);
 
         /// <summary>Selected buttons and tabs switch to the "on" art; others go back to the primary art.</summary>
         public static void Select(Image img, bool on)
         {
             if (img == null) return;
-            var s = Sliced(on ? "button_on" : "button_primary", 5f);
+            var s = Sliced(on ? "button_on" : "button_ghost", 5f);
             if (s != null) { img.sprite = s; img.type = Image.Type.Sliced; img.pixelsPerUnitMultiplier = 1f / Scale; }
             img.color = Color.white;
         }

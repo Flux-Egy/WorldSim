@@ -44,7 +44,7 @@ Shader "WorldSim/TerrainAnimated"
                 {
                     // water: long, slow light streaks (pixel-stepped) + rare glints that blink in place
                     float s = sin(p.x * 0.17 + p.y * 0.31 - t * 1.3) * sin(p.y * 0.07 - p.x * 0.03 + t * 0.6);
-                    col.rgb += s > 0.80 ? 0.06 : (s < -0.85 ? -0.03 : 0.0);
+                    col.rgb += s > 0.86 ? 0.05 : (s < -0.92 ? -0.02 : 0.0);
                     float g = hash21(p + floor(t * 2.0 + hash21(floor(p / 8.0)) * 8.0));
                     col.rgb = g > 0.9975 ? lerp(col.rgb, float3(0.92, 0.97, 1.0), 0.65) : col.rgb;
                     col.a = 1.0;

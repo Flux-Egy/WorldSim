@@ -180,7 +180,7 @@ namespace WorldSim.Presentation.UI
                 var btn = tab.gameObject.AddComponent<Button>();
                 btn.targetGraphic = img;
                 btn.onClick.AddListener(() => SelectTab(index));
-                AddPackIcon(tab, TabIcons[i], 64, new Vector2(0, 8));
+                AddPackIcon(tab, TabIcons[i], 52, new Vector2(0, 14));
                 var label = AddText(tab, 22, TextAnchor.LowerCenter);
                 Fill(label.rectTransform, 0, 2, 0, 0);
                 label.text = Tabs[i].Name;
