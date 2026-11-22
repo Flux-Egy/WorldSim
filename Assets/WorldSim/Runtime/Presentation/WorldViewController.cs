@@ -57,6 +57,11 @@ namespace WorldSim.Presentation
 
         PackTerrainView _terrainView;
         PropView _propView;
+        WorldSim.Presentation.Fx.FxView _fx;
+        WorldSim.Presentation.Fx.AudioView _audio;
+        WorldSim.Presentation.Fx.PowerController _powers;
+        WorldSim.Core.Powers.PowerKind? _power;
+        float _lastPowerTime;
         SpriteRenderer _selection;
 
         // ---- Life (Beta B3) ----
@@ -68,7 +73,7 @@ namespace WorldSim.Presentation
         float _nextUiRefresh;
         bool _paused;
         int _speedIndex;
-        static readonly float[] Speeds = { 1f, 2f, 5f };
+        static readonly float[] Speeds = { 1f, 2f, 5f, 10f };
         EntityQuery _lifeQuery, _clockQuery;
 
         // ---- Terrain brushes (Beta B2) ----
@@ -107,6 +112,8 @@ namespace WorldSim.Presentation
             _hud.SpawnChanged += sp => { _spawn = sp; _lastSpawnX = int.MinValue; if (sp.HasValue) { _hud.HideInfo(); _selectedCreature = Entity.Null; } };
             _hud.PauseClicked += TogglePause;
             _hud.SpeedClicked += CycleSpeed;
+            _hud.SpeedSelected += SelectSpeed;
+            _hud.PowerChanged += pw => { _power = pw; if (pw.HasValue) { _hud.HideInfo(); _selectedCreature = Entity.Null; } };
             _hud.TimeLabelsRequested += UpdateTimeLabels;
             _hud.BrushSizeClicked += CycleBrush;
             _hud.BrushSizeLabelRequested += UpdateBrushLabel;
@@ -151,6 +158,10 @@ namespace WorldSim.Presentation
                 _lifeQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<LifeState>());
                 _clockQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<WorldSim.Simulation.SimulationClock>());
                 _creatureView = new CreatureView();
+                _fx = new WorldSim.Presentation.Fx.FxView(_cam);
+                _audio = new WorldSim.Presentation.Fx.AudioView(_cam);
+                _powers = new WorldSim.Presentation.Fx.PowerController(_em, _fx);
+                UpdateTimeLabels();
 
                 RequestWorld(LoadSeed(), CurrentSize);
                 _ready = true;
@@ -191,7 +202,19 @@ namespace WorldSim.Presentation
             if (_gestures.PinchScale != 1f)
                 _rig.ZoomAt(_gestures.PinchScale, new Vector2(_gestures.PinchCenterX, _gestures.PinchCenterY));
 
-            if (_spawn.HasValue)
+            if (_power.HasValue)
+            {
+                // Powers: one finger taps where to strike; two fingers still pan and zoom.
+                if (_gestures.Current == GestureRecognizer.State.Pinching && (_gestures.PanDx != 0f || _gestures.PanDy != 0f))
+                    _rig.PanScreen(_gestures.PanDx, _gestures.PanDy);
+                if (_gestures.Tap && Time.unscaledTime - _lastPowerTime > 0.25f)
+                {
+                    Vector3 w = _rig.ScreenToWorld(new Vector2(_gestures.GestureX, _gestures.GestureY));
+                    int px = Mathf.FloorToInt(w.x), py = Mathf.FloorToInt(PackTerrainView.WorldToTileY(w.y));
+                    if (_map.InBounds(px, py)) { _powers.Use(_power.Value, px, py); _lastPowerTime = Time.unscaledTime; }
+                }
+            }
+            else if (_spawn.HasValue)
             {
                 if (_gestures.Current == GestureRecognizer.State.Pinching && (_gestures.PanDx != 0f || _gestures.PanDy != 0f))
                     _rig.PanScreen(_gestures.PanDx, _gestures.PanDy);
@@ -217,6 +240,9 @@ namespace WorldSim.Presentation
             _rig.Tick(Time.unscaledDeltaTime);
             _terrainView.Tick(_cam, Time.unscaledTime);
             _propView.Tick(_cam, _terrainView, Time.unscaledTime);
+            _fx.PixelsPerTile = _terrainView.PixelsPerTile;
+            _fx.Tick(Time.unscaledTime);
+            _audio.Tick(_cam, _terrainView, Time.unscaledTime);
             uint simTick = _clockQuery.IsEmpty ? 0u : (uint)_clockQuery.GetSingleton<WorldSim.Simulation.SimulationClock>().Tick;
             _creatureView.Tick(_em, _cam, _terrainView, simTick, Time.unscaledTime, Time.unscaledDeltaTime);
             if (Time.unscaledTime >= _nextUiRefresh) { _nextUiRefresh = Time.unscaledTime + 0.25f; RefreshLifeUi(); } // §12.4: <=4 Hz
@@ -353,7 +379,20 @@ namespace WorldSim.Presentation
             UpdateTimeLabels();
         }
 
-        void UpdateTimeLabels() => _hud.SetTimeLabels(_paused ? "Play" : "Pause", $"Speed x{Speeds[_speedIndex]:0}");
+        void UpdateTimeLabels()
+        {
+            _hud.SetTimeLabels(_paused ? "Play" : "Pause", $"Speed x{Speeds[_speedIndex]:0}");
+            _hud.SetTimeState(_paused, _speedIndex);
+        }
+
+        void SelectSpeed(int index)
+        {
+            _speedIndex = Mathf.Clamp(index, 0, Speeds.Length - 1);
+            if (_paused) TogglePause();
+            var group = World.DefaultGameObjectInjectionWorld.GetExistingSystemManaged<WorldSim.Simulation.SimulationTickGroup>();
+            if (group != null) group.SetTickSeconds(WorldSim.Simulation.SimulationTickGroup.DefaultTickSeconds / Speeds[_speedIndex]);
+            UpdateTimeLabels();
+        }
 
         /// <summary>Population in the title and the selected creature's panel, refreshed at most 4x/s.</summary>
         void RefreshLifeUi()

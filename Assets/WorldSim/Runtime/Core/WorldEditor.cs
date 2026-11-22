@@ -10,6 +10,12 @@ namespace WorldSim.Core
         PlantTrees = 4,
         ClearDecorations = 5,
         Flatten = 6,
+        // Powers and disasters (Playable Alpha): what they leave on the land.
+        Scorch = 7,       // burnt plants (trees -> charred stumps), ash in the middle
+        Crater = 8,       // blast pit: ground pushed down, volcanic rock at the centre, ash around
+        Irradiate = 9,    // nuclear fallout: irradiated waste, dead trees
+        Wet = 10,         // rain: moisture up, dry land greens
+        Quake = 11,       // ground shifts, some trees fall
     }
 
     /// <summary>One brush dab. Blittable: travels through ECS buffers and, later, save files.</summary>
@@ -141,6 +147,60 @@ namespace WorldSim.Core
                     t.DecorationId = (byte)tree;
                     t.ResourceFlags = WorldGenerator.Resources(p, x, y, b, tree);
                     return t;
+                }
+                case TerrainTool.Scorch:
+                {
+                    Biome b = (Biome)t.BiomeId;
+                    if (IsWaterBiome(b) || b == Biome.Lava) return t;
+                    Decoration d = (Decoration)t.DecorationId;
+                    if (TileData.IsTree(d)) d = Decoration.CharredStump;
+                    else if (!TileData.IsRock(d) && d != Decoration.EmberVent) d = Decoration.None;
+                    t.DecorationId = (byte)d;
+                    if (d2 * 3 <= r2 && b != Biome.Snow && b != Biome.Glacier && b != Biome.Mountain) t.BiomeId = (byte)Biome.AshWaste;
+                    t.ResourceFlags = WorldGenerator.Resources(p, x, y, (Biome)t.BiomeId, d);
+                    return t;
+                }
+                case TerrainTool.Crater:
+                {
+                    int depth = 26 * falloff / 100;
+                    t.Height = (byte)(t.Height - depth < 0 ? 0 : t.Height - depth);
+                    Biome nb = WorldGenerator.Classify(t.Height, t.Moisture, t.Temperature, 0);
+                    if (!IsWaterBiome(nb)) nb = d2 * 3 <= r2 ? Biome.Volcanic : Biome.AshWaste;
+                    t.BiomeId = (byte)nb;
+                    t.DecorationId = 0;
+                    t.ResourceFlags = WorldGenerator.Resources(p, x, y, nb, Decoration.None);
+                    return t;
+                }
+                case TerrainTool.Irradiate:
+                {
+                    Biome b = (Biome)t.BiomeId;
+                    if (IsWaterBiome(b) || b == Biome.Lava || b == Biome.Volcanic) return t;
+                    t.BiomeId = (byte)Biome.IrradiatedWaste;
+                    if (TileData.IsTree((Decoration)t.DecorationId)) t.DecorationId = (byte)Decoration.DeadTree;
+                    else if (!TileData.IsRock((Decoration)t.DecorationId)) t.DecorationId = 0;
+                    t.ResourceFlags = WorldGenerator.Resources(p, x, y, Biome.IrradiatedWaste, (Decoration)t.DecorationId);
+                    return t;
+                }
+                case TerrainTool.Wet:
+                {
+                    int m = t.Moisture + 22 * falloff / 100;
+                    t.Moisture = (byte)(m > 255 ? 255 : m);
+                    Biome b = (Biome)t.BiomeId;
+                    bool dry = b == Biome.DesertDunes || b == Biome.Savanna || b == Biome.Steppe || b == Biome.Badlands || b == Biome.AshWaste;
+                    if (!dry) return t;
+                    return Refresh(p, t, x, y, WorldGenerator.Classify(t.Height, t.Moisture, t.Temperature, 0), keepDecorationIfValid: true);
+                }
+                case TerrainTool.Quake:
+                {
+                    ulong h = FixedNoise.LatticeHash(p.DecorationSeed ^ 0x9A4EUL, x, y);
+                    int shift = ((int)(h % 9) - 4) * falloff / 100;
+                    int nh = t.Height + shift;
+                    t.Height = (byte)(nh < 0 ? 0 : nh > 255 ? 255 : nh);
+                    if (TileData.IsTree((Decoration)t.DecorationId) && (h >> 8) % 4 == 0) t.DecorationId = 0;   // a quarter of the trees fall
+                    Biome old = (Biome)t.BiomeId;
+                    Biome nb = WorldGenerator.Classify(t.Height, t.Moisture, t.Temperature, 0);
+                    if (IsWaterBiome(nb) == IsWaterBiome(old)) nb = old;                // keep the biome unless the coast moved
+                    return Refresh(p, t, x, y, nb, keepDecorationIfValid: true);
                 }
                 case TerrainTool.ClearDecorations:
                 {

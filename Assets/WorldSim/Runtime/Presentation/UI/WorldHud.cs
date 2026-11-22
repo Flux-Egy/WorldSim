@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using WorldSim.Core;
 using WorldSim.Core.Life;
+using WorldSim.Core.Powers;
 using WorldSim.Render;
 
 namespace WorldSim.Presentation.UI
@@ -25,11 +26,6 @@ namespace WorldSim.Presentation.UI
             "religion, belief, people or place. Any resemblance is coincidental.\n\n" +
             "This is only a game.";
 
-        static readonly Color PanelColor = new Color(0.08f, 0.10f, 0.15f, 0.94f);
-        static readonly Color TabColor = new Color(0.13f, 0.16f, 0.22f, 1f);
-        static readonly Color TabActive = new Color(0.16f, 0.40f, 0.38f, 1f);
-        static readonly Color ButtonColor = new Color(0.15f, 0.19f, 0.26f, 1f);
-        static readonly Color BorderColor = new Color(0.30f, 0.62f, 0.58f, 0.9f);
         const float ToolbarHeight = 360f;
 
         readonly RectTransform _safeRoot, _topBar, _infoPanel, _toolbar, _noticeOverlay, _content;
@@ -56,7 +52,30 @@ namespace WorldSim.Presentation.UI
 
         /// <summary>Species to place with the finger (Beta B3), or null to stop spawning.</summary>
         public event Action<SpeciesId?> SpawnChanged;
+        /// <summary>A power picked in the Powers tab (null = back to inspecting); the player then taps the map.</summary>
+        public event Action<PowerKind?> PowerChanged;
+
+        static readonly (PowerKind kind, string icon, string label)[] PowerButtons =
+        {
+            (PowerKind.Lightning, "picon_bolt", "Lightning"), (PowerKind.Meteor, "picon_meteor", "Meteor"),
+            (PowerKind.Bomb, "picon_hazard", "Bomb"), (PowerKind.Missile, "picon_missile", "Missile"),
+            (PowerKind.Nuke, "picon_nuke", "Nuke"), (PowerKind.Wildfire, "picon_fire", "Wildfire"),
+            (PowerKind.Rain, "picon_rain", "Rain"), (PowerKind.Quake, "picon_quake", "Quake"),
+            (PowerKind.Forest, "picon_tree", "Forest"), (PowerKind.Bless, "picon_bless", "Bless"),
+            (PowerKind.Plague, "picon_plague", "Plague"), (PowerKind.SpawnPeople, "picon_human", "People"),
+            (PowerKind.SpawnAnimals, "picon_sheep", "Animals"),
+        };
         public event Action PauseClicked, SpeedClicked;
+        /// <summary>Time bar: speed index into x1, x2, x5, x10.</summary>
+        public event Action<int> SpeedSelected;
+        static readonly string[] TimeLabels = { "II", "x1", "x2", "x5", "x10" };
+        readonly List<Image> _timeImages = new List<Image>();
+
+        /// <summary>Highlights the time bar: the pause button while paused, else the running speed.</summary>
+        public void SetTimeState(bool paused, int speedIndex)
+        {
+            for (int i = 0; i < _timeImages.Count; i++) UiKit.Select(_timeImages[i], paused ? i == 0 : i == speedIndex + 1);
+        }
         public event Action TimeLabelsRequested;
         Text _pauseLabel, _speedLabel;
         Image _selectedSpawnImage;
@@ -78,10 +97,12 @@ namespace WorldSim.Presentation.UI
             new TabDef { Name = "World", Icon = Icon.Globe, Milestone = null },
             new TabDef { Name = "Terrain", Icon = Icon.Mountain, Milestone = null },
             new TabDef { Name = "Life", Icon = Icon.People, Milestone = null },
-            new TabDef { Name = "Nations", Icon = Icon.Castle, Milestone = "Kingdoms, eras and history arrive in Beta milestone B4." },
-            new TabDef { Name = "Powers", Icon = Icon.Storm, Milestone = "Powers and disasters arrive in Beta milestone B5." },
-            new TabDef { Name = "Settings", Icon = Icon.Gear, Milestone = "Settings arrive in Beta milestone B8." },
+            new TabDef { Name = "Nations", Icon = Icon.Castle, Milestone = "Villages, kingdoms and wars come next (Alpha step 3)." },
+            new TabDef { Name = "Powers", Icon = Icon.Storm, Milestone = null },
+            new TabDef { Name = "Settings", Icon = Icon.Gear, Milestone = null },
         };
+
+        static readonly string[] TabIcons = { "icon_globe", "icon_pick", "picon_human", "icon_crown", "picon_bolt", "icon_gear" };
 
         readonly Canvas _canvas;
 
@@ -111,19 +132,40 @@ namespace WorldSim.Presentation.UI
             _topBar = NewRect("TopBar", _safeRoot);
             _topBar.anchorMin = new Vector2(0, 1); _topBar.anchorMax = new Vector2(1, 1);
             _topBar.pivot = new Vector2(0.5f, 1); _topBar.sizeDelta = new Vector2(0, 120);
-            AddImage(_topBar, PanelColor);
+            UiKit.Panel(_topBar, 0.45f, 0.92f);
             _title = AddText(_topBar, 32, TextAnchor.MiddleLeft);
             Fill(_title.rectTransform, 28, 6, -28, -6);
+
+            // ---- Time bar (always visible, top right): pause and x1 x2 x5 x10 ----
+            var timeBar = NewRect("TimeBar", _safeRoot);
+            timeBar.anchorMin = timeBar.anchorMax = new Vector2(1, 1);
+            timeBar.pivot = new Vector2(1, 1);
+            timeBar.sizeDelta = new Vector2(TimeLabels.Length * 104 + 16, 96);
+            timeBar.anchoredPosition = new Vector2(-12, -132);
+            UiKit.Panel(timeBar, 0.45f, 0.9f);
+            for (int i = 0; i < TimeLabels.Length; i++)
+            {
+                int slot = i;
+                var b = NewRect("Time" + i, timeBar);
+                b.anchorMin = b.anchorMax = new Vector2(0, 0.5f);
+                b.pivot = new Vector2(0, 0.5f);
+                b.sizeDelta = new Vector2(96, 76);
+                b.anchoredPosition = new Vector2(10 + i * 104, 0);
+                var img = UiKit.Button(b);
+                _timeImages.Add(img);
+                var btn = b.gameObject.AddComponent<Button>();
+                btn.targetGraphic = img;
+                btn.onClick.AddListener(() => { if (slot == 0) PauseClicked?.Invoke(); else SpeedSelected?.Invoke(slot - 1); });
+                var t = AddText(b, 30, TextAnchor.MiddleCenter);
+                Stretch(t.rectTransform);
+                t.text = TimeLabels[i];
+            }
 
             // ---- Bottom toolbar: tab strip + content ----
             _toolbar = NewRect("Toolbar", _safeRoot);
             _toolbar.anchorMin = new Vector2(0, 0); _toolbar.anchorMax = new Vector2(1, 0);
             _toolbar.pivot = new Vector2(0.5f, 0); _toolbar.sizeDelta = new Vector2(0, ToolbarHeight);
-            AddImage(_toolbar, PanelColor);
-            var border = NewRect("Border", _toolbar);
-            border.anchorMin = new Vector2(0, 1); border.anchorMax = new Vector2(1, 1);
-            border.pivot = new Vector2(0.5f, 1); border.sizeDelta = new Vector2(0, 4);
-            AddImage(border, BorderColor);
+            UiKit.Panel(_toolbar, 0.55f, 0.97f);
 
             float tabW = 1f / Tabs.Length;
             for (int i = 0; i < Tabs.Length; i++)
@@ -133,12 +175,12 @@ namespace WorldSim.Presentation.UI
                 tab.anchorMin = new Vector2(i * tabW, 1); tab.anchorMax = new Vector2((i + 1) * tabW, 1);
                 tab.pivot = new Vector2(0.5f, 1); tab.sizeDelta = new Vector2(-8, 96);
                 tab.anchoredPosition = new Vector2(0, -10);
-                var img = AddImage(tab, TabColor);
+                var img = UiKit.Button(tab);
                 _tabImages.Add(img);
                 var btn = tab.gameObject.AddComponent<Button>();
                 btn.targetGraphic = img;
                 btn.onClick.AddListener(() => SelectTab(index));
-                AddIcon(tab, Tabs[i].Icon, 64, new Vector2(0, 8));
+                AddPackIcon(tab, TabIcons[i], 64, new Vector2(0, 8));
                 var label = AddText(tab, 22, TextAnchor.LowerCenter);
                 Fill(label.rectTransform, 0, 2, 0, 0);
                 label.text = Tabs[i].Name;
@@ -156,7 +198,7 @@ namespace WorldSim.Presentation.UI
             _infoPanel.anchorMin = new Vector2(0, 0); _infoPanel.anchorMax = new Vector2(1, 0);
             _infoPanel.pivot = new Vector2(0.5f, 0); _infoPanel.sizeDelta = new Vector2(0, 190);
             _infoPanel.anchoredPosition = new Vector2(0, ToolbarHeight);
-            AddImage(_infoPanel, new Color(0.06f, 0.08f, 0.12f, 0.86f));
+            UiKit.Panel(_infoPanel, 0.45f, 0.94f);
             _info = AddText(_infoPanel, 32, TextAnchor.MiddleLeft);
             Fill(_info.rectTransform, 28, 10, -28, -10);
             _infoPanel.gameObject.SetActive(false);
@@ -168,7 +210,7 @@ namespace WorldSim.Presentation.UI
             var card = NewRect("Card", _noticeOverlay);
             card.anchorMin = new Vector2(0.06f, 0.25f); card.anchorMax = new Vector2(0.94f, 0.75f);
             card.offsetMin = Vector2.zero; card.offsetMax = Vector2.zero;
-            AddImage(card, new Color(0.10f, 0.13f, 0.19f, 1f));
+            UiKit.Panel(card, 0.6f, 1f);
             var noticeText = AddText(card, 40, TextAnchor.UpperLeft);
             Fill(noticeText.rectTransform, 44, 170, -44, -44);
             noticeText.text = FictionNotice;
@@ -176,7 +218,7 @@ namespace WorldSim.Presentation.UI
             ok.anchorMin = new Vector2(0.5f, 0); ok.anchorMax = new Vector2(0.5f, 0);
             ok.pivot = new Vector2(0.5f, 0); ok.sizeDelta = new Vector2(520, 120);
             ok.anchoredPosition = new Vector2(0, 36);
-            var okImg = AddImage(ok, TabActive);
+            var okImg = UiKit.Button(ok);
             var okBtn = ok.gameObject.AddComponent<Button>();
             okBtn.targetGraphic = okImg;
             okBtn.onClick.AddListener(() => { _noticeOverlay.gameObject.SetActive(false); NoticeAccepted?.Invoke(); });
@@ -222,7 +264,7 @@ namespace WorldSim.Presentation.UI
 
         void SelectTab(int index)
         {
-            for (int i = 0; i < _tabImages.Count; i++) _tabImages[i].color = i == index ? TabActive : TabColor;
+            for (int i = 0; i < _tabImages.Count; i++) UiKit.Select(_tabImages[i], i == index);
             for (int i = _content.childCount - 1; i >= 0; i--)
             {
                 var child = _content.GetChild(i);
@@ -234,6 +276,7 @@ namespace WorldSim.Presentation.UI
             _selectedToolImage = null;
             ToolChanged?.Invoke(null); // switching tabs always returns to inspect mode
             SpawnChanged?.Invoke(null);
+            PowerChanged?.Invoke(null);
             _pauseLabel = _speedLabel = null;
             _selectedSpawnImage = null;
             _placeholder.text = Tabs[index].Milestone ?? "";
@@ -259,6 +302,15 @@ namespace WorldSim.Presentation.UI
                 RectTransform row = BuildScrollRow(0f);
                 AddRowButton(row, GetIconSprite(Icon.Gear), "Art test", () => ArtTestClicked?.Invoke());
                 AddRowButton(row, GetIconSprite(Icon.Gear), "Art lab", () => ArtLabClicked?.Invoke());
+            }
+            else if (index == 4)
+            {
+                RectTransform row = BuildScrollRow(0f);
+                foreach (var pw in PowerButtons)
+                {
+                    PowerKind kind = pw.kind;
+                    AddSelectableButton(row, UiKit.Icon(pw.icon), pw.label, on => PowerChanged?.Invoke(on ? kind : (PowerKind?)null));
+                }
             }
             else if (index == 2)
             {
@@ -354,10 +406,7 @@ namespace WorldSim.Presentation.UI
         {
             var rt = NewRect(label + "Button", row);
             rt.sizeDelta = new Vector2(160, 200);
-            var img = AddImage(rt, ButtonColor);
-            var outline = rt.gameObject.AddComponent<Outline>();
-            outline.effectColor = BorderColor;
-            outline.effectDistance = new Vector2(3, -3);
+            var img = UiKit.Button(rt);
             var btn = rt.gameObject.AddComponent<Button>();
             btn.targetGraphic = img;
             btn.onClick.AddListener(() => onClick());
@@ -389,27 +438,30 @@ namespace WorldSim.Presentation.UI
             btn.onClick.AddListener(() =>
             {
                 bool deselect = _selectedSpawnImage == img;
-                if (_selectedSpawnImage != null) _selectedSpawnImage.color = ButtonColor;
+                if (_selectedSpawnImage != null) UiKit.Select(_selectedSpawnImage, false);
                 _selectedSpawnImage = deselect ? null : img;
-                if (!deselect) img.color = TabActive;
+                if (!deselect) UiKit.Select(img, true);
                 onToggle(!deselect);
             });
         }
 
         readonly Dictionary<SpeciesId, Sprite> _creatureIcons = new Dictionary<SpeciesId, Sprite>();
-        uint[] _creatureAtlas;
 
         Sprite GetCreatureSprite(SpeciesId id)
         {
             if (_creatureIcons.TryGetValue(id, out var s)) return s;
-            _creatureAtlas ??= CreatureSprites.Build();
-            int c = CreatureSprites.Cell, start = CreatureSprites.CellIndex(id, 0) * CreatureSprites.CellPixels;
-            var px = new uint[c * c];
-            for (int i = 0; i < px.Length; i++) { uint v = _creatureAtlas[start + i]; px[i] = Rgba.A(v) < 255 ? 0u : v; } // no shadow in icons
-            var tex = new Texture2D(c, c, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
-            tex.SetPixelData(px, 0);
-            tex.Apply(false, true);
-            s = Sprite.Create(tex, new Rect(0, 0, c, c), new Vector2(0.5f, 0.5f), c);
+            // Pack portrait for animals (portrait_a_sheep_32...), the first idle frame for peoples and the rest.
+            string key = WorldSim.Render.Art.CreatureArt.PackKey(id);
+            string prefix = id == SpeciesId.Bird ? "c_" : id == SpeciesId.Fish ? "s_" : "a_";
+            var db = WorldSim.Presentation.Art.WorldSimArtDB.Instance;
+            s = WorldSim.Render.Art.CreatureArt.IsPerson(id) ? null : db.GetSprite("portrait_" + prefix + key + "_32");
+            if (s == null)
+            {
+                string anim = WorldSim.Render.Art.CreatureArt.Resolve(id, WorldSim.Render.Art.CreaturePose.Idle, false, true,
+                                                                      WorldSim.Render.Art.Era.Medieval, false, out bool isAnim);
+                if (isAnim && db.TryGetAnim(anim, out var a) && a.Frames.Length > 0) s = db.GetSprite(a.Frames[0]);
+                else if (!isAnim) s = db.GetSprite(anim);
+            }
             _creatureIcons[id] = s;
             return s;
         }
@@ -418,18 +470,15 @@ namespace WorldSim.Presentation.UI
         {
             var rt = NewRect(label + "Tool", row);
             rt.sizeDelta = new Vector2(150, 200);
-            var img = AddImage(rt, ButtonColor);
-            var outline = rt.gameObject.AddComponent<Outline>();
-            outline.effectColor = BorderColor;
-            outline.effectDistance = new Vector2(3, -3);
+            var img = UiKit.Button(rt);
             var btn = rt.gameObject.AddComponent<Button>();
             btn.targetGraphic = img;
             btn.onClick.AddListener(() =>
             {
                 bool deselect = _selectedToolImage == img;
-                if (_selectedToolImage != null) _selectedToolImage.color = ButtonColor;
+                if (_selectedToolImage != null) UiKit.Select(_selectedToolImage, false);
                 _selectedToolImage = deselect ? null : img;
-                if (!deselect) img.color = TabActive;
+                if (!deselect) UiKit.Select(img, true);
                 ToolChanged?.Invoke(deselect ? (ToolChoice?)null : choice);
             });
             var iconRt = NewRect("Icon", rt);
@@ -477,10 +526,7 @@ namespace WorldSim.Presentation.UI
             rt.anchorMin = new Vector2(0, 0.5f); rt.anchorMax = new Vector2(0, 0.5f);
             rt.pivot = new Vector2(0, 0.5f); rt.sizeDelta = new Vector2(w, h);
             rt.anchoredPosition = new Vector2(slot * (w + gap), 0);
-            var img = AddImage(rt, ButtonColor);
-            var outline = rt.gameObject.AddComponent<Outline>();
-            outline.effectColor = BorderColor;
-            outline.effectDistance = new Vector2(3, -3);
+            var img = UiKit.Button(rt);
             var btn = rt.gameObject.AddComponent<Button>();
             btn.targetGraphic = img;
             btn.onClick.AddListener(() => onClick());
@@ -489,6 +535,18 @@ namespace WorldSim.Presentation.UI
             Fill(text.rectTransform, 4, 8, -4, 0);
             text.text = label;
             return text;
+        }
+
+        void AddPackIcon(RectTransform parent, string icon, float size, Vector2 offset)
+        {
+            var rt = NewRect("Icon", parent);
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(size, size);
+            rt.anchoredPosition = offset;
+            var img = rt.gameObject.AddComponent<Image>();
+            img.sprite = UiKit.Icon(icon);
+            img.raycastTarget = false;
+            img.preserveAspect = true;
         }
 
         void AddIcon(RectTransform parent, Icon icon, float size, Vector2 offset)
