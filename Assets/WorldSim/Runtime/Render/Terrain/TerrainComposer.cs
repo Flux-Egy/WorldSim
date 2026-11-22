@@ -80,16 +80,26 @@ namespace WorldSim.Render.Terrain
                     uint baseC = Ground(tiles, lay, cache, art, cell, x, y, style);
                     uint c = baseC;
                     int front = nextLv[i] < TerrainLayout.WaterLevel ? TerrainLayout.WaterLevel : nextLv[i];
+                    // Cliffs are drawn only where they help reading the land: at the coast, on rock and snow, and for
+                    // big drops (2+ levels). Small steps on flat land (grass, steppe, savanna, desert) stay invisible.
+                    bool rocky = IsRockOrSnow((Biome)lay.RenderBiome[cell]);
+                    bool visibleDrop = !isWater && front < L && (front <= TerrainLayout.WaterLevel || rocky || L - front >= 2);
                     if (!isWater)
                     {
                         if (L > 4) c = Rgba.Shift(c, System.Math.Min(10, 2 * (L - 4)));          // high ground a bit lighter
                         bool shade = false;
                         for (int d = 1; d <= West && !shade; d++)
-                            shade = TerrainLayout.Lift(curLv[i - d]) - lift - d >= 0;           // ~45 degree light from the west
+                        {
+                            int wl = curLv[i - d];
+                            shade = TerrainLayout.Lift(wl) - lift - d >= 0 && (rocky || wl - L >= 2); // ~45 degree light from the west
+                        }
                         if (shade) c = Rgba.Darken(c, 88);
-                        if (front < L) c = Rgba.Shift(c, 14);                                    // light lip above a drop
-                        else if (L > TerrainLayout.WaterLevel && (curLv[i - 1] < L || (i + 1 < rowLen && curLv[i + 1] < L)))
-                            c = Rgba.Darken(c, 86);                                              // thin side outline
+                        if (visibleDrop) c = Rgba.Shift(c, 14);                                  // light lip above a drop
+                        else if (L > TerrainLayout.WaterLevel && front >= L)
+                        {
+                            int side = System.Math.Max(L - curLv[i - 1], i + 1 < rowLen ? L - curLv[i + 1] : 0);
+                            if (side > 0 && (rocky || side >= 2)) c = Rgba.Darken(c, 86);       // thin side outline
+                        }
                     }
                     int sy = y - lift - Y0, sx = i - West;
                     if (sy >= 0 && sy < H) { img[sy * W + sx] = c; water[sy * W + sx] = isWater; }
@@ -102,8 +112,8 @@ namespace WorldSim.Render.Terrain
                         {
                             int fy = sy + k;
                             if (fy < 0 || fy >= H) continue;
-                            int pct = snow ? (k == drop ? 78 : 86) : (k == drop ? 58 : 70);   // a dark shade of the same ground, moderate contrast
-                            img[fy * W + sx] = Rgba.Darken(baseC, pct);
+                            int pct = !visibleDrop ? 100 : snow ? (k == drop ? 78 : 86) : (k == drop ? 58 : 70); // a dark shade of the same ground
+                            img[fy * W + sx] = pct == 100 ? baseC : Rgba.Darken(baseC, pct);
                             water[fy * W + sx] = false;
                         }
                     }

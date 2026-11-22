@@ -155,7 +155,9 @@ namespace WorldSim.Render.Terrain
             Band = WaterBands(tiles, width, height);
             RenderBiome = new byte[tiles.Length];
             for (int i = 0; i < tiles.Length; i++)
-                RenderBiome[i] = Level[i] == TopLevel ? (byte)Biome.Snow : tiles[i].BiomeId;
+                RenderBiome[i] = Level[i] == TopLevel ? (byte)Biome.Snow
+                    : tiles[i].BiomeId == (byte)Biome.Snow ? (byte)Biome.Mountain      // a snow cell merged off the cap: no stray white spot
+                    : tiles[i].BiomeId;
             SmoothHeight = new byte[tiles.Length];
             for (int y = 0; y < height; y++)
                 for (int x = 0; x < width; x++)

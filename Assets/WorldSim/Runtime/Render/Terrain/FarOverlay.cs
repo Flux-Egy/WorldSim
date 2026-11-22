@@ -53,7 +53,52 @@ namespace WorldSim.Render.Terrain
                 for (int k = 0; k + 3 < r.Length; k += 2)
                     Line(img, W, H, r[k] * ppc + ppc / 2, r[k + 1] * ppc + ppc / 2, r[k + 2] * ppc + ppc / 2, r[k + 3] * ppc + ppc / 2, ppc >= 4);
 
-            DrawMarkers(img, W, H, ppc, art, m => true);
+            // Settlements read as a small cluster of houses with roofs in the kingdom's colour (owner, 2026-11-22);
+            // other markers (army, monster, events) keep their mk_* icons.
+            foreach (var m in Markers)
+            {
+                int houses = m.Frame == "mk_village" ? 2 : m.Frame == "mk_town" ? 3 : m.Frame == "mk_city" ? 4 : m.Frame == "mk_capital" ? 5 : 0;
+                if (houses > 0) DrawHouses(img, W, H, ppc, m, houses);
+            }
+            DrawMarkers(img, W, H, ppc, art, m => m.Frame != "mk_village" && m.Frame != "mk_town" && m.Frame != "mk_city" && m.Frame != "mk_capital");
+        }
+
+        static readonly int[,] HouseSpots = { { 0, 0 }, { -5, 2 }, { 5, 1 }, { -2, -4 }, { 3, -5 } };
+        static readonly uint Wall = Rgba.Pack(226, 212, 176), WallShade = Rgba.Pack(180, 164, 128), Door = Rgba.Pack(92, 70, 52);
+
+        void DrawHouses(uint[] img, int W, int H, int ppc, Marker m, int count)
+        {
+            uint[] ramp = m.Kingdom >= 0 && m.Kingdom < TeamRamps.Count ? TeamRamps[m.Kingdom] : null;
+            uint roofLight = ramp != null ? ramp[3] : Rgba.Pack(200, 90, 60), roof = ramp != null ? ramp[2] : Rgba.Pack(170, 70, 50);
+            int cx = m.CellX * ppc + ppc / 2, cy = m.CellY * ppc + ppc / 2;
+            int scale = ppc >= 4 ? 1 : 0;                                        // mid: 5x5 houses, far: 3x3
+            for (int k = 0; k < count; k++)
+            {
+                int hx = cx + HouseSpots[k, 0] * (scale + 1) / 2, hy = cy + HouseSpots[k, 1] * (scale + 1) / 2;
+                if (scale == 1)
+                {
+                    // . r r r .   roof (light top row)
+                    // r R R R r
+                    // w w w w s   wall, shade on the right
+                    // w d w w s
+                    for (int x = 1; x <= 3; x++) Put(img, W, H, hx - 2 + x, hy - 2, roofLight);
+                    for (int x = 0; x <= 4; x++) Put(img, W, H, hx - 2 + x, hy - 1, roof);
+                    for (int x = 0; x <= 4; x++) { Put(img, W, H, hx - 2 + x, hy, x == 4 ? WallShade : Wall); Put(img, W, H, hx - 2 + x, hy + 1, x == 4 ? WallShade : x == 1 ? Door : Wall); }
+                    Put(img, W, H, hx - 1, hy + 2, Rgba.Pack(60, 70, 50));   // a pixel of ground shadow
+                    Put(img, W, H, hx, hy + 2, Rgba.Pack(60, 70, 50));
+                }
+                else
+                {
+                    Put(img, W, H, hx, hy - 1, roofLight);
+                    for (int x = -1; x <= 1; x++) { Put(img, W, H, hx + x, hy, roof); Put(img, W, H, hx + x, hy + 1, x == 1 ? WallShade : Wall); }
+                }
+            }
+            if (m.Frame == "mk_capital" && ramp != null)                        // a small banner over the capital
+            {
+                int fx = cx + 1, fy = cy - 3 - 3 * scale;
+                for (int y = 0; y < 3 + scale * 2; y++) Put(img, W, H, fx, fy + y, Rgba.Pack(70, 54, 40));
+                Put(img, W, H, fx + 1, fy, ramp[3]); Put(img, W, H, fx + 2, fy, ramp[2]); Put(img, W, H, fx + 1, fy + 1, ramp[2]);
+            }
         }
 
         void DrawTerritory(uint[] img, int W, int H, int ppc, bool mapMode)
@@ -77,7 +122,7 @@ namespace WorldSim.Render.Terrain
                         if (ncx >= tw || ncy >= th || Territory[ncy * tw + ncx] != k + 1) border = true;
                     }
                     int i = y * W + x;
-                    img[i] = border ? ramp[1] : Rgba.Mix(img[i], ramp[2], mapMode ? 150 : 80);
+                    img[i] = border ? (mapMode ? ramp[1] : Rgba.Mix(img[i], ramp[1], 200)) : Rgba.Mix(img[i], ramp[2], mapMode ? 150 : 64);   // ~25 % tint off the map
                 }
         }
 
