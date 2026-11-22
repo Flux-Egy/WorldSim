@@ -31,6 +31,9 @@ namespace WorldSim.Render.Terrain
     /// <para>Far zoom: the pack's 16 px (1/4) or 8 px (1/8) LOD tiles, smooth contours, no elevation lines, and trees
     /// as small crown clusters.</para>
     /// </summary>
+    /// <summary>Zoom layers, each drawn with its own level of detail.</summary>
+    public enum ZoomLayer : byte { Near = 0, Mid = 1, Far = 2, Map = 3 }
+
     public static class TerrainComposer
     {
         const int Px = TerrainLayout.CellPixels;
@@ -50,56 +53,60 @@ namespace WorldSim.Render.Terrain
             uint ocean = art.Pixel(cache.Water[0], 0, 0);
             for (int i = 0; i < img.Length; i++) { img[i] = ocean; water[i] = true; }
 
-            int rowLen = W;
+            const int West = 8;                                      // columns west of the window, for shadows
+            int rowLen = W + West + 1;
             var curCell = new int[rowLen]; var curLv = new int[rowLen];
             var nextCell = new int[rowLen]; var nextLv = new int[rowLen];
-            var snowAbove = new int[rowLen];                          // rows since the last snow pixel above (0 = none)
             int worldH = lay.Height * Px, worldW = lay.Width * Px;
-            int yStart = Y0 - TerrainLayout.MaxLift - 8, yEnd = Y0 + H + TerrainLayout.MaxLift + 48;
+            int yStart = Y0 - TerrainLayout.MaxLift - 2, yEnd = Y0 + H + TerrainLayout.MaxLift + 48;
             if (yStart < 0) yStart = 0;
             if (yEnd > worldH) yEnd = worldH;
-            FillRow(field, lay, X0, yStart, curCell, curLv);
+            FillRow(field, lay, X0 - West, yStart, curCell, curLv);
 
             var propRows = props ? CollectProps(tiles, lay, cache, cx0, cy0, cw, ch) : null;
-            uint snowShadow = Rgba.Pack(70, 86, 120);
 
             for (int y = yStart; y < yEnd; y++)
             {
-                if (y + 1 < worldH) FillRow(field, lay, X0, y + 1, nextCell, nextLv);
+                if (y + 1 < worldH) FillRow(field, lay, X0 - West, y + 1, nextCell, nextLv);
                 else { System.Array.Copy(curCell, nextCell, rowLen); System.Array.Copy(curLv, nextLv, rowLen); }
 
-                for (int i = 0; i < W; i++)
+                for (int i = West; i < West + W; i++)
                 {
-                    int x = X0 + i;
+                    int x = X0 + i - West;
                     if (x >= worldW) break;
                     int cell = curCell[i], L = curLv[i];
                     bool isWater = L < TerrainLayout.WaterLevel;
-                    bool isSnow = lay.RenderBiome[cell] == (byte)Biome.Snow;
                     int lift = TerrainLayout.Lift(L);
-                    uint baseC = Ground(tiles, lay, field, cache, art, cell, x, y, style);
+                    uint baseC = Ground(tiles, lay, cache, art, cell, x, y, style);
                     uint c = baseC;
-                    bool coastDrop = !isWater && lift > TerrainLayout.Lift(nextLv[i]);
+                    int front = nextLv[i] < TerrainLayout.WaterLevel ? TerrainLayout.WaterLevel : nextLv[i];
                     if (!isWater)
                     {
-                        c = Hillshade(c, field, x, y, IsRock((Biome)lay.RenderBiome[cell]) ? 26 : 12);
-                        if (!isSnow && snowAbove[i] > 0)                                        // soft blue-grey shadow south of snow
-                            c = Rgba.Mix(c, snowShadow, snowAbove[i] == 1 ? 130 : snowAbove[i] == 2 ? 86 : 44);
-                        if (coastDrop) c = Rgba.Shift(c, 16);                                   // light lip above the coast cliff
+                        if (L > 4) c = Rgba.Shift(c, System.Math.Min(10, 2 * (L - 4)));          // high ground a bit lighter
+                        bool shade = false;
+                        for (int d = 1; d <= West && !shade; d++)
+                            shade = TerrainLayout.Lift(curLv[i - d]) - lift - d >= 0;           // ~45 degree light from the west
+                        if (shade) c = Rgba.Darken(c, 88);
+                        if (front < L) c = Rgba.Shift(c, 14);                                    // light lip above a drop
+                        else if (L > TerrainLayout.WaterLevel && (curLv[i - 1] < L || (i + 1 < rowLen && curLv[i + 1] < L)))
+                            c = Rgba.Darken(c, 86);                                              // thin side outline
                     }
-                    snowAbove[i] = isSnow ? 1 : snowAbove[i] > 0 && snowAbove[i] < 3 ? snowAbove[i] + 1 : 0;
-                    if (isSnow) snowAbove[i] = 1;
+                    int sy = y - lift - Y0, sx = i - West;
+                    if (sy >= 0 && sy < H) { img[sy * W + sx] = c; water[sy * W + sx] = isWater; }
 
-                    int sy = y - lift - Y0;
-                    if (sy >= 0 && sy < H) { img[sy * W + i] = c; water[sy * W + i] = isWater; }
-
-                    if (coastDrop)                                                               // the only cliff: land over water/beach
-                        for (int k = 1; k <= lift; k++)
+                    if (!isWater && front < L)
+                    {
+                        int drop = lift - TerrainLayout.Lift(front);
+                        bool snow = lay.RenderBiome[cell] == (byte)Biome.Snow;
+                        for (int k = 1; k <= drop; k++)
                         {
                             int fy = sy + k;
                             if (fy < 0 || fy >= H) continue;
-                            img[fy * W + i] = Rgba.Darken(baseC, k == lift ? 46 : 60);
-                            water[fy * W + i] = false;
+                            int pct = snow ? (k == drop ? 78 : 86) : (k == drop ? 58 : 70);   // a dark shade of the same ground, moderate contrast
+                            img[fy * W + sx] = Rgba.Darken(baseC, pct);
+                            water[fy * W + sx] = false;
                         }
+                    }
                 }
 
                 if (propRows != null && propRows.TryGetValue(y, out var list))
@@ -125,23 +132,15 @@ namespace WorldSim.Render.Terrain
 
         /// <summary>Ground colour of a world pixel: a random window of a random variant per 16 px square, flipped and
         /// rotated by hash, so seamless tiles never show their repeat. Water keeps its horizontal ripples (no rotation).</summary>
-        static uint Ground(TileData[] tiles, TerrainLayout lay, TerrainField field, FrameCache cache, IArtPixels art, int cell, int x, int y,
-                           TerrainStyle style)
-        {
-            uint c = GroundRaw(tiles, lay, field, cache, art, cell, x, y, style);
-            return style == null ? c : style.Grade(c);
-        }
-
-        static uint GroundRaw(TileData[] tiles, TerrainLayout lay, TerrainField field, FrameCache cache, IArtPixels art, int cell, int x, int y,
-                              TerrainStyle style)
+        static uint Ground(TileData[] tiles, TerrainLayout lay, FrameCache cache, IArtPixels art, int cell, int x, int y, TerrainStyle style)
         {
             Biome b = (Biome)lay.RenderBiome[cell];
-            int wband = tiles[cell].IsWater ? field.WaterBand(x, y) : -1;
-            if (style?.Ground != null) return Rock(style.Ground(b, wband, x, y), b, field.Height(x, y), style.Ground(b, wband, x & ~63, y & ~63));
-            if (tiles[cell].IsWater)
+            if (tiles[cell].IsWater && !(b == Biome.CoralShallows && lay.Band[cell] == 2))
             {
-                int band = wband;
-                if (!(b == Biome.CoralShallows && band == 2)) return art.Pixel(cache.Water[band], x & 63, y & 63);
+                int band = lay.Band[cell] > 2 ? 2 : lay.Band[cell];
+                int wf = cache.Water[band];
+                uint w = art.Pixel(wf, x & 63, y & 63);
+                return style == null ? w : style.Retint(w, cache.Mean(wf), b, band);
             }
             // Patches of ~16 px with noise-warped, irregular borders; inside a patch the (wrapping, seamless) tile is
             // sampled continuously with its own variant, offset, flip and rotation, so no grid and no visible repeat.
@@ -155,45 +154,14 @@ namespace WorldSim.Render.Terrain
             int f = cache.Tile(b, (int)(h & 3));
             if (f < 0) return Rgba.Pack(255, 0, 255);
             uint c = art.Pixel(f, (u + (int)((h >> 5) & 63)) & 63, (v + (int)((h >> 11) & 63)) & 63);
-            if (style != null && style.Calm > 0) c = Calm(c, cache.Mean(f), style.Calm);
-            return Rock(c, b, field.Height(x, y), cache.Mean(f));
+            int calm = Calmness(b);
+            if (calm > 0) c = Calm(c, cache.Mean(f), calm);
+            return style == null ? c : style.Retint(c, cache.Mean(f), b, -1);
         }
 
-        /// <summary>Rock gets darker and heavier (more texture contrast) the higher it is; low rock stays calm.</summary>
-        static uint Rock(uint c, Biome b, int height16, uint mean)
-        {
-            if (b != Biome.Mountain && b != Biome.RockyHighland) return c;
-            int t = (height16 / 16 - 188) * 100 / 52;                   // 0 at the foothills .. 100 near the snow line
-            if (t < 0) t = 0; else if (t > 100) t = 100;
-            c = Calm(c, mean, 55 - t * 55 / 100);
-            return Rgba.Darken(c, 100 - t * 10 / 100);
-        }
-
-        /// <summary>Soft hillshade, light from the top-left: slopes facing it a little lighter, the others a little
-        /// darker (at most about 14%), from the smoothed height, so there are no edges.</summary>
-        static uint Hillshade(uint c, TerrainField field, int x, int y, int maxPct = 12)
-        {
-            int gx = field.Height(x + 8, y) - field.Height(x - 8, y);
-            int gy = field.Height(x, y + 8) - field.Height(x, y - 8);
-            // Pixel-art shading: three steps each way, ordered-dithered between steps (crisp, no smoky gradient).
-            int step = maxPct / 3 < 1 ? 1 : maxPct / 3;
-            int v16 = (gx + gy) * maxPct * 16 / 70;                    // percent x16
-            int lim = maxPct * 16;
-            if (v16 > lim) v16 = lim; else if (v16 < -lim) v16 = -lim;
-            int s16 = step * 16;
-            int q = v16 >= 0 ? v16 / s16 : -((-v16 + s16 - 1) / s16);   // floor
-            int frac = v16 - q * s16;                                    // 0..s16-1
-            if (frac * 16 / s16 > Bayer4[(y & 3) * 4 + (x & 3)]) q++;
-            int pct = q * step;
-            return pct == 0 ? c : Scale(c, 100 + pct);
-        }
-
-        static readonly int[] Bayer4 = { 0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5 };
-
-        /// <summary>Mountains get about twice the hillshade of other land, so they stand out as relief.</summary>
-        static bool IsRock(Biome b) => b == Biome.Mountain || b == Biome.RockyHighland || b == Biome.Snow || b == Biome.Glacier || b == Biome.Volcanic;
-
-        static uint Scale(uint c, int pct) => Rgba.Pack(Rgba.R(c) * pct / 100, Rgba.G(c) * pct / 100, Rgba.B(c) * pct / 100);
+        /// <summary>Rock and snow are calmed (fewer, softer blotches); the rest keeps its texture.</summary>
+        static int Calmness(Biome b) =>
+            b == Biome.Mountain ? 62 : b == Biome.RockyHighland ? 45 : b == Biome.Snow || b == Biome.Glacier ? 45 : 0;
 
         static uint Calm(uint c, uint mean, int percent)
         {
@@ -269,45 +237,59 @@ namespace WorldSim.Render.Terrain
                             : Is(dist, W, H, x - 1, y, 1) || Is(dist, W, H, x + 1, y, 1) || Is(dist, W, H, x, y - 1, 1) || Is(dist, W, H, x, y + 1, 1);
                         if (near) dist[i] = (byte)pass;
                     }
+            int foam = cache.Foam;
             for (int i = 0; i < img.Length; i++)
             {
                 if (dist[i] == 0) continue;
-                img[i] = Rgba.Mix(img[i], Rgba.Pack(242, 248, 251), dist[i] == 1 ? 210 : 70);   // thin white foam line
+                uint c = foam >= 0 ? art.Pixel(foam, (i % W) & 63, dist[i] - 1) : Rgba.Pack(230, 240, 245);
+                int a = Rgba.A(c);
+                if (a > 0) img[i] = Rgba.Mix(img[i], c, dist[i] == 1 ? a : a / 2);
             }
         }
 
         static bool Land(bool[] water, int W, int H, int x, int y) => x >= 0 && y >= 0 && x < W && y < H && !water[y * W + x];
         static bool Is(byte[] d, int W, int H, int x, int y, int v) => x >= 0 && y >= 0 && x < W && y < H && d[y * W + x] == v;
 
-        // ------------------------------------------------------------------------------------------------ far
-        /// <summary>Far zoom: <paramref name="pixelsPerCell"/> 4 (zoom 1/4, lod16 tiles) or 2 (zoom 1/8, lod8 tiles).
-        /// Smooth contours, depth bands and hillshade from the same field, a clean foam line on every coast, no
-        /// elevation lines; forests darkened by their real tree density, trees as small crowns (1/4), and the
-        /// optional <paramref name="overlay"/> (farms, roads, kingdom/army/monster/event markers at constant size).</summary>
-        public static uint[] ComposeFar(TileData[] tiles, TerrainLayout lay, TerrainField field, IArtPixels art, int pixelsPerCell,
-                                        FarOverlay overlay = null)
+        // ------------------------------------------------------------------------------------------------ mid / far / map
+        /// <summary>
+        /// The zoomed-out layers, each with its own detail (owner's table, 2026-11-22), never a shrunk near view:
+        /// <list type="bullet">
+        /// <item><b>Mid</b> (4 px per cell, lod16 tiles): only big cliffs (2+ levels) as a thin line at half the near
+        /// contrast; tree crowns as small dots; settlements/roads/farms from the overlay.</item>
+        /// <item><b>Far</b> (2 px per cell, lod8 tiles): no elevation lines, a very light hillshade on mountains only;
+        /// forests as darker patches by real tree density; markers and kingdom borders from the overlay.</item>
+        /// <item><b>Map</b> (2 px per cell): flat map colours, kingdom territory in its colour with borders, capitals
+        /// and roads only.</item>
+        /// </list>
+        /// </summary>
+        public static uint[] ComposeZoom(TileData[] tiles, TerrainLayout lay, TerrainField field, IArtPixels art, ZoomLayer zoom,
+                                         FarOverlay overlay = null, TerrainStyle style = null, System.Func<Biome, int, uint> mapColor = null)
         {
-            int ppc = pixelsPerCell >= 4 ? 4 : 2, lodPx = ppc * 4, step = Px / ppc;
+            int ppc = zoom == ZoomLayer.Mid ? 4 : 2, lodPx = ppc * 4, step = Px / ppc;
             int W = lay.Width * ppc, H = lay.Height * ppc;
             var img = new uint[W * H];
-            var isWater = new bool[W * H];
             var cache = new FrameCache(art);
-            var density = TreeDensity(tiles, lay);
+            byte[] density = zoom == ZoomLayer.Far ? TreeDensity(tiles, lay) : null;
             for (int y = 0; y < H; y++)
                 for (int x = 0; x < W; x++)
                 {
                     int wx0 = x * step + step / 2, wy0 = y * step + step / 2;
-                    field.Pick(wx0, wy0, out int cell, out _);
+                    field.Pick(wx0, wy0, out int cell, out int level);
                     Biome b = (Biome)lay.RenderBiome[cell];
+                    bool water = tiles[cell].IsWater && !(b == Biome.CoralShallows && lay.Band[cell] == 2);
+                    int band = lay.Band[cell] > 2 ? 2 : lay.Band[cell];
                     uint c;
-                    bool water = tiles[cell].IsWater;
-                    int band = water ? field.WaterBand(wx0, wy0) : 255;
-                    if (water && !(b == Biome.CoralShallows && band == 2))
-                        c = art.Pixel(cache.Water[band], (x * step) & 63, (y * step) & 63);
+                    if (zoom == ZoomLayer.Map && mapColor != null)
+                        c = mapColor(b, tiles[cell].IsWater ? band : -1);
+                    else if (water)
+                    {
+                        int wf = cache.Water[band];
+                        c = art.Pixel(wf, (x * step) & 63, (y * step) & 63);
+                        if (style != null) c = style.Retint(c, cache.Mean(wf), b, band);
+                    }
                     else
                     {
-                        // Same idea as near zoom: irregular patches, continuous wrapped sampling, random variant,
-                        // offset, flip and rotation.
+                        // Irregular patches, continuous wrapped sampling, random variant/offset/flip/rotation: no grid.
                         int wx = x + TerrainField.Noise(x * 3, y * 3, 0x2F1B) * 3 / 128, wy = y + TerrainField.Noise(x * 3, y * 3, 0x6C35) * 3 / 128;
                         uint h = TerrainLayout.Hash(wx >> 3, (wy >> 3) + 7919);
                         int u = x, v = y, t = (int)((h >> 2) & 7), m = lodPx - 1;
@@ -318,36 +300,50 @@ namespace WorldSim.Render.Terrain
                         c = f < 0 ? Rgba.Pack(255, 0, 255) : art.Pixel(f, (u + (int)((h >> 5) & 63)) & m, (v + (int)((h >> 11) & 63)) & m);
                         if (f >= 0)
                         {
-                            if (b == Biome.Beach || b == Biome.Snow) c = Calm(c, cache.Mean(f), 75);   // clean rims, no speckle
-                            c = Rock(c, b, field.Height(wx0, wy0), cache.Mean(f));
+                            int calm = Calmness(b) + (b == Biome.Beach ? 60 : 0);
+                            if (calm > 0) c = Calm(c, cache.Mean(f), calm > 90 ? 90 : calm);
+                            if (style != null) c = style.Retint(c, cache.Mean(f), b, -1);
                         }
-                        if (!water)
+                        if (zoom == ZoomLayer.Mid)
                         {
-                            c = Hillshade(c, field, wx0, wy0, IsRock(b) ? 26 : 12);
-                            if (density[cell] > 0) c = Rgba.Darken(c, 100 - density[cell]);          // forests read darker
+                            // Big cliffs only (2+ levels down to the pixel in front): a 1 px line at half contrast.
+                            field.Pick(wx0, wy0 + step, out _, out int front);
+                            if (front >= TerrainLayout.WaterLevel && level - front >= 2) c = Rgba.Darken(c, 80);
+                        }
+                        else
+                        {
+                            if (IsRockOrSnow(b)) c = LightHillshade(c, field, wx0, wy0, x, y);
+                            if (density != null && density[cell] > 0) c = Rgba.Darken(c, 100 - density[cell]);
                         }
                     }
                     img[y * W + x] = c;
-                    isWater[y * W + x] = water;
                 }
-            // A clean 1 px foam line on the water side of every coast (no dotted rims).
-            var foam = new bool[W * H];
-            for (int y = 0; y < H; y++)
-                for (int x = 0; x < W; x++)
-                {
-                    int i = y * W + x;
-                    if (!isWater[i]) continue;
-                    if ((x > 0 && !isWater[i - 1]) || (x + 1 < W && !isWater[i + 1]) || (y > 0 && !isWater[i - W]) || (y + 1 < H && !isWater[i + W]))
-                        foam[i] = true;
-                }
-            for (int i = 0; i < foam.Length; i++) if (foam[i]) img[i] = Rgba.Mix(img[i], Rgba.Pack(242, 248, 251), ppc == 4 ? 150 : 110);
-
-            if (ppc == 4) DrawTreeClusters(tiles, lay, field, art, cache, img, W, H);
-            if (overlay != null) overlay.Draw(img, W, H, ppc, art);
+            if (zoom == ZoomLayer.Mid) DrawTreeClusters(tiles, lay, field, art, cache, img, W, H);
+            if (overlay != null) overlay.Draw(img, W, H, ppc, art, zoom == ZoomLayer.Map);
             return img;
         }
 
-        /// <summary>Per cell: how much darker (0..14 %) the far ground is, from the trees in its 5x5 neighbourhood.</summary>
+        /// <summary>Kept for callers of the first far renderer: 4 = Mid, 2 = Far.</summary>
+        public static uint[] ComposeFar(TileData[] tiles, TerrainLayout lay, TerrainField field, IArtPixels art, int pixelsPerCell) =>
+            ComposeZoom(tiles, lay, field, art, pixelsPerCell >= 4 ? ZoomLayer.Mid : ZoomLayer.Far);
+
+        static bool IsRockOrSnow(Biome b) => b == Biome.Mountain || b == Biome.RockyHighland || b == Biome.Snow || b == Biome.Glacier || b == Biome.Volcanic;
+
+        static readonly int[] Bayer4 = { 0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5 };
+
+        /// <summary>Far zoom: a very light (at most 8 %), stepped and dithered hillshade on mountains; no lines.</summary>
+        static uint LightHillshade(uint c, TerrainField field, int wx, int wy, int x, int y)
+        {
+            int g = field.Height(wx + 16, wy) - field.Height(wx - 16, wy) + field.Height(wx, wy + 16) - field.Height(wx, wy - 16);
+            int v = g * 8 / 160;                                         // percent x16
+            if (v > 128) v = 128; else if (v < -128) v = -128;
+            int q = v >= 0 ? v / 64 : -((-v + 63) / 64);                // steps of 4 %
+            if ((v - q * 64) / 4 > Bayer4[(y & 3) * 4 + (x & 3)]) q++;
+            int pct = q * 4;
+            return pct == 0 ? c : Rgba.Pack(Rgba.R(c) * (100 + pct) / 100, Rgba.G(c) * (100 + pct) / 100, Rgba.B(c) * (100 + pct) / 100);
+        }
+
+        /// <summary>Per cell: how much darker (0..16 %) the far ground is, from the trees in its 5x5 neighbourhood.</summary>
         static byte[] TreeDensity(TileData[] tiles, TerrainLayout lay)
         {
             int w = lay.Width, h = lay.Height;
@@ -364,8 +360,8 @@ namespace WorldSim.Render.Terrain
                             total++;
                             if (TileData.IsTree(tiles[ny * w + nx].Decoration)) n++;
                         }
-                    d[y * w + x] = (byte)(n * 14 * 100 / (total * 40));                  // 40 % trees -> 14 % darker
-                    if (d[y * w + x] > 14) d[y * w + x] = 14;
+                    int v = n * 16 * 100 / (total * 35);                   // 35 % trees -> 16 % darker
+                    d[y * w + x] = (byte)(v > 16 ? 16 : v);
                 }
             return d;
         }

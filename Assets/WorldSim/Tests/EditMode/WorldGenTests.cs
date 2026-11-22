@@ -22,10 +22,10 @@ namespace WorldSim.Tests
         }
 
         // Regenerated 2026-11-21 (rebuild, owner-approved): pack biomes, larger coherent climate regions, snow only on
-        // peaks, rarer/smaller anomaly patches, about half the decorations, palms only on hot beaches/deserts.
-        [TestCase(0x5EEDUL, 0xEE24C3566000329EUL)]
-        [TestCase(0xC0FFEEUL, 0x1E12B369C926612CUL)]
-        [TestCase(0x1UL, 0x6CD884C2955E0B31UL)]
+        // peaks, rarer/smaller anomaly patches, about half the decorations, palms only on hot beaches/deserts; 2026-11-22: mountains <= 15 % of land.
+        [TestCase(0x5EEDUL, 0xBFA0A28272C01496UL)]
+        [TestCase(0xC0FFEEUL, 0x5E78FFCCF27D2491UL)]
+        [TestCase(0x1UL, 0xED2630C383B73C8BUL)]
         public void GoldenHash_IsStableAcrossPlatforms(ulong seed, ulong expected)
         {
             ulong hash = WorldHash.Compute(seed, Size, Size, Generate(seed));
@@ -76,7 +76,8 @@ namespace WorldSim.Tests
             double waterShare = (double)water / tiles.Length;
             Assert.That(waterShare, Is.InRange(0.25, 0.70), "water share");
             for (int b = (int)Biome.DeepWater; b <= (int)Biome.Snow; b++)
-                Assert.That((double)counts[b] / tiles.Length, Is.GreaterThan(0.005), $"biome {(Biome)b} missing");
+                // Snow only caps the (now rarer, <= 15 % of land) mountain peaks: present, but small.
+                Assert.That((double)counts[b] / tiles.Length, Is.GreaterThan(b == (int)Biome.Snow ? 0.001 : 0.005), $"biome {(Biome)b} missing");
             int distinct = 0;
             foreach (int c in counts) if (c > 0) distinct++;
             Assert.That(distinct, Is.GreaterThanOrEqualTo(12), "biome variety");

@@ -89,34 +89,74 @@ static class PackPreview
 
         string root = FindArt();
         var art = new PackArt(root);
-        var sw = System.Diagnostics.Stopwatch.StartNew();
         var lay = new TerrainLayout(tiles, size, size);
         var field = new TerrainField(tiles, lay);
-        var demo = DemoKingdoms(tiles, lay, size, root, out var demoPlaces);
-        var far = TerrainComposer.ComposeFar(tiles, lay, field, art, 4, demo);
-        var map = TerrainComposer.ComposeFar(tiles, lay, field, art, 2, demo);
-        foreach (var (dx, dy) in demoPlaces) Console.WriteLine($"demo kingdom capital at cell {dx},{dy}");
-        Save(Path.Combine(outDir, "far_quarter.png"), far, size * 4, size * 4, 1);
-        Save(Path.Combine(outDir, "far_eighth.png"), map, size * 2, size * 2, 1);
-        Console.WriteLine($"far in {sw.ElapsedMilliseconds} ms");
-        // Each place (cellX cellY cells): near = x2 of the window, mid = x1 of a window twice as big around it,
-        // far = the same area at zoom 1/4, enlarged x4 so its pixels can be judged.
+        var map = MapColors(root);
+        var style = new TerrainStyle { Target = (b, band) => Vivid(MapColor(map, b, band), 150, 10) };
+        Func<Biome, int, uint> mapColor = (b, band) => band >= 0 ? Vivid(MapColor(map, b, band), 110, 0) : Vivid(MapColor(map, b, band), 45, 18);   // neutral land muted, kingdoms pop
+        var demo = DemoKingdoms(tiles, lay, size, root, out var capitals);
+        foreach (var (dx, dy) in capitals) Console.WriteLine($"demo kingdom capital at cell {dx},{dy}");
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var mid = TerrainComposer.ComposeZoom(tiles, lay, field, art, ZoomLayer.Mid, demo, style);
+        var far = TerrainComposer.ComposeZoom(tiles, lay, field, art, ZoomLayer.Far, demo, style);
+        var mapImg = TerrainComposer.ComposeZoom(tiles, lay, field, art, ZoomLayer.Map, demo, style, mapColor);
+        Save(Path.Combine(outDir, "mid_whole.png"), mid, size * 4, size * 4, 1);
+        Save(Path.Combine(outDir, "far_whole.png"), far, size * 2, size * 2, 1);
+        Save(Path.Combine(outDir, "map_whole.png"), mapImg, size * 2, size * 2, 1);
+        Console.WriteLine($"zoom layers in {sw.ElapsedMilliseconds} ms");
+
+        // Per place (centre cellX cellY, near window n cells): near x2, and the four zooms side by side (512 px each).
         for (int i = 4; i + 2 < a.Length; i += 3)
         {
             int cx = int.Parse(a[i]), cy = int.Parse(a[i + 1]), n = int.Parse(a[i + 2]);
-            string tag = $"{cx}_{cy}";
-            var near = TerrainComposer.ComposeNear(tiles, lay, field, art, cx, cy, n, n, true, out int w, out int h);
-            Save(Path.Combine(outDir, $"{tag}_near_x2.png"), near, w, h, 2);
-            int mx = Math.Max(0, cx - n / 2), my = Math.Max(0, cy - n / 2), mn = Math.Min(2 * n, Math.Min(size - mx, size - my));
-            var mid = TerrainComposer.ComposeNear(tiles, lay, field, art, mx, my, mn, mn, true, out int mw, out int mh);
-            Save(Path.Combine(outDir, $"{tag}_mid_x1.png"), mid, mw, mh, 1);
-            var crop = new uint[mn * 4 * mn * 4];
-            for (int y = 0; y < mn * 4; y++) Array.Copy(far, (my * 4 + y) * size * 4 + mx * 4, crop, y * mn * 4, mn * 4);
-            Save(Path.Combine(outDir, $"{tag}_far_quarter_x4.png"), crop, mn * 4, mn * 4, 4);
+            int nx0 = Math.Clamp(cx - n / 2, 0, size - n), ny0 = Math.Clamp(cy - n / 2, 0, size - n);
+            var near = TerrainComposer.ComposeNear(tiles, lay, field, art, nx0, ny0, n, n, true, out int w, out int h, style);
+            Save(Path.Combine(outDir, $"{cx}_{cy}_near_x2.png"), near, w, h, 2);
+            WriteQuad(Path.Combine(outDir, $"{cx}_{cy}_four_zooms.png"), tiles, lay, field, art, style, size, cx, cy, mid, far, mapImg);
         }
-        Console.WriteLine($"done in {sw.ElapsedMilliseconds} ms");
         return 0;
     }
+
+    /// <summary>Near (32 cells, 16 px/cell), Mid (128 cells, 4 px), Far (256 cells, 2 px), Map (256 cells, 2 px), each
+    /// 512 x 512, centred on the same place, in a 2 x 2 grid; the near window is outlined on the other three.</summary>
+    static void WriteQuad(string path, TileData[] tiles, TerrainLayout lay, TerrainField field, IArtPixels art, TerrainStyle style,
+                          int size, int cx, int cy, uint[] mid, uint[] far, uint[] map)
+    {
+        const int P = 512, Gap = 8;
+        int W = P * 2 + Gap, H = P * 2 + Gap;
+        var o = new uint[W * H];
+        for (int i = 0; i < o.Length; i++) o[i] = Rgba.Pack(14, 16, 22);
+        int n0 = 32, nx0 = Math.Clamp(cx - n0 / 2, 0, size - n0), ny0 = Math.Clamp(cy - n0 / 2, 0, size - n0);
+        var near = TerrainComposer.ComposeNear(tiles, lay, field, art, nx0, ny0, n0, n0, true, out int nw, out _, style);
+        Blit(o, W, 0, 0, near, nw, 0, 0, P);
+        void Panel(uint[] src, int srcW, int ppc, int ox, int oy)
+        {
+            int cells = P / ppc;
+            int sx0 = Math.Clamp(cx - cells / 2, 0, Math.Max(0, size - cells)), sy0 = Math.Clamp(cy - cells / 2, 0, Math.Max(0, size - cells));
+            Blit(o, W, ox, oy, src, srcW, sx0 * ppc, sy0 * ppc, Math.Min(P, size * ppc));
+            uint y = Rgba.Pack(255, 225, 90);
+            int rx = ox + (nx0 - sx0) * ppc, ry = oy + (ny0 - sy0) * ppc, rs = n0 * ppc;
+            for (int k = 0; k <= rs; k++)
+            {
+                Put(o, W, rx + k, ry, y); Put(o, W, rx + k, ry + rs, y); Put(o, W, rx, ry + k, y); Put(o, W, rx + rs, ry + k, y);
+            }
+        }
+        Panel(mid, size * 4, 4, P + Gap, 0);
+        Panel(far, size * 2, 2, 0, P + Gap);
+        Panel(map, size * 2, 2, P + Gap, P + Gap);
+        Save(path, o, W, H, 1);
+    }
+
+    static void Blit(uint[] dst, int dstW, int ox, int oy, uint[] src, int srcW, int sx, int sy, int n)
+    {
+        int srcH = src.Length / srcW;
+        for (int y = 0; y < n && sy + y < srcH; y++)
+            for (int x = 0; x < n && sx + x < srcW; x++)
+                dst[(oy + y) * dstW + ox + x] = src[(sy + y) * srcW + sx + x];
+    }
+
+    static void Put(uint[] img, int W, int x, int y, uint c) { if (x >= 0 && y >= 0 && x < W && y * W + x < img.Length) img[y * W + x] = c; }
 
     /// <summary>
     /// DEMO data only (the simulation has no kingdoms until milestone B4): three kingdoms on open lowland far apart,
@@ -216,54 +256,23 @@ static class PackPreview
                     o.Markers.Add(new FarOverlay.Marker { Frame = "mk_monster", CellX = x, CellY = y, Kingdom = -1 });
         if (used.Count >= 3)
             o.Markers.Add(new FarOverlay.Marker { Frame = "mk_fire", CellX = used[2].x + 6, CellY = used[2].y - 5, Kingdom = -1 });
+        // Territory: land within 16 cells of a kingdom's settlement, nearest settlement wins.
+        o.TerritoryWidth = size;
+        o.Territory = new byte[size * size];
+        for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                if (tiles[y * size + x].IsWater) continue;
+                int best = -1, bestD = 16 * 16 + 1;
+                foreach (var m in o.Markers)
+                {
+                    if (m.Kingdom < 0 || m.Frame == "mk_army") continue;
+                    int d = (m.CellX - x) * (m.CellX - x) + (m.CellY - y) * (m.CellY - y);
+                    if (d < bestD) { bestD = d; best = m.Kingdom; }
+                }
+                if (best >= 0) o.Territory[y * size + x] = (byte)(best + 1);
+            }
         return o;
-    }
-
-    /// <summary>
-    /// Art-style candidates for the same place (Playable Alpha step 1): writes style_A/B/C.png (near, x2) and
-    /// styles_compare.png (all three stacked, labelled).
-    ///   A = our pack, improved (brighter, more saturated, calmer texture)
-    ///   B = flat bright palette (WorldBox-like: clean colour, 3 soft tones, sparse speckles)
-    ///   C = Kenney "Roguelike pack" ground tiles (CC0), tinted per biome
-    /// </summary>
-    public static int Styles(string[] a)
-    {
-        ulong seed = Convert.ToUInt64(a[1].Replace("0x", ""), 16);
-        int size = int.Parse(a[2]); string outDir = a[3]; string kenneySheet = a[4];
-        int cx = int.Parse(a[5]), cy = int.Parse(a[6]), n = int.Parse(a[7]);
-        Directory.CreateDirectory(outDir);
-        var p = WorldGenParams.Create(new WorldSeed(seed), size, size);
-        var tiles = new TileData[size * size];
-        WorldGenerator.Generate(p, tiles);
-        string root = FindArt();
-        var art = new PackArt(root);
-        var lay = new TerrainLayout(tiles, size, size);
-        var field = new TerrainField(tiles, lay);
-
-        var map = MapColors(root);
-        var styles = new (string tag, string label, TerrainStyle style)[]
-        {
-            ("A", "A: our pack, improved", new TerrainStyle { Saturation = 135, Brightness = 8, Calm = 45 }),
-            ("B", "B: flat bright palette", new TerrainStyle { Ground = FlatGround(map) }),
-            ("C", "C: Kenney Roguelike pack (CC0), tinted", new TerrainStyle { Ground = KenneyGround(kenneySheet, map) }),
-        };
-        var panels = new List<(string, uint[], int, int)>();
-        foreach (var (tag, label, style) in styles)
-        {
-            var img = TerrainComposer.ComposeNear(tiles, lay, field, art, cx, cy, n, n, true, out int w, out int h, style);
-            Save(Path.Combine(outDir, $"style_{tag}.png"), img, w, h, 2);
-            panels.Add((label, img, w, h));
-        }
-        // Stack the three, labelled, for the phone (portrait).
-        int pw = panels[0].Item3, ph = panels[0].Item4, gap = 14;
-        int W = pw, H = (ph + gap) * panels.Count;
-        var all = new uint[W * H];
-        for (int i = 0; i < all.Length; i++) all[i] = Rgba.Pack(18, 20, 28);
-        for (int k = 0; k < panels.Count; k++)
-            Array.Copy(panels[k].Item2, 0, all, (k * (ph + gap) + gap) * W, pw * ph);
-        Save(Path.Combine(outDir, "styles_compare.png"), all, W, H, 2);
-        Console.WriteLine("labels top to bottom: " + string.Join(" | ", panels.ConvertAll(x => x.Item1)));
-        return 0;
     }
 
     static Dictionary<string, uint> MapColors(string root)
@@ -288,53 +297,6 @@ static class PackPreview
     {
         string key = band >= 0 && !(b == Biome.CoralShallows && band == 2) ? "water_depth_" + Math.Min(2, band) : BiomeArt.MapColorKey(b);
         return key != null && map.TryGetValue(key, out uint c) ? c : Rgba.Pack(255, 0, 255);
-    }
-
-    /// <summary>B: one clean, vivid colour per biome; three soft tones in ~12 px blobs; rare 1 px light speckles.</summary>
-    static Func<Biome, int, int, int, uint> FlatGround(Dictionary<string, uint> map) => (b, band, x, y) =>
-    {
-        uint basec = Vivid(MapColor(map, b, band), 150, 10);
-        int n = TerrainField.Noise(x * 2 / 3, y * 2 / 3, 0x4455);
-        int tone = n > 40 ? 7 : n < -40 ? -7 : 0;
-        uint c = Rgba.Shift(basec, tone);
-        uint hsh = TerrainLayout.Hash(x * 7 + 3, y * 13 + 5);
-        if (band < 0 && (hsh & 255) < 3) c = Rgba.Shift(basec, 22);                                  // sparse speckle
-        if (band >= 0 && (hsh & 511) < 2) c = Rgba.Shift(basec, 40);                                 // water glints
-        return c;
-    };
-
-    /// <summary>C: Kenney Roguelike pack ground tiles (16 px, 1 px margin), tinted towards each biome's colour.</summary>
-    static Func<Biome, int, int, int, uint> KenneyGround(string sheetPath, Dictionary<string, uint> map)
-    {
-        var px = PngDecoder.Decode(File.ReadAllBytes(sheetPath), out int sw, out int sh);
-        uint At(int tx, int ty, int x, int y) => px[(sh - 1 - (ty * 17 + y)) * sw + tx * 17 + x];
-        (int, int) TileFor(Biome b, int band)
-        {
-            if (band >= 0 && !(b == Biome.CoralShallows && band == 2)) return (0, 0);                   // water
-            switch (b)
-            {
-                case Biome.Beach: case Biome.DesertDunes: case Biome.SaltFlats: case Biome.Savanna: return (8, 0);   // sand
-                case Biome.Mountain: case Biome.RockyHighland: case Biome.Volcanic: case Biome.AshWaste: return (7, 0); // stone
-                case Biome.Snow: case Biome.Glacier: return (8, 0);
-                case Biome.Badlands: case Biome.Farmland: case Biome.EmberWastes: return (6, 0);                   // dirt
-                default: return (5, 0);                                                                          // grass
-            }
-        }
-        var means = new Dictionary<(int, int), uint>();
-        uint Mean((int, int) t)
-        {
-            if (means.TryGetValue(t, out uint m)) return m;
-            long r = 0, g = 0, bl = 0;
-            for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) { uint c = At(t.Item1, t.Item2, x, y); r += Rgba.R(c); g += Rgba.G(c); bl += Rgba.B(c); }
-            return means[t] = Rgba.Pack((int)(r / 256), (int)(g / 256), (int)(bl / 256));
-        }
-        return (b, band, x, y) =>
-        {
-            var t = TileFor(b, band);
-            uint c = At(t.Item1, t.Item2, x & 15, y & 15), mean = Mean(t), target = Vivid(MapColor(map, b, band), 140, 12);
-            // keep the tile's light/dark detail, move its average to the biome colour
-            return Rgba.Pack(Rgba.R(target) + Rgba.R(c) - Rgba.R(mean), Rgba.G(target) + Rgba.G(c) - Rgba.G(mean), Rgba.B(target) + Rgba.B(c) - Rgba.B(mean));
-        };
     }
 
     static string FindArt()

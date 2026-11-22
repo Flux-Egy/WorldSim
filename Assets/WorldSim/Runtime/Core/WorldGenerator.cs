@@ -81,7 +81,7 @@ namespace WorldSim.Core
         public const byte SeaLevel = 112;        // below: shallow water
         public const byte BeachBelow = 119;      // below: sand
         public const byte HighlandFrom = 188;    // dry land from here up: rocky highland
-        public const byte MountainFrom = 204;
+        public const byte MountainFrom = 206;
         public const byte SnowPeakFrom = 240;
 
         // Feature sizes scale with the map up to these limits (in tiles). Past them a bigger map
@@ -111,7 +111,7 @@ namespace WorldSim.Core
             int n = FixedNoise.Fbm(p.HeightSeed, wx, wy, continentPeriod, 5); // [-One, One], clusters near 0
             // Ridges: 1 - |noise| peaks along lines, which reads as mountain ranges.
             long ridge = One - Abs(FixedNoise.Fbm(p.HeightSeed ^ 0x5A5A5A5A5A5A5A5AUL, wx, wy, Clamp(minDim / 5, 12, MaxRidgePeriod), 3));
-            long ridgeLift = ridge > One * 74 / 100 ? (ridge - One * 74 / 100) * 2 : 0;  // 0..0.52
+            long ridgeLift = ridge > One * 79 / 100 ? (ridge - One * 79 / 100) * 2 : 0;  // 0..0.42 (mountains <= 15 % of land)
             long falloff = BorderFalloff(x, y, p.Width, p.Height);           // [0, One]
             // fBm stretched x1.7 (its octave sum rarely nears ±1), small land bias, ridges only
             // lift land that is already above sea level, border pulled down to ocean.

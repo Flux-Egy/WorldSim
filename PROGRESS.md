@@ -28,18 +28,18 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started · ⛳ owner review
 
 ## Step 1: lock the art style (most important)
 Problem today: the look is dull and washed out, and details don't change with zoom (the same drawing just shrinks).
-- [~] Compare 2-3 terrain options for the same place (images sent 2026-11-22, waiting for the owner):
+- [x] Compare 2-3 terrain options for the same place. Owner chose: back to v2, with the grass and water shades of B:
   1. our pack, improved (brighter, calmer texture);
   2. a bright, flat WorldBox-like style;
   3. an open-licence top-down pack (Kenney or OpenGameArt; licence checked and credited).
   ⛳ The owner picks one.
-- [ ] Look rules:
+- [x] Look rules (on v2, see DECISIONS 2026-11-22). Mountains 14.0 % of land:
   - bright, clean ground with few small details, no blotches and no level lines;
   - height from hillshade only; stronger shading on mountains; snow caps with a blue-grey shadow;
   - cliff only at the coast, then sand, then a thin foam line; water in 3 depths;
   - smooth borders;
   - mountains at most 15 % of the land (measured).
-- [ ] One detail layer per zoom (see `docs/DECISIONS.md`): Near / Mid / Far / Map.
+- [~] One detail layer per zoom (see `docs/DECISIONS.md`): Near / Mid / Far / Map. Done in the C# reference; the fade between zooms comes with the runtime baker (step 2).
   ⛳ One picture with the same place at all four zooms side by side.
 
 ## Step 2: the new look inside the game
@@ -90,4 +90,5 @@ Problem today: the look is dull and washed out, and details don't change with zo
 
 ## Log
 - 2026-11-21: plan written; Step 0 done.
-- 2026-11-22: Step 1 ⛳ sent: styles A/B/C for the same place (`cccbae2`). Mountain relief now uses stepped, dithered hillshade.
+- 2026-11-22: Step 1 ⛳ sent: styles A/B/C for the same place (`cccbae2`).
+- 2026-11-22: Owner chose v2 + B colours. Zoom layers (near/mid/far/map), comfort tuning, mountains 14 % of land. ⛳ four-zoom images sent.

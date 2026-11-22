@@ -19,7 +19,6 @@ static partial class Program
     static int Main(string[] args)
     {
         if (args.Length >= 4 && args[0] == "pack") return PackPreview.Run(args);
-        if (args.Length >= 8 && args[0] == "styles") return PackPreview.Styles(args);
         if (args.Length == 2 && args[0] == "icons") return IconSheet(args[1]);
         if (args.Length == 2 && args[0] == "sprites") return SpriteSheet(args[1]);
         if (args.Length == 2 && args[0] == "creatures") return CreatureSheet(args[1]);

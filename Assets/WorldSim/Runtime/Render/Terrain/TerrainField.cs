@@ -5,8 +5,8 @@ namespace WorldSim.Render.Terrain
     /// <summary>
     /// Which cell (and terrace) every world pixel shows. Instead of 16 px squares, each pixel looks at the four nearest
     /// cell centres (bilinear weights) at a slightly noise-warped position and picks, in order:
-    /// land or water (by total weight), then the biome, by the largest support. Water depth bands and the height used
-    /// for hillshade are interpolated the same way, so bands and shading are smooth too. Region edges become smooth, rounded contours with a small noise wiggle; lone cells become small round
+    /// land or water (by total weight), then the terrace, then the biome (or the water band), each by the largest
+    /// support. Region edges become smooth, rounded contours with a small noise wiggle; lone cells become small round
     /// blobs instead of notches or teeth. Close biome contests are ordered-dithered over 2-3 px (a soft, crisp blend).
     /// Pure C#, deterministic, integer only.
     /// </summary>
@@ -84,7 +84,7 @@ namespace WorldSim.Render.Terrain
 
         bool Water(int c) => _lay.Level[c] < TerrainLayout.WaterLevel;
         int BiomeOf(int c) => _lay.RenderBiome[c];
-        int Key(int c, bool land) => Water(c) == !land ? (land ? 50 : 100) : -1;
+        int Key(int c, bool land) => Water(c) == !land ? (land ? _lay.Level[c] : 100 + _lay.Band[c]) : -1;
 
         /// <summary>Sums weights per key (keys &lt; 0 ignored); returns the best key, its support and the runner-up.</summary>
         static int Best(int k0, int w0, int k1, int w1, int k2, int w2, int k3, int w3, out int s1, out int second, out int s2)
@@ -104,24 +104,15 @@ namespace WorldSim.Render.Terrain
             return best;
         }
 
-        /// <summary>Water depth band at a world pixel (0 deep, 1 ocean, 2 shallows), from the bilinear distance to land:
-        /// smooth rings with a small wiggle instead of cell steps.</summary>
-        public int WaterBand(int x, int y)
-        {
-            int d = Bilinear(_lay.Dist, x + Noise(x, y, 0x1D2E) * 6 / 128, y + Noise(x, y, 0x3E4F) * 6 / 128);   // x16
-            return d <= 40 ? 2 : d <= 88 ? 1 : 0;                       // 2.5 and 5.5 cells
-        }
-
-        /// <summary>Smoothed height (x16) at a world pixel, for hillshade.</summary>
-        public int Height(int x, int y) => Bilinear(_lay.SmoothHeight, x, y);
-
-        int Bilinear(byte[] v, int x, int y)
+        /// <summary>Smoothed height (x16) at a world pixel (bilinear between cell centres), for hillshade.</summary>
+        public int Height(int x, int y)
         {
             int gx = x - Px / 2, gy = y - Px / 2;
             int i0 = gx >> 4, j0 = gy >> 4, fx = gx & 15, fy = gy & 15;
+            var v = _lay.SmoothHeight;
             int a = v[Cell(i0, j0)], b = v[Cell(i0 + 1, j0)], c = v[Cell(i0, j0 + 1)], d = v[Cell(i0 + 1, j0 + 1)];
             int top = a * (16 - fx) + b * fx, bottom = c * (16 - fx) + d * fx;
-            return (top * (16 - fy) + bottom * fy) / 16;            // value x16
+            return (top * (16 - fy) + bottom * fy) / 16;
         }
 
         /// <summary>Smooth value noise in [-128, 127], period 8 px.</summary>

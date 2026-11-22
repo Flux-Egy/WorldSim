@@ -28,8 +28,22 @@ namespace WorldSim.Render.Terrain
         static readonly uint FarmA = Rgba.Pack(200, 170, 82), FarmB = Rgba.Pack(140, 120, 62);
         static readonly uint Road = Rgba.Pack(160, 128, 88), RoadShadow = Rgba.Pack(96, 80, 56);
 
-        public void Draw(uint[] img, int W, int H, int ppc, IArtPixels art)
+        /// <summary>Optional kingdom territory per cell: 0 = none, k + 1 = kingdom k. <see cref="TerritoryWidth"/> cells per row.</summary>
+        public byte[] Territory;
+        public int TerritoryWidth;
+
+        /// <param name="mapMode">Map zoom: strong territory fill, roads and capitals only.</param>
+        public void Draw(uint[] img, int W, int H, int ppc, IArtPixels art, bool mapMode = false)
         {
+            if (Territory != null && TerritoryWidth > 0) DrawTerritory(img, W, H, ppc, mapMode);
+            if (mapMode)
+            {
+                foreach (var r in Roads)
+                    for (int k = 0; k + 3 < r.Length; k += 2)
+                        Line(img, W, H, r[k] * ppc + ppc / 2, r[k + 1] * ppc + ppc / 2, r[k + 2] * ppc + ppc / 2, r[k + 3] * ppc + ppc / 2, false);
+                DrawMarkers(img, W, H, ppc, art, m => m.Frame == "mk_capital");
+                return;
+            }
             foreach (var f in Farms)
                 for (int y = 0; y < ppc; y++)
                     for (int x = 0; x < ppc; x++)
@@ -39,7 +53,37 @@ namespace WorldSim.Render.Terrain
                 for (int k = 0; k + 3 < r.Length; k += 2)
                     Line(img, W, H, r[k] * ppc + ppc / 2, r[k + 1] * ppc + ppc / 2, r[k + 2] * ppc + ppc / 2, r[k + 3] * ppc + ppc / 2, ppc >= 4);
 
-            var sorted = new List<Marker>(Markers);
+            DrawMarkers(img, W, H, ppc, art, m => true);
+        }
+
+        void DrawTerritory(uint[] img, int W, int H, int ppc, bool mapMode)
+        {
+            int tw = TerritoryWidth, th = Territory.Length / tw;
+            for (int y = 0; y < H; y++)
+                for (int x = 0; x < W; x++)
+                {
+                    int cx = x / ppc, cy = y / ppc;
+                    if (cx >= tw || cy >= th) continue;
+                    int k = Territory[cy * tw + cx] - 1;
+                    if (k < 0 || k >= TeamRamps.Count) continue;
+                    uint[] ramp = TeamRamps[k];
+                    // Border: a neighbouring pixel that belongs to another owner (or none).
+                    bool border = false;
+                    for (int d = 0; d < 4 && !border; d++)
+                    {
+                        int nx = x + (d == 0 ? 1 : d == 1 ? -1 : 0), ny = y + (d == 2 ? 1 : d == 3 ? -1 : 0);
+                        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+                        int ncx = nx / ppc, ncy = ny / ppc;
+                        if (ncx >= tw || ncy >= th || Territory[ncy * tw + ncx] != k + 1) border = true;
+                    }
+                    int i = y * W + x;
+                    img[i] = border ? ramp[1] : Rgba.Mix(img[i], ramp[2], mapMode ? 150 : 80);
+                }
+        }
+
+        void DrawMarkers(uint[] img, int W, int H, int ppc, IArtPixels art, System.Predicate<Marker> keep)
+        {
+            var sorted = Markers.FindAll(keep);
             sorted.Sort((a, b) => a.CellY != b.CellY ? a.CellY.CompareTo(b.CellY) : a.CellX.CompareTo(b.CellX));
             foreach (var m in sorted)
             {
