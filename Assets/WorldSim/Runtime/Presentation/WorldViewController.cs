@@ -32,7 +32,7 @@ namespace WorldSim.Presentation
         static readonly int[] Sizes = { 256, 512, 1024 };
         static readonly string[] SizeNames = { "Small", "Medium", "Large" };
         const string SeedPrefKey = "worldsim.lastSeed";
-        const string SizePrefKey = "worldsim.mapSizeIndex";
+        const string SizePrefKey = "worldsim.mapSizeIndex.v2";   // v2: default back to 256 (owner, Alpha step 2)
         const string NoticePrefKey = "worldsim.fictionNoticeAccepted.v1";
         int _sizeIndex;
 
@@ -55,7 +55,7 @@ namespace WorldSim.Presentation
         uint _shownVersion;
         WorldMap _map;
 
-        TerrainView _terrainView;
+        PackTerrainView _terrainView;
         SpriteRenderer _selection;
 
         // ---- Life (Beta B3) ----
@@ -82,6 +82,8 @@ namespace WorldSim.Presentation
         const float DabInterval = 0.06f; // continuous tools (raise/lower) repeat while held
 
         bool _ready;
+        readonly DevStats _stats = new DevStats();
+        uint _populatedVersion;
 
         void Start()
         {
@@ -135,7 +137,7 @@ namespace WorldSim.Presentation
                 _rig = new CameraRig(_cam);
 
                 CreateGlobalLight();
-                _terrainView = new TerrainView();
+                _terrainView = new PackTerrainView();
                 _selection = CreateSelectionMarker();
 
                 EnhancedTouchSupport.Enable();
@@ -202,7 +204,9 @@ namespace WorldSim.Presentation
 
             _rig.Tick(Time.unscaledDeltaTime);
             _terrainView.Tick(_cam, Time.unscaledTime);
-            _creatureView.Tick(_em, _cam, Time.unscaledTime, Time.unscaledDeltaTime);
+            uint simTick = _clockQuery.IsEmpty ? 0u : (uint)_clockQuery.GetSingleton<WorldSim.Simulation.SimulationClock>().Tick;
+            _creatureView.Tick(_em, _cam, _terrainView, simTick, Time.unscaledTime, Time.unscaledDeltaTime);
+            _stats.Tick(Time.unscaledTime, Time.unscaledDeltaTime, _terrainView);
             if (Time.unscaledTime >= _nextUiRefresh) { _nextUiRefresh = Time.unscaledTime + 0.25f; RefreshLifeUi(); } // §12.4: <=4 Hz
         }
 
@@ -234,7 +238,7 @@ namespace WorldSim.Presentation
                 {
                     _shownEditVersion = map.EditVersion;
                     _map = map;
-                    _terrainView.MarkDirty(map, map.DirtyRect);
+                    _terrainView.MarkDirty(map, map.DirtyRect, Time.unscaledTime);
                     _hud.SetTitle($"WorldSim   seed 0x{map.Seed:X}   {map.Width}x{map.Height}\nedited world");
                 }
                 return;
@@ -243,18 +247,32 @@ namespace WorldSim.Presentation
             _shownVersion = map.Version;
             _shownEditVersion = map.EditVersion;
 
-            _terrainView.Build(map);
+            _terrainView.Build(map, _cam);
             _rig.SetWorld(map.Width, map.Height);
+            SpawnStartingLife(map);
             _selection.enabled = false;
             _hud.HideInfo();
             _hud.SetTitle($"WorldSim   seed 0x{map.Seed:X}   {map.Width}x{map.Height}\nworld hash 0x{map.Hash:X16}");
             SaveSeed(map.Seed);
         }
 
+        /// <summary>A new world starts with life (Playable Alpha step 2): peoples, herds, predators, birds and fish.</summary>
+        void SpawnStartingLife(WorldMap map)
+        {
+            if (map.Version == _populatedVersion || map.Settings.Blank != 0 || _lifeQuery.IsEmpty) return;
+            _populatedVersion = map.Version;
+            var plan = StartingLife.Plan(map.Tiles.ToArray(), map.Width, map.Height, map.Seed);
+            Entity q = _lifeQuery.GetSingletonEntity();
+            var buffer = _em.GetBuffer<SpawnCreatureCommand>(q);
+            foreach (var sp in plan)
+                buffer.Add(new SpawnCreatureCommand { Species = sp.Species, Tile = new Unity.Mathematics.int2(sp.X, sp.Y) });
+            Debug.Log($"[WorldSim] Starting life: {plan.Count} creatures queued");
+        }
+
         void Select(Vector2 screen, bool longPress)
         {
             Vector3 w = _rig.ScreenToWorld(screen);
-            if (CreatureView.FindNearest(_em, new Vector2(w.x, w.y + 0.3f), 1.2f, out Entity creature))
+            if (CreatureView.FindNearest(_em, new Vector2(w.x, w.y - 0.5f), 1.2f, out Entity creature))
             {
                 _selectedCreature = creature;
                 _selection.enabled = false;
@@ -262,7 +280,7 @@ namespace WorldSim.Presentation
                 return;
             }
             _selectedCreature = Entity.Null;
-            int x = Mathf.FloorToInt(w.x), y = Mathf.FloorToInt(w.y);
+            int x = Mathf.FloorToInt(w.x), y = Mathf.FloorToInt(PackTerrainView.WorldToTileY(w.y));
             if (!_map.InBounds(x, y)) { _selection.enabled = false; _hud.HideInfo(); return; }
 
             // Re-read the singleton: the array handle is only valid for the current world version.
@@ -270,7 +288,7 @@ namespace WorldSim.Presentation
             if (map.Version != _shownVersion) return;
             TileData t = map.Get(x, y);
 
-            _selection.transform.position = new Vector3(x, y, 0f);
+            _selection.transform.position = new Vector3(x, PackTerrainView.TileToWorldY(y + 1), 0f);
             _selection.transform.localScale = Vector3.one;
             _selection.enabled = true;
             string res = ResourceText((ResourceFlags)t.ResourceFlags);
@@ -297,7 +315,7 @@ namespace WorldSim.Presentation
         {
             if (!_gestures.IsSingleFingerDown) { _lastSpawnX = int.MinValue; return; }
             Vector3 w = _rig.ScreenToWorld(new Vector2(_gestures.PrimaryX, _gestures.PrimaryY));
-            int x = Mathf.FloorToInt(w.x), y = Mathf.FloorToInt(w.y);
+            int x = Mathf.FloorToInt(w.x), y = Mathf.FloorToInt(PackTerrainView.WorldToTileY(w.y));
             if (!_map.InBounds(x, y)) return;
             float now = Time.unscaledTime;
             bool moved = Mathf.Abs(x - _lastSpawnX) + Mathf.Abs(y - _lastSpawnY) >= 2;
@@ -330,8 +348,8 @@ namespace WorldSim.Presentation
         {
             if (_lifeQuery.IsEmpty || _map.Version == 0) return;
             LifeState life = _lifeQuery.GetSingleton<LifeState>();
-            _hud.SetTitle($"seed 0x{_map.Seed:X}   {_map.Width}x{_map.Height}   hash {_map.Hash:X16}\n" +
-                          $"population {life.Population}   peoples {life.Peoples}   births {life.Births}   deaths {life.Deaths}");
+            _hud.SetTitle($"seed 0x{_map.Seed:X}   {_map.Width}x{_map.Height}   population {life.Population}   peoples {life.Peoples}\n" +
+                          _stats.Line);
 
             if (_selectedCreature == Entity.Null) return;
             if (!_em.Exists(_selectedCreature) || !_em.HasComponent<Creature>(_selectedCreature))
@@ -388,9 +406,9 @@ namespace WorldSim.Presentation
                 return;
             }
             Vector3 w = _rig.ScreenToWorld(new Vector2(_gestures.PrimaryX, _gestures.PrimaryY));
-            int x = Mathf.FloorToInt(w.x), y = Mathf.FloorToInt(w.y);
+            int x = Mathf.FloorToInt(w.x), y = Mathf.FloorToInt(PackTerrainView.WorldToTileY(w.y));
             _selection.enabled = true;
-            _selection.transform.position = new Vector3(x - r, y - r, 0f);
+            _selection.transform.position = new Vector3(x - r, PackTerrainView.TileToWorldY(y + r + 1), 0f);
             _selection.transform.localScale = new Vector3(2 * r + 1, 2 * r + 1, 1f);
             if (!_map.InBounds(x, y)) return;
 

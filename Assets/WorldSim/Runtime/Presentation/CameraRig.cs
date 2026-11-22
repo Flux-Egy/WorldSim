@@ -28,7 +28,8 @@ namespace WorldSim.Presentation
             _worldMax = new Vector2(width, height);
             float fitWidth = width * 0.5f / Mathf.Max(0.1f, _cam.aspect);
             float fitHeight = height * 0.5f;
-            _maxSize = Mathf.Max(fitWidth, fitHeight) * 1.05f;
+            // Zoom out well past the whole map so the far and map layers are reachable (owner, Alpha step 2).
+            _maxSize = Mathf.Max(fitWidth, fitHeight) * 4f;
             _minSize = 5f;
             _cam.orthographicSize = Mathf.Clamp(fitWidth, _minSize, _maxSize);
             _cam.transform.position = new Vector3(width * 0.5f, height * 0.5f, -10f);
