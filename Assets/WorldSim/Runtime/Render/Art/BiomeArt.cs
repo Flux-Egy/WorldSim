@@ -127,6 +127,25 @@ namespace WorldSim.Render.Art
             return p == null ? null : p[(int)((uint)variant % (uint)p.Length)];
         }
 
+        /// <summary>
+        /// The looping animation that brings a prop to life: the decoration's own (birch sway, glimmer glow, ember vent
+        /// smoke) or the seasonal wind sway of Nature/nature_seasonal for trees, pines, palms and bushes (summer; snowy
+        /// pines use the winter sway). Null for props without one (rocks, flowers, cactus...).
+        /// </summary>
+        public static string LivingAnim(Decoration d, int variant)
+        {
+            string own = PropAnim(d, variant);
+            if (own != null) return own;
+            string f = Prop(d, variant);
+            if (f == null) return null;
+            if (f.StartsWith("tree_", System.StringComparison.Ordinal) && f.Length == 8 && f[5] >= '3') return f + "_summer_sway";      // tree_S_V
+            if (f.StartsWith("pine_", System.StringComparison.Ordinal))
+                return "pine_" + f[5] + "_0_" + (f.EndsWith("snow", System.StringComparison.Ordinal) ? "winter" : "summer") + "_sway";
+            if (f.StartsWith("palm_", System.StringComparison.Ordinal)) return "palm_0_" + ((f[5] - '0') % 2) + "_summer_sway";
+            if (f.StartsWith("bush_", System.StringComparison.Ordinal)) return "bush_0_" + f[5] + "_summer_sway";
+            return null;
+        }
+
         /// <summary>True when the decoration's art is a stand-in until dedicated pack art exists.</summary>
         public static bool IsStandIn(Decoration d) =>
             d == Decoration.JungleTree || d == Decoration.BerryBush || d == Decoration.TallGrass ||

@@ -42,13 +42,14 @@ namespace WorldSim.Render.Terrain
         /// <summary>Renders the cell window [cx0, cx0+cw) x [cy0, cy0+ch) at 1 art pixel per pixel (cw*16 x ch*16).</summary>
         public static uint[] ComposeNear(TileData[] tiles, TerrainLayout lay, TerrainField field, IArtPixels art,
                                          int cx0, int cy0, int cw, int ch, bool props, out int imageW, out int imageH,
-                                         TerrainStyle style = null)
+                                         TerrainStyle style = null, bool tagAnimated = false)
         {
             int W = cw * Px, H = ch * Px;
             imageW = W; imageH = H;
             int X0 = cx0 * Px, Y0 = cy0 * Px;
             var img = new uint[W * H];
             var water = new bool[W * H];
+            var kind = tagAnimated ? new byte[W * H] : null;           // 1 water, 2 lava (animated in the game's shader)
             var cache = new FrameCache(art);
             uint ocean = art.Pixel(cache.Water[0], 0, 0);
             for (int i = 0; i < img.Length; i++) { img[i] = ocean; water[i] = true; }
@@ -102,7 +103,11 @@ namespace WorldSim.Render.Terrain
                         }
                     }
                     int sy = y - lift - Y0, sx = i - West;
-                    if (sy >= 0 && sy < H) { img[sy * W + sx] = c; water[sy * W + sx] = isWater; }
+                    if (sy >= 0 && sy < H)
+                    {
+                        img[sy * W + sx] = c; water[sy * W + sx] = isWater;
+                        if (kind != null) kind[sy * W + sx] = isWater ? (byte)1 : lay.RenderBiome[cell] == (byte)Biome.Lava ? (byte)2 : (byte)0;
+                    }
 
                     if (!isWater && front < L)
                     {
@@ -115,17 +120,19 @@ namespace WorldSim.Render.Terrain
                             int pct = !visibleDrop ? 100 : snow ? (k == drop ? 78 : 86) : (k == drop ? 58 : 70); // a dark shade of the same ground
                             img[fy * W + sx] = pct == 100 ? baseC : Rgba.Darken(baseC, pct);
                             water[fy * W + sx] = false;
+                            if (kind != null) kind[fy * W + sx] = 0;
                         }
                     }
                 }
 
                 if (propRows != null && propRows.TryGetValue(y, out var list))
-                    foreach (var p in list) DrawProp(field, art, img, W, H, X0, Y0, p);
+                    foreach (var p in list) DrawProp(field, art, img, W, H, X0, Y0, p, kind);
 
                 var t1 = curCell; curCell = nextCell; nextCell = t1;
                 var t2 = curLv; curLv = nextLv; nextLv = t2;
             }
-            AddFoam(img, water, W, H, cache, art);
+            var foam = AddFoam(img, water, W, H, cache, art);
+            if (kind != null) Tag(img, kind, foam);
             return img;
         }
 
@@ -209,7 +216,7 @@ namespace WorldSim.Render.Terrain
             return rows;
         }
 
-        static void DrawProp(TerrainField field, IArtPixels art, uint[] img, int W, int H, int X0, int Y0, PropDraw p)
+        static void DrawProp(TerrainField field, IArtPixels art, uint[] img, int W, int H, int X0, int Y0, PropDraw p, byte[] kind = null)
         {
             field.Pick(p.FootX, p.FootY, out int footCell, out int level);
             if (footCell != p.Cell) return;                          // its ground was rounded away at a border
@@ -228,12 +235,49 @@ namespace WorldSim.Render.Terrain
                     int a = Rgba.A(c);
                     if (a == 0) continue;
                     img[py * W + px] = a == 255 ? c : Rgba.Mix(img[py * W + px], c, a);
+                    if (kind != null) kind[py * W + px] = 0;
                 }
             }
         }
 
+        /// <summary>
+        /// Marks animated pixels in the alpha channel for the game's terrain shader (WorldSim/TerrainAnimated):
+        /// 254 water (ripple streaks and glints), 253 lava (glow pulse), 252 foam (shimmer). Everything else stays 255.
+        /// </summary>
+        static void Tag(uint[] img, byte[] kind, byte[] foam)
+        {
+            for (int i = 0; i < img.Length; i++)
+            {
+                int a = foam != null && foam[i] != 0 ? 252 : kind[i] == 1 ? 254 : kind[i] == 2 ? 253 : 255;
+                if (a != 255) img[i] = (img[i] & 0x00FFFFFFu) | ((uint)a << 24);
+            }
+        }
+
+        /// <summary>The prop a cell shows (same placement as the baked near view): frame, its living animation (sway,
+        /// glow, smoke) if any, foot point in world pixels and the terrain lift there. False for no prop, a prop on a
+        /// snow cap, or one whose ground was rounded away at a border.</summary>
+        public static bool TryPlaceProp(TileData[] tiles, TerrainLayout lay, TerrainField field, int cx, int cy,
+                                        out string frame, out string anim, out int footX, out int footY, out int lift)
+        {
+            frame = anim = null; footX = footY = lift = 0;
+            int cell = cy * lay.Width + cx;
+            TileData t = tiles[cell];
+            if (t.DecorationId == 0 || lay.Level[cell] == TerrainLayout.TopLevel) return false;
+            uint h = TerrainLayout.Hash(cx + 104729, cy);
+            int variant = (int)(h % 97);
+            frame = BiomeArt.Prop(t.Decoration, variant);
+            if (frame == null) return false;
+            anim = BiomeArt.LivingAnim(t.Decoration, variant);
+            footX = cx * Px + Px / 2 + (int)((h >> 8) % 7) - 3;
+            footY = cy * Px + Px / 2 + (int)((h >> 12) % 5) - 2;
+            field.Pick(footX, footY, out int footCell, out int level);
+            if (footCell != cell) return false;
+            lift = TerrainLayout.Lift(level);
+            return true;
+        }
+
         /// <summary>One and two pixels of foam on the water side of every shore (shore_foam_0 rows 0-1).</summary>
-        static void AddFoam(uint[] img, bool[] water, int W, int H, FrameCache cache, IArtPixels art)
+        static byte[] AddFoam(uint[] img, bool[] water, int W, int H, FrameCache cache, IArtPixels art)
         {
             var dist = new byte[img.Length];
             for (int pass = 1; pass <= 2; pass++)
@@ -255,6 +299,7 @@ namespace WorldSim.Render.Terrain
                 int a = Rgba.A(c);
                 if (a > 0) img[i] = Rgba.Mix(img[i], c, dist[i] == 1 ? a : a / 2);
             }
+            return dist;
         }
 
         static bool Land(bool[] water, int W, int H, int x, int y) => x >= 0 && y >= 0 && x < W && y < H && !water[y * W + x];
@@ -273,7 +318,8 @@ namespace WorldSim.Render.Terrain
         /// </list>
         /// </summary>
         public static uint[] ComposeZoom(TileData[] tiles, TerrainLayout lay, TerrainField field, IArtPixels art, ZoomLayer zoom,
-                                         FarOverlay overlay = null, TerrainStyle style = null, System.Func<Biome, int, uint> mapColor = null)
+                                         FarOverlay overlay = null, TerrainStyle style = null, System.Func<Biome, int, uint> mapColor = null,
+                                         bool tagAnimated = false)
         {
             int ppc = zoom == ZoomLayer.Mid ? 4 : 2, lodPx = ppc * 4, step = Px / ppc;
             int W = lay.Width * ppc, H = lay.Height * ppc;
@@ -326,6 +372,8 @@ namespace WorldSim.Render.Terrain
                             if (density != null && density[cell] > 0) c = Rgba.Darken(c, 100 - density[cell]);
                         }
                     }
+                    if (tagAnimated && zoom != ZoomLayer.Map && (water || b == Biome.Lava))
+                        c = (c & 0x00FFFFFFu) | ((water ? 254u : 253u) << 24);
                     img[y * W + x] = c;
                 }
             if (zoom == ZoomLayer.Mid) DrawTreeClusters(tiles, lay, field, art, cache, img, W, H);

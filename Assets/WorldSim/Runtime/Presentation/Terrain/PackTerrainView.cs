@@ -39,6 +39,7 @@ namespace WorldSim.Presentation.Terrain
         public static float WorldToTileY(float worldY) => WorldHeight - worldY;
 
         static RawArtPixels _art;
+        static Material _animated;              // WorldSim/TerrainAnimated: water, lava and foam move
         static Dictionary<string, uint> _mapColors;
 
         TileData[] _tiles;
@@ -106,7 +107,9 @@ namespace WorldSim.Presentation.Terrain
             _art = new RawArtPixels(WorldSimArtDB.Instance.Index);
             var lod = Resources.Load<TextAsset>("WorldSimData/lod");
             _mapColors = TerrainPalette.ParseMapColors(lod != null ? lod.text : "{}");
-            Debug.Log($"[WorldSim] Terrain baker: {_art.RawPageCount} raw art pages, {_mapColors.Count} map colours");
+            var shader = Shader.Find("WorldSim/TerrainAnimated");
+            if (shader != null) _animated = new Material(shader) { name = "TerrainAnimated" };
+            Debug.Log($"[WorldSim] Terrain baker: {_art.RawPageCount} raw art pages, {_mapColors.Count} map colours, animated shader {(shader != null ? "ok" : "MISSING")}");
         }
 
         /// <summary>Takes a copy of the world and starts baking (layout and zoom layers on a background thread).</summary>
@@ -154,8 +157,8 @@ namespace WorldSim.Presentation.Terrain
                     var layout = new TerrainLayout(tiles, w, h);
                     var field = new TerrainField(tiles, layout);
                     _done.Enqueue(new BakeResult { Generation = generation, Key = int.MinValue, Layout = layout, Field = field });
-                    Enqueue(generation, -1, TerrainComposer.ComposeZoom(tiles, layout, field, _art, ZoomLayer.Mid, null, style), w * 4, h * 4);
-                    Enqueue(generation, -2, TerrainComposer.ComposeZoom(tiles, layout, field, _art, ZoomLayer.Far, null, style), w * 2, h * 2);
+                    Enqueue(generation, -1, TerrainComposer.ComposeZoom(tiles, layout, field, _art, ZoomLayer.Mid, null, style, null, _animated != null), w * 4, h * 4);
+                    Enqueue(generation, -2, TerrainComposer.ComposeZoom(tiles, layout, field, _art, ZoomLayer.Far, null, style, null, _animated != null), w * 2, h * 2);
                     Enqueue(generation, -3, TerrainComposer.ComposeZoom(tiles, layout, field, _art, ZoomLayer.Map, null, style, mapColors), w * 2, h * 2);
                 }
                 catch (System.Exception e) { Debug.LogException(e); }
@@ -262,7 +265,9 @@ namespace WorldSim.Presentation.Terrain
                 try
                 {
                     int cw = System.Math.Min(Chunk, _w - cx * Chunk), ch = System.Math.Min(Chunk, _h - cy * Chunk);
-                    var img = TerrainComposer.ComposeNear(tiles, layout, field, _art, cx * Chunk, cy * Chunk, cw, ch, true, out int iw, out int ih, style);
+                    // Props are live sprites (PropView, they sway); the chunk bakes ground, cliffs, water and foam only.
+                    var img = TerrainComposer.ComposeNear(tiles, layout, field, _art, cx * Chunk, cy * Chunk, cw, ch, false, out int iw, out int ih,
+                                                          style, _animated != null);
                     _done.Enqueue(new BakeResult { Generation = generation, Key = key, Epoch = epoch, Pixels = FlipRows(img, iw, ih), Width = iw, Height = ih });
                 }
                 catch (System.Exception e)
@@ -324,6 +329,7 @@ namespace WorldSim.Presentation.Terrain
                 sr.transform.SetParent(_root, false);
                 sr.sortingOrder = order;
             }
+            if (_animated != null && sr.sharedMaterial != _animated) sr.sharedMaterial = _animated;
             Sprite old = sr.sprite;
             sr.sprite = Sprite.Create(fresh, new Rect(0, 0, r.Width, r.Height), new Vector2(0f, 1f), ppu, 0, SpriteMeshType.FullRect);
             sr.transform.localPosition = topLeft;
@@ -355,6 +361,12 @@ namespace WorldSim.Presentation.Terrain
             if (_layout == null || tileX < 0 || tileY < 0 || tileX >= _w || tileY >= _h) return 0f;
             return TerrainLayout.Lift(_layout.Level[tileY * _w + tileX]) / (float)Px;
         }
+
+        /// <summary>The baked world (read-only), for the live prop sprites.</summary>
+        public TileData[] Tiles => _tiles;
+        public TerrainLayout Layout => _layout;
+        public TerrainField Field => _field;
+        public int WorldWidth => _w;
 
         public int NearChunksLoaded
         {

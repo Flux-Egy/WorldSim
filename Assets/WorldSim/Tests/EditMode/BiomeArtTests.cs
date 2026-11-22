@@ -82,6 +82,23 @@ namespace WorldSim.Tests
             Assert.IsNull(BiomeArt.Prop((Decoration)250, 0));
         }
 
+        [Test]
+        public void LivingProps_HaveRealAnimations()
+        {
+            int living = 0;
+            for (int d = 1; d < (int)Decoration.Count; d++)
+                for (int v = 0; v < BiomeArt.PropVariantCount((Decoration)d); v++)
+                {
+                    string anim = BiomeArt.LivingAnim((Decoration)d, v);
+                    if (anim == null) continue;
+                    Assert.IsTrue(Ix.TryGetAnimId(anim, out _), $"{(Decoration)d} variant {v}: missing animation {anim}");
+                    living++;
+                }
+            Assert.Greater(living, 25, "trees, pines, palms, bushes, birches, glimmers and vents move");
+            Assert.AreEqual("pine_5_0_winter_sway", BiomeArt.LivingAnim(Decoration.SnowPine, 0));
+            Assert.IsNull(BiomeArt.LivingAnim(Decoration.Rock, 0));
+        }
+
 #if !UNITY_2017_1_OR_NEWER
         [Test]
         public void MapColours_InLodJson_CoverEveryBiome()

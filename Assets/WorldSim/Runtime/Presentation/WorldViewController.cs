@@ -56,6 +56,7 @@ namespace WorldSim.Presentation
         WorldMap _map;
 
         PackTerrainView _terrainView;
+        PropView _propView;
         SpriteRenderer _selection;
 
         // ---- Life (Beta B3) ----
@@ -138,6 +139,7 @@ namespace WorldSim.Presentation
 
                 CreateGlobalLight();
                 _terrainView = new PackTerrainView();
+                _propView = new PropView();
                 _selection = CreateSelectionMarker();
 
                 EnhancedTouchSupport.Enable();
@@ -214,6 +216,7 @@ namespace WorldSim.Presentation
 
             _rig.Tick(Time.unscaledDeltaTime);
             _terrainView.Tick(_cam, Time.unscaledTime);
+            _propView.Tick(_cam, _terrainView, Time.unscaledTime);
             uint simTick = _clockQuery.IsEmpty ? 0u : (uint)_clockQuery.GetSingleton<WorldSim.Simulation.SimulationClock>().Tick;
             _creatureView.Tick(_em, _cam, _terrainView, simTick, Time.unscaledTime, Time.unscaledDeltaTime);
             if (Time.unscaledTime >= _nextUiRefresh) { _nextUiRefresh = Time.unscaledTime + 0.25f; RefreshLifeUi(); } // §12.4: <=4 Hz
