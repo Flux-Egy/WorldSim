@@ -120,7 +120,10 @@ namespace WorldSim.Simulation.Life
                 Entity e = state.EntityManager.CreateEntity(d.IsSapient ? _sapientArchetype : _archetype);
                 state.EntityManager.SetComponentData(e, new Creature
                 {
-                    Species = c.Species, StableId = id, Sex = (byte)rng.NextUInt(2), BornTick = tick, LifespanTicks = lifespan,
+                    // Births start young; creatures placed by the world or the player start as young adults, so a
+                    // new world's herds and peoples can have families straight away (uint arithmetic wraps on purpose).
+                    Species = c.Species, StableId = id, Sex = (byte)rng.NextUInt(2),
+                    BornTick = c.HasParents != 0 ? tick : unchecked(tick - (uint)d.AdultAtTicks), LifespanTicks = lifespan,
                     LastBirthTick = tick,
                 });
                 state.EntityManager.SetComponentData(e, new CreatureTraits { Set = traits });
@@ -236,7 +239,7 @@ namespace WorldSim.Simulation.Life
                 if ((tick + c.StableId) % 10 == 0)
                 {
                     v.Hunger = Add(v.Hunger, Traits.Scale(d.HungerRate, mod.HungerPct));
-                    v.Thirst = Add(v.Thirst, d.ThirstRate);
+                    v.Thirst = Add(v.Thirst, (byte)((d.ThirstRate + 1) / 2));   // demo balance: thirst no longer wipes out inland herds
                     if (b.Action != CreatureAction.Sleep) v.Fatigue = Add(v.Fatigue, 2);
                     if (v.Hunger == 255 || v.Thirst == 255) v.Hp -= 2;
                     else if (v.Hp < v.MaxHp && v.Hunger < 150 && v.Thirst < 150) v.Hp++;
